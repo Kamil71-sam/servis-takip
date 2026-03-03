@@ -34,7 +34,11 @@ export default function YeniKayitFormu({ visible, onClose }: Props) {
       return;
     }
     try {
-      const response = await fetch('http://localhost:5000/api/yeni-servis', {
+      
+        // 37. Satırı tam olarak böyle mühürle:
+        const response = await fetch('http://192.168.1.43:5000/api/yeni-servis', {
+      
+        
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
