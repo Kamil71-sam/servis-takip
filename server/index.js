@@ -1,50 +1,43 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./db'); // Az önce oluşturduğun köprüyü bağladık
+const db = require('./db'); // Az önce yaptığımız db.js'i çağırıyoruz
 
 const app = express();
-const PORT = 5000;
-
-// Middleware (Ara Yazılımlar)
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Dashboard'dan gelen veriyi anlaması için
 
-// Basit bir test rotası (API çalışıyor mu kontrolü)
+// --- TEST ROTASI: Sistem çalışıyor mu? ---
 app.get('/', (req, res) => {
-  res.send('Teknik Servis Takip Sistemi API - ÇALIŞIYOR');
+  res.send('Kalandar Yazılım Teknik Servis Sunucusu Aktif!');
 });
 
-// TÜM MÜŞTERİLERİ GETİR (API Testi)
-app.get('/api/customers', (req, res) => {
-  db.query('SELECT * FROM customers', (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(results);
-  });
+// --- STOK TAKİBİ: Kritik stokları Dashboard'a yollar ---
+app.get('/api/stok-ikaz', async (req, res) => {
+  try {
+    // Senin istediğin o 2cm+3mm yukarıdaki barı besleyecek veri
+    const [rows] = await db.query('SELECT * FROM inventory WHERE stock_count <= critical_limit');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-
-// YENİ MÜŞTERİ EKLE (POST)
-app.post('/api/customers', (req, res) => {
-  const { first_name, last_name, phone, email, customer_type, address } = req.body;
-  const query = 'INSERT INTO customers (first_name, last_name, phone, email, customer_type, address) VALUES (?, ?, ?, ?, ?, ?)';
-  
-  db.query(query, [first_name, last_name, phone, email, customer_type, address], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ message: 'Müşteri başarıyla eklendi!', id: result.insertId });
-  });
+// --- RANDEVU OLUŞTUR: Resepsiyonist kayıt açtığında burası çalışır ---
+app.post('/api/yeni-servis', async (req, res) => {
+  const { customer_id, expert_id, type } = req.body; // Ev, İş veya Dükkan
+  try {
+    const [result] = await db.query(
+      'INSERT INTO service_jobs (customer_id, assigned_expert_id, service_type) VALUES (?, ?, ?)',
+      [customer_id, expert_id, type]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-
-
-
-
-
-
-// Sunucuyu başlat
+// MOTORU ÇALIŞTIR (Port 5000 üzerinden)
+const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`Sunucu http://localhost:${PORT} adresinde yola çıktı!`);
+  console.log(`Motor ${PORT} portunda gürlüyor kaptan!`);
 });
