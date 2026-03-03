@@ -1,3 +1,5 @@
+
+import YeniKayitFormu from '../components/YeniKayitFormu';
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
@@ -12,6 +14,7 @@ export default function DashboardScreen() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stokSayisi, setStokSayisi] = useState(0); 
+  const [modalVisible, setModalVisible] = useState(false);
 
   // ANDROID CANLI BAĞLANTI
   useEffect(() => {
