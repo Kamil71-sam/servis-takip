@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  Dimensions, ScrollView, StatusBar 
+  Dimensions, ScrollView, Platform, StatusBar 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 
+// Ekran boyutlarını ölçüyoruz ki her telefona tam sığsın
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function DashboardScreen() {
   const router = useRouter(); 
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // Menü kontrolü
   const [weather] = useState({ temp: '18°C', city: 'Kocaeli' });
 
-  // ÇIKIŞ FONKSİYONU - ZIPLAMA ENGELLEYİCİ
+  // ÇIKIŞ FONKSİYONU - ZIPLAMA VE GERİ DÖNME GARANTİLİ
   const handleLogout = () => {
     console.log("Sistemden çıkılıyor...");
-    // router.replace yerine router.push veya direkt kök dizine zorla
-    router.dismissAll(); // Tüm açık sayfaları kapat
-    setTimeout(() => {
-      router.replace('/'); // 100ms sonra tertemiz ana sayfaya dön
-    }, 100);
+    if (router.canGoBack()) {
+      router.back(); // Önce geri gitmeyi dene (zıplamayı keser)
+    } else {
+      router.replace('/'); // Geri gidemezse zorla ana sayfaya at
+    }
   };
 
   return (
@@ -29,7 +32,7 @@ export default function DashboardScreen() {
       <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         
-        {/* --- ÜST BAR --- */}
+        {/* --- ÜST BAR (NAVIGASYON) --- */}
         <View style={[styles.topBar, isDarkMode && styles.darkBorder]}>
           <TouchableOpacity onPress={() => setIsMenuOpen(!isMenuOpen)}>
             <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
@@ -45,7 +48,7 @@ export default function DashboardScreen() {
               <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#333"} />
             </TouchableOpacity>
             
-            {/* ÇIKIŞ BUTONU */}
+            {/* LOG OUT - KIRMIZI KAPO */}
             <TouchableOpacity onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={28} color="#FF3B30" />
             </TouchableOpacity>
@@ -53,11 +56,13 @@ export default function DashboardScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
+          {/* BAŞLIK: KULLANICI PANELİ */}
           <View style={styles.headerSection}>
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
             <Text style={styles.subText}>Teknik Servis Durum Takibi</Text>
           </View>
 
+          {/* PASTA GRAFİK ALANI */}
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
             <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
             <View style={styles.pieContainer}>
@@ -69,6 +74,7 @@ export default function DashboardScreen() {
             </View>
           </View>
 
+          {/* SERVİS RANDEVUSU OLUŞTUR BUTONU */}
           <TouchableOpacity style={styles.sahaBox} activeOpacity={0.8}>
             <Ionicons name="calendar-outline" size={26} color="#fff" />
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
@@ -84,31 +90,58 @@ export default function DashboardScreen() {
           </View>
         </ScrollView>
 
-        {/* --- SANDWICH MENÜ --- */}
+        {/* --- SANDWICH MENÜ (SOL PANEL) --- */}
         {isMenuOpen && (
           <View style={styles.overlay}>
-            <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} />
+            {/* Siyah karartma alanına tıklandığında menüyü kapatır */}
+            <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} activeOpacity={1} />
+            
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
                <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
-               <TouchableOpacity style={styles.menuItem} onPress={() => setIsMenuOpen(false)}>
-                 <Ionicons name="person-add" size={24} color={isDarkMode ? "#fff" : "#333"} />
+               
+               {/* MENÜ ÖĞELERİ */}
+               <TouchableOpacity style={styles.menuItem}>
+                 <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
                </TouchableOpacity>
-               <TouchableOpacity style={styles.menuItem} onPress={() => setIsMenuOpen(false)}>
-                 <Ionicons name="business" size={24} color={isDarkMode ? "#fff" : "#333"} />
+
+               <TouchableOpacity style={styles.menuItem}>
+                 <Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text>
                </TouchableOpacity>
+
                <TouchableOpacity style={styles.menuItem}>
                  <Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text>
                </TouchableOpacity>
+
                <TouchableOpacity style={styles.menuItem}>
                  <Ionicons name="calculator-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Cari Hesaplar</Text>
                </TouchableOpacity>
+
+               {/* SABİT STOK VE MALİ DURUM ALANI (EN ALTA ÇİVİLENDİ) */}
+               <View style={styles.fixedInfoArea}>
+                 <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
+                 <Text style={[styles.fixedInfoTitle, isDarkMode && styles.darkText]}>Sistem Özetleri</Text>
+                 
+                 {/* Stok Bilgisi */}
+                 <View style={styles.fixedInfoRow}>
+                   <Ionicons name="cube-outline" size={18} color={isDarkMode ? "#FFD700" : "#007bff"} />
+                   <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Kritik Stok: <Text style={{fontWeight: '900', color: '#FF3B30'}}>3 Parça</Text></Text>
+                 </View>
+
+                 {/* Mali Durum Bilgisi */}
+                 <View style={styles.fixedInfoRow}>
+                   <Ionicons name="cash-outline" size={18} color="#28a745" />
+                   <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Cari Durum: <Text style={{fontWeight: '900'}}>Dengeli</Text></Text>
+                 </View>
+               </View>
+
             </View>
           </View>
         )}
+
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -136,10 +169,25 @@ const styles = StyleSheet.create({
   alertBanner: { backgroundColor: '#FF3B30', borderRadius: 20, flexDirection: 'row', padding: 20, alignItems: 'center', marginTop: 30 },
   alertTitle: { color: '#fff', fontWeight: '900', fontSize: 14 },
   alertText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  
+  // SANDWICH MENÜ TASARIMI
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
-  menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', padding: 30, paddingTop: 60 },
+  menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', padding: 30, paddingTop: 60, position: 'relative' }, // position relative önemli
   menuTitle: { fontSize: 20, fontWeight: '900', marginBottom: 30 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   menuItemText: { marginLeft: 15, fontSize: 16, fontWeight: 'bold', color: '#333' },
-  darkText: { color: '#fff' }
+  darkText: { color: '#fff' },
+
+  // SABİT BİLGİ ALANI (EN ALTA ÇİVİLEME)
+  fixedInfoArea: { 
+    position: 'absolute', 
+    bottom: 30, // Alttan 30 birim boşluk
+    left: 30, 
+    right: 30,
+    marginTop: 20 // Diğer öğelerden ayrışma
+  },
+  infoDivider: { height: 1, backgroundColor: '#eee', marginBottom: 15 },
+  fixedInfoTitle: { fontSize: 16, fontWeight: '900', marginBottom: 12, color: '#333' },
+  fixedInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  fixedInfoText: { marginLeft: 10, fontSize: 14, color: '#666', fontWeight: 'bold' }
 });
