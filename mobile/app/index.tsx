@@ -1,155 +1,153 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
-  StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Keyboard, Dimensions 
+  StyleSheet, Text, View, TouchableOpacity, 
+  Dimensions, ScrollView, Platform, StatusBar 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function LoginScreen() {
-  const [role, setRole] = useState<'user' | 'expert'>('user');
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  
-  const scrollRef = useRef<ScrollView>(null);
-  const passwordRef = useRef<TextInput>(null);
-  const captchaRef = useRef<TextInput>(null);
+export default function DashboardScreen() {
+  const router = useRouter();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [weather] = useState({ temp: '18°C', city: 'Kocaeli' });
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
-
-  const handleNextFocus = (nextRef: React.RefObject<TextInput | null>, scrollY: number) => {
-    nextRef.current?.focus();
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: scrollY, animated: true });
-    }, 50);
+  // ÇIKIŞ FONKSİYONU TAMİR EDİLDİ
+  const handleLogout = () => {
+    router.replace('/'); // Seni index.tsx (Giriş) ekranına atar
   };
 
   return (
     <SafeAreaProvider>
-      {/* ÜSTTEKİ "index" YAZISINI BURADAN SİLDİK */}
       <Stack.Screen options={{ headerShown: false }} />
-      
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-          style={{ flex: 1 }}
-        >
-          <ScrollView 
-            ref={scrollRef}
-            contentContainerStyle={[
-              styles.scrollContent, 
-              !isKeyboardVisible && { height: SCREEN_HEIGHT - 60 }
-            ]} 
-            scrollEnabled={isKeyboardVisible}
-            keyboardShouldPersistTaps="handled"
-            bounces={false}
-          >
-            {/* LOGO BÖLÜMÜ - TAM 1 CM (50 BİRİM) AŞAĞIYA ÇEKİLDİ */}
-            <View style={styles.headerContainer}>
-              <View style={styles.logoSquare}>
-                <Ionicons name="shield-checkmark" size={40} color="#fff" />
+      <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+        
+        {/* --- ÜST BAR --- */}
+        <View style={[styles.topBar, isDarkMode && styles.darkBorder]}>
+          <TouchableOpacity onPress={() => setIsMenuOpen(!isMenuOpen)}>
+            <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
+          </TouchableOpacity>
+          
+          <View style={styles.weatherContainer}>
+            <Ionicons name="cloud-outline" size={20} color={isDarkMode ? "#aaa" : "#666"} />
+            <Text style={[styles.weatherText, isDarkMode && styles.darkText]}>{weather.temp} {weather.city}</Text>
+          </View>
+
+          <View style={styles.topActions}>
+            <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={{marginRight: 15}}>
+              <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#333"} />
+            </TouchableOpacity>
+            {/* ÇIKIŞ BUTONU BURADA */}
+            <TouchableOpacity onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={28} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} bounces={false} scrollEnabled={false}>
+          {/* BAŞLIK: KULLANICI PANELİ */}
+          <View style={styles.headerSection}>
+            <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
+            <Text style={styles.subText}>Teknik Servis Durum Takibi</Text>
+          </View>
+
+          {/* PASTA GRAFİK ALANI */}
+          <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
+            <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
+            <View style={styles.pieContainer}>
+              <Ionicons name="pie-chart" size={160} color={isDarkMode ? "#555" : "#333"} />
+              <View style={styles.legendContainer}>
+                <Text style={isDarkMode ? styles.darkText : {color: '#333'}}>🔵 Dükkan</Text>
+                <Text style={isDarkMode ? styles.darkText : {color: '#333'}}>🟢 Saha (Randevu)</Text>
               </View>
-              <Text style={styles.brandName}>KALANDAR YAZILIM</Text>
-              <Text style={styles.appTitle}>Teknik Servis Takip Programı</Text>
             </View>
+          </View>
 
-            {/* FORM ALANI - LOGOYLA ARASI DENGELENDİ */}
-            <View style={styles.formContainer}>
-              <Text style={styles.label}>Erişim Türü</Text>
-              <View style={styles.roleContainer}>
-                <TouchableOpacity 
-                  style={[styles.roleButton, role === 'user' && styles.roleActive]} 
-                  onPress={() => setRole('user')}
-                >
-                  <Ionicons name="person-circle" size={18} color={role === 'user' ? '#fff' : '#666'} />
-                  <Text style={[styles.roleText, role === 'user' && styles.roleTextActive]}>Kullanıcı</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.roleButton, role === 'expert' && styles.roleActive]} 
-                  onPress={() => setRole('expert')}
-                >
-                  <Ionicons name="construct" size={18} color={role === 'expert' ? '#fff' : '#666'} />
-                  <Text style={[styles.roleText, role === 'expert' && styles.roleTextActive]}>Uzman</Text>
-                </TouchableOpacity>
-              </View>
+          {/* SERVİS RANDEVUSU OLUŞTUR BUTONU - YAZI GÜNCELLENDİ */}
+          <TouchableOpacity style={styles.sahaBox} activeOpacity={0.8}>
+            <Ionicons name="calendar-outline" size={26} color="#fff" />
+            <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
+          </TouchableOpacity>
 
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={18} color="#666" style={{marginRight: 10}} />
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="E-posta" 
-                  autoCapitalize="none"
-                  returnKeyType="next"
-                  onFocus={() => scrollRef.current?.scrollTo({ y: 150, animated: true })}
-                  onSubmitEditing={() => handleNextFocus(passwordRef, 230)}
-                />
-              </View>
-              
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={18} color="#666" style={{marginRight: 10}} />
-                <TextInput 
-                  ref={passwordRef}
-                  style={styles.input} 
-                  placeholder="Şifre" 
-                  secureTextEntry 
-                  returnKeyType="next"
-                  onFocus={() => scrollRef.current?.scrollTo({ y: 230, animated: true })}
-                  onSubmitEditing={() => handleNextFocus(captchaRef, 330)}
-                />
-              </View>
-
-              <Text style={styles.label}>Doğrulama: 3 + 2 = ?</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="calculator-outline" size={18} color="#666" style={{marginRight: 10}} />
-                <TextInput 
-                  ref={captchaRef}
-                  style={styles.input} 
-                  placeholder="Sonuç" 
-                  keyboardType="numeric"
-                  returnKeyType="done"
-                  onFocus={() => scrollRef.current?.scrollTo({ y: 330, animated: true })}
-                />
-              </View>
-              
-              <TouchableOpacity style={styles.button} activeOpacity={0.8}>
-                <Text style={styles.buttonText}>SİSTEME GİRİŞ YAP</Text>
-              </TouchableOpacity>
+          {/* STOK TAKİP İKAZI - 3MM DAHA YUKARI ALINDI */}
+          <View style={styles.alertBanner}>
+            <Ionicons name="warning" size={22} color="#fff" />
+            <View style={{marginLeft: 10}}>
+              <Text style={styles.alertTitle}>STOK TAKİP SİSTEMİ</Text>
+              <Text style={styles.alertText}>3 Ürün Kritik Seviyenin Altında!</Text>
             </View>
+          </View>
+        </ScrollView>
 
-            {isKeyboardVisible && <View style={{ height: SCREEN_HEIGHT * 0.55 }} />}
-          </ScrollView>
-        </KeyboardAvoidingView>
+        {/* --- SANDWICH MENÜ (SOL PANEL) --- */}
+        {isMenuOpen && (
+          <View style={styles.overlay}>
+            <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} />
+            <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
+               <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
+               
+               <TouchableOpacity style={styles.menuItem}>
+                 <Ionicons name="person-add" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
+               </TouchableOpacity>
+
+               <TouchableOpacity style={styles.menuItem}>
+                 <Ionicons name="business" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text>
+               </TouchableOpacity>
+
+               <TouchableOpacity style={styles.menuItem}>
+                 <Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text>
+               </TouchableOpacity>
+
+               <TouchableOpacity style={styles.menuItem}>
+                 <Ionicons name="calculator-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Cari Hesaplar</Text>
+               </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingHorizontal: 25, paddingTop: 60 }, // LOGOYU ÜSTTEN 1 CM AŞAĞI İTEN DEĞER
-  headerContainer: { alignItems: 'center', marginBottom: 15 }, 
-  logoSquare: { width: 65, height: 65, backgroundColor: '#333', borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }, 
-  brandName: { fontSize: 22, fontWeight: '900', color: '#333' },
-  appTitle: { fontSize: 13, color: '#666', fontWeight: '600' }, // MAVİ YAZI GRİYE ÇEKİLDİ
-  formContainer: { width: '100%', marginTop: 35 }, 
-  label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 },
-  roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 },
-  roleButton: { flex: 1, height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' },
-  roleActive: { backgroundColor: '#333', borderColor: '#333' },
-  roleText: { marginLeft: 8, fontSize: 13, color: '#666', fontWeight: 'bold' },
-  roleTextActive: { color: '#fff' },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, marginBottom: 10, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 10, height: 48 },
-  input: { flex: 1, height: '100%', fontSize: 14, color: '#333' },
-  button: { width: '100%', height: 50, backgroundColor: '#333', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
+  container: { flex: 1, backgroundColor: '#fdfdfd' },
+  darkContainer: { backgroundColor: '#121212' },
+  darkBorder: { borderColor: '#333' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 60, borderBottomWidth: 1, borderColor: '#eee' },
+  weatherContainer: { flexDirection: 'row', alignItems: 'center' },
+  weatherText: { marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#333' },
+  topActions: { flexDirection: 'row', alignItems: 'center' },
+  scrollContent: { padding: 25, flex: 1 },
+  headerSection: { marginBottom: 15 },
+  welcomeText: { fontSize: 26, fontWeight: '900', color: '#333' },
+  subText: { fontSize: 14, color: '#888' },
+  chartCard: { backgroundColor: '#fff', borderRadius: 25, padding: 30, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 12 },
+  darkCard: { backgroundColor: '#1e1e1e' },
+  cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  pieContainer: { alignItems: 'center' },
+  legendContainer: { flexDirection: 'row', gap: 20, marginTop: 25 },
+  sahaBox: { width: '100%', height: 75, backgroundColor: '#333', borderRadius: 20, marginTop: 25, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 4 },
+  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginLeft: 12 },
+  
+  // STOK İKAZI: YERİ 3MM DAHA YUKARI ALINDI (marginTop küçüldü)
+  alertBanner: { backgroundColor: '#FF3B30', borderRadius: 20, flexDirection: 'row', padding: 20, alignItems: 'center', marginTop: 30, elevation: 5 },
+  alertTitle: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  alertText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  
+  // SANDWICH MENÜ
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
+  menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', padding: 30, paddingTop: 60 },
+  menuTitle: { fontSize: 20, fontWeight: '900', marginBottom: 30 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  menuItemText: { marginLeft: 15, fontSize: 16, fontWeight: 'bold', color: '#333' },
+  darkText: { color: '#fff' }
 });
