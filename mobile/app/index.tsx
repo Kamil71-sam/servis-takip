@@ -1,41 +1,35 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Keyboard, findNodeHandle
+  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Keyboard, Dimensions 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function LoginScreen() {
   const [role, setRole] = useState<'user' | 'expert'>('user');
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-
+  
   const scrollRef = useRef<ScrollView>(null);
-  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const captchaRef = useRef<TextInput>(null);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    });
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  // HATASIZ ODAKLANMA: TypeScript hatalarını (ts2345) önlemek için tip kontrolü eklendi
-  const handleFocus = (ref: React.RefObject<TextInput>) => {
-    if (!ref.current || !scrollRef.current) return;
-    
+  const handleNextFocus = (nextRef: React.RefObject<TextInput | null>, scrollY: number) => {
+    nextRef.current?.focus();
     setTimeout(() => {
-      ref.current?.measureLayout(
-        findNodeHandle(scrollRef.current) as number,
-        (x, y) => {
-          // Son girişte (Captcha) butonun tam görünmesi için y değerini daha çok itiyoruz
-          const offset = ref === captchaRef ? y - 20 : y - 60;
-          scrollRef.current?.scrollTo({ y: offset, animated: true });
-        },
-        () => {}
-      );
-    }, 200);
+      scrollRef.current?.scrollTo({ y: scrollY, animated: true });
+    }, 50);
   };
 
   return (
@@ -48,19 +42,24 @@ export default function LoginScreen() {
         >
           <ScrollView 
             ref={scrollRef}
-            contentContainerStyle={[styles.scrollContent, !isKeyboardVisible && { flex: 1, justifyContent: 'center' }]} 
-            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.scrollContent, 
+              !isKeyboardVisible && { height: SCREEN_HEIGHT - 40 } // Ekranı tam sığdırmak için pay bırakıldı
+            ]} 
             scrollEnabled={isKeyboardVisible}
+            keyboardShouldPersistTaps="handled"
             bounces={false}
           >
+            {/* LOGO BÖLÜMÜ - BOŞLUKLAR VE BOYUT KÜÇÜLTÜLDÜ */}
             <View style={styles.headerContainer}>
               <View style={styles.logoSquare}>
-                <Ionicons name="shield-checkmark" size={50} color="#fff" />
+                <Ionicons name="shield-checkmark" size={45} color="#fff" />
               </View>
               <Text style={styles.brandName}>KALANDAR YAZILIM</Text>
-              <Text style={styles.appTitle}>Teknik Servis Takip v1.6</Text>
+              <Text style={styles.appTitle}>Teknik Servis Takip v1.5</Text>
             </View>
 
+            {/* FORM ALANI - KUTUCUK VE YAZI BOYUTLARI DARALTILDI */}
             <View style={styles.formContainer}>
               <Text style={styles.label}>Erişim Türü</Text>
               <View style={styles.roleContainer}>
@@ -81,48 +80,49 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#666" style={{marginRight: 10}} />
+                <Ionicons name="mail-outline" size={18} color="#666" style={{marginRight: 10}} />
                 <TextInput 
-                  ref={emailRef}
                   style={styles.input} 
                   placeholder="E-posta" 
+                  autoCapitalize="none"
                   returnKeyType="next"
-                  onFocus={() => handleFocus(emailRef)}
-                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 50, animated: true })}
+                  onSubmitEditing={() => handleNextFocus(passwordRef, 140)}
                 />
               </View>
               
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={{marginRight: 10}} />
+                <Ionicons name="lock-closed-outline" size={18} color="#666" style={{marginRight: 10}} />
                 <TextInput 
                   ref={passwordRef}
                   style={styles.input} 
                   placeholder="Şifre" 
                   secureTextEntry 
                   returnKeyType="next"
-                  onFocus={() => handleFocus(passwordRef)}
-                  onSubmitEditing={() => captchaRef.current?.focus()}
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 140, animated: true })}
+                  onSubmitEditing={() => handleNextFocus(captchaRef, 240)}
                 />
               </View>
 
+              <Text style={styles.label}>Doğrulama: 3 + 2 = ?</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="calculator-outline" size={20} color="#666" style={{marginRight: 10}} />
+                <Ionicons name="calculator-outline" size={18} color="#666" style={{marginRight: 10}} />
                 <TextInput 
                   ref={captchaRef}
                   style={styles.input} 
-                  placeholder="Güvenlik Sonucu" 
+                  placeholder="Sonuç" 
                   keyboardType="numeric"
-                  onFocus={() => handleFocus(captchaRef)}
+                  returnKeyType="done"
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 240, animated: true })}
                 />
               </View>
               
-              <TouchableOpacity style={styles.button}>
+              <TouchableOpacity style={styles.button} activeOpacity={0.8}>
                 <Text style={styles.buttonText}>SİSTEME GİRİŞ YAP</Text>
               </TouchableOpacity>
             </View>
 
-            {/* BUTONU YUKARI İTEN DİNAMİK ALAN */}
-            {isKeyboardVisible && <View style={{ height: 450 }} />} 
+            {isKeyboardVisible && <View style={{ height: SCREEN_HEIGHT * 0.45 }} />}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -132,20 +132,20 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { padding: 25 },
-  headerContainer: { alignItems: 'center', marginBottom: 30 },
-  logoSquare: { width: 85, height: 85, backgroundColor: '#333', borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  brandName: { fontSize: 28, fontWeight: '900', color: '#333' },
-  appTitle: { fontSize: 14, color: '#007bff', fontWeight: 'bold' },
+  scrollContent: { paddingHorizontal: 25, paddingVertical: 10, justifyContent: 'center' },
+  headerContainer: { alignItems: 'center', marginBottom: 20 }, // Boşluk daraltıldı
+  logoSquare: { width: 75, height: 75, backgroundColor: '#333', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 10, elevation: 4 }, // Boyut küçültüldü
+  brandName: { fontSize: 24, fontWeight: '900', color: '#333', letterSpacing: 1 }, // Yazı küçültüldü
+  appTitle: { fontSize: 13, color: '#007bff', fontWeight: 'bold' },
   formContainer: { width: '100%' },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#666', marginBottom: 8 },
-  roleContainer: { flexDirection: 'row', marginBottom: 20, gap: 10 },
-  roleButton: { flex: 1, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' },
+  label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 6 }, // Etiket küçültüldü
+  roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 }, // Boşluk daraltıldı
+  roleButton: { flex: 1, height: 45, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' }, // Yükseklik azaldı
   roleActive: { backgroundColor: '#333', borderColor: '#333' },
-  roleText: { marginLeft: 8, fontSize: 14, color: '#666', fontWeight: 'bold' },
+  roleText: { marginLeft: 8, fontSize: 13, color: '#666', fontWeight: 'bold' },
   roleTextActive: { color: '#fff' },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 15, marginBottom: 15, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 15, height: 60 },
-  input: { flex: 1, height: '100%', fontSize: 16 },
-  button: { width: '100%', height: 60, backgroundColor: '#333', borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' }
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 12, height: 52 }, // Yükseklik ve padding azaldı
+  input: { flex: 1, height: '100%', fontSize: 15, color: '#333' }, // Harf boyutu küçültüldü
+  button: { width: '100%', height: 55, backgroundColor: '#333', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8, elevation: 3 }, // Yükseklik azaldı
+  buttonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' } // Yazı boyutu ayarlandı
 });
