@@ -101,7 +101,23 @@ export default function DashboardScreen() {
             <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} activeOpacity={1} />
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
                <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
-               <TouchableOpacity style={styles.menuItem}><Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text></TouchableOpacity>
+               
+            
+            <TouchableOpacity 
+                style={styles.menuItem} 
+                onPress={() => { 
+                     setModalVisible(true); // Formu açar
+                    setIsMenuOpen(false);  // Sandöviç menüyü kapatır (ekran temizlensin diye)
+                    }}
+                    >
+                 <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
+            </TouchableOpacity>
+            
+            
+              
+               
+               
                <TouchableOpacity style={styles.menuItem}><Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text></TouchableOpacity>
                <TouchableOpacity style={styles.menuItem}><Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text></TouchableOpacity>
                
@@ -114,6 +130,8 @@ export default function DashboardScreen() {
             </View>
           </View>
         )}
+
+        <YeniKayitFormu visible={modalVisible} onClose={() => setModalVisible(false)} />
       </SafeAreaView>
     </SafeAreaProvider>
   );
