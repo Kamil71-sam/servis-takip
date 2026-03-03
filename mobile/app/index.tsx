@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Keyboard, Dimensions 
+  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Dimensions 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,31 +12,20 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function LoginScreen() {
   const router = useRouter();
   const [role, setRole] = useState<'user' | 'expert'>('user');
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   
   const scrollRef = useRef<ScrollView>(null);
   const passwordRef = useRef<TextInput>(null);
   const captchaRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
-
   const handleLogin = () => {
-    // replace yerine push deniyoruz, zıplamayı kesmek için en garantisi bu
     router.push('/dashboard'); 
   };
 
-  const handleNextFocus = (nextRef: React.RefObject<TextInput | null>, scrollY: number) => {
+  // KLAVYE KAPANMADAN ODAK DEĞİŞTİRME
+  const goToNext = (nextRef: React.RefObject<TextInput | null>, scrollY: number) => {
     nextRef.current?.focus();
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: scrollY, animated: true });
-    }, 50);
+    // Klavye kapanmadığı için bekleme süresini (timeout) sıfıra indirdik
+    scrollRef.current?.scrollTo({ y: scrollY, animated: true });
   };
 
   return (
@@ -44,18 +33,21 @@ export default function LoginScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'android' ? -100 : 0} // Android'de zıplamayı burası yutar
+        >
           <ScrollView 
             ref={scrollRef}
-            contentContainerStyle={[styles.scrollContent, !isKeyboardVisible && { height: SCREEN_HEIGHT - 60 }]} 
-            scrollEnabled={isKeyboardVisible}
-            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent} 
+            keyboardShouldPersistTaps="always" // Ekrana dokunsan da klavye inmez
             bounces={false}
           >
             <View style={styles.headerContainer}>
               <View style={styles.logoSquare}><Ionicons name="shield-checkmark" size={40} color="#fff" /></View>
               <Text style={styles.brandName}>KALANDAR YAZILIM</Text>
-              <Text style={styles.appTitle}>Teknik Servis Takip Programı</Text>
+              <Text style={styles.appTitle}>TEKNİK SERVİS TAKİP PROGRAMI</Text>
             </View>
 
             <View style={styles.formContainer}>
@@ -73,24 +65,48 @@ export default function LoginScreen() {
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="mail-outline" size={18} color="#666" style={{marginRight: 10}} />
-                <TextInput style={styles.input} placeholder="E-posta" autoCapitalize="none" returnKeyType="next" onFocus={() => scrollRef.current?.scrollTo({ y: 150, animated: true })} onSubmitEditing={() => handleNextFocus(passwordRef, 230)} />
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="E-posta" 
+                  autoCapitalize="none" 
+                  returnKeyType="next"
+                  blurOnSubmit={false} // KLAVYE KAPANMASINI ÖNLER
+                  onSubmitEditing={() => goToNext(passwordRef, 100)}
+                />
               </View>
               
               <View style={styles.inputWrapper}>
                 <Ionicons name="lock-closed-outline" size={18} color="#666" style={{marginRight: 10}} />
-                <TextInput ref={passwordRef} style={styles.input} placeholder="Şifre" secureTextEntry returnKeyType="next" onFocus={() => scrollRef.current?.scrollTo({ y: 230, animated: true })} onSubmitEditing={() => handleNextFocus(captchaRef, 330)} />
+                <TextInput 
+                  ref={passwordRef} 
+                  style={styles.input} 
+                  placeholder="Şifre" 
+                  secureTextEntry 
+                  returnKeyType="next"
+                  blurOnSubmit={false} // KLAVYE KAPANMASINI ÖNLER
+                  onSubmitEditing={() => goToNext(captchaRef, 200)}
+                />
               </View>
 
               <Text style={styles.label}>Doğrulama: 3 + 2 = ?</Text>
               <View style={styles.inputWrapper}>
                 <Ionicons name="calculator-outline" size={18} color="#666" style={{marginRight: 10}} />
-                <TextInput ref={captchaRef} style={styles.input} placeholder="Sonuç" keyboardType="numeric" returnKeyType="done" onFocus={() => scrollRef.current?.scrollTo({ y: 330, animated: true })} onSubmitEditing={handleLogin} />
+                <TextInput 
+                  ref={captchaRef} 
+                  style={styles.input} 
+                  placeholder="Sonuç" 
+                  keyboardType="numeric" 
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin} 
+                />
               </View>
               
               <TouchableOpacity style={styles.button} activeOpacity={0.8} onPress={handleLogin}>
                 <Text style={styles.buttonText}>SİSTEME GİRİŞ YAP</Text>
               </TouchableOpacity>
             </View>
+            
+            <View style={{ height: 400 }} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -100,12 +116,12 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingHorizontal: 25, paddingTop: 60 }, 
+  scrollContent: { paddingHorizontal: 25, paddingTop: 60 },
   headerContainer: { alignItems: 'center', marginBottom: 15 }, 
   logoSquare: { width: 65, height: 65, backgroundColor: '#333', borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }, 
   brandName: { fontSize: 22, fontWeight: '900', color: '#333' },
-  appTitle: { fontSize: 13, color: '#666', fontWeight: '600' }, 
-  formContainer: { width: '100%', marginTop: 35 }, 
+  appTitle: { fontSize: 13, color: '#666', fontWeight: '900' },
+  formContainer: { width: '100%', marginTop: 20 }, 
   label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 },
   roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 },
   roleButton: { flex: 1, height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' },
@@ -114,6 +130,6 @@ const styles = StyleSheet.create({
   roleTextActive: { color: '#fff' },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, marginBottom: 10, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 10, height: 48 },
   input: { flex: 1, height: '100%', fontSize: 14, color: '#333' },
-  button: { width: '100%', height: 50, backgroundColor: '#333', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  button: { width: '100%', height: 50, backgroundColor: '#333', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
