@@ -13,7 +13,7 @@ export default function DashboardScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stokSayisi, setStokSayisi] = useState(0); 
 
-  // ANDROID CANLI BAĞLANTI HATTI
+  // ANDROID CANLI BAĞLANTI
   useEffect(() => {
     const fetchStok = async () => {
       try {
@@ -21,7 +21,7 @@ export default function DashboardScreen() {
         const data = await response.json();
         setStokSayisi(data.length); 
       } catch (e) { 
-        console.log("Bağlantı bekleniyor..."); 
+        console.log("Motorla iletişim aranıyor..."); 
       }
     };
     fetchStok();
@@ -40,14 +40,22 @@ export default function DashboardScreen() {
       <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         
-        {/* --- ÜST BAR (ana1 Standartı) --- */}
+        {/* --- ÜST BAR (Hava Durumu Sandöviç Yanında - Sabit) --- */}
         <View style={[styles.topBar, isDarkMode && styles.darkBorder]}>
-          <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
-            <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
-          </TouchableOpacity>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
+              <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
+            </TouchableOpacity>
+            
+            <View style={styles.topWeather}>
+              <Ionicons name={isDarkMode ? "cloudy" : "sunny"} size={18} color={isDarkMode ? "#aaa" : "#FFA500"} />
+              <Text style={[styles.topWeatherText, isDarkMode && styles.darkText]}> 18°C</Text>
+            </View>
+          </View>
+          
           <View style={styles.topActions}>
-            <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={{marginRight: 15}}>
-              <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#333"} />
+            <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={{marginRight: 25}}>
+              <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#555"} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={28} color="#FF3B30" />
@@ -56,9 +64,10 @@ export default function DashboardScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
+          {/* --- TADİL EDİLEN BAŞLIK ALANI --- */}
           <View style={styles.headerSection}>
+            <Text style={styles.bigTitleText}>TEKNİK SERVİS TAKİP PROGRAMI</Text>
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
-            <Text style={styles.subText}>Teknik Servis Canlı Takip</Text>
           </View>
 
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
@@ -83,45 +92,21 @@ export default function DashboardScreen() {
           </View>
         </ScrollView>
 
-        {/* --- SANDÖVÇ MENÜ (ana1 STANDARTINA DÖNÜLDÜ) --- */}
+        {/* --- SANDÖVİÇ MENÜ (Mühürlü ana1) --- */}
         {isMenuOpen && (
           <View style={styles.overlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} activeOpacity={1} />
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
                <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
+               <TouchableOpacity style={styles.menuItem}><Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text></TouchableOpacity>
+               <TouchableOpacity style={styles.menuItem}><Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text></TouchableOpacity>
+               <TouchableOpacity style={styles.menuItem}><Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text></TouchableOpacity>
                
-               <TouchableOpacity style={styles.menuItem}>
-                 <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
-               </TouchableOpacity>
-
-               <TouchableOpacity style={styles.menuItem}>
-                 <Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text>
-               </TouchableOpacity>
-
-               <TouchableOpacity style={styles.menuItem}>
-                 <Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text>
-               </TouchableOpacity>
-
-               <TouchableOpacity style={styles.menuItem}>
-                 <Ionicons name="calculator-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Cari Hesaplar</Text>
-               </TouchableOpacity>
-
-               {/* SABİT MALİ VE STOK BİLGİSİ (EN ALTA ÇİVİLENDİ) */}
                <View style={styles.fixedInfoArea}>
                  <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
                  <Text style={[styles.fixedInfoTitle, isDarkMode && styles.darkText]}>Sistem Özetleri</Text>
-                 <View style={styles.fixedInfoRow}>
-                   <Ionicons name="cube" size={18} color="#FF3B30" />
-                   <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Kritik Stok: {stokSayisi}</Text>
-                 </View>
-                 <View style={styles.fixedInfoRow}>
-                   <Ionicons name="stats-chart" size={18} color="#28a745" />
-                   <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Mali Durum: Aktif</Text>
-                 </View>
+                 <View style={styles.fixedInfoRow}><Ionicons name="cube" size={18} color="#FF3B30" /><Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Kritik Stok: {stokSayisi}</Text></View>
+                 <View style={styles.fixedInfoRow}><Ionicons name="stats-chart" size={18} color="#28a745" /><Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Mali Durum: Aktif</Text></View>
                </View>
             </View>
           </View>
@@ -136,11 +121,13 @@ const styles = StyleSheet.create({
   darkContainer: { backgroundColor: '#121212' },
   darkBorder: { borderColor: '#333' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 60, borderBottomWidth: 1, borderColor: '#eee' },
+  topWeather: { marginLeft: 15, flexDirection: 'row', alignItems: 'center' },
+  topWeatherText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   topActions: { flexDirection: 'row', alignItems: 'center' },
   scrollContent: { padding: 25 },
-  headerSection: { marginBottom: 15 },
-  welcomeText: { fontSize: 26, fontWeight: '900', color: '#333' },
-  subText: { fontSize: 14, color: '#888' },
+  headerSection: { marginBottom: 20, alignItems: 'center' }, // Ortalandı
+  bigTitleText: { fontSize: 19, fontWeight: '900', color: '#333', textAlign: 'center', marginBottom: 5 }, // Tek satır ve orta
+  welcomeText: { fontSize: 18, color: '#888', fontWeight: 'bold', textAlign: 'center' }, // Büyütüldü ve ortalandı
   chartCard: { backgroundColor: '#fff', borderRadius: 25, padding: 30, elevation: 6 },
   darkCard: { backgroundColor: '#1e1e1e' },
   cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
