@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Stack } from 'expo-router';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,6 +35,9 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaProvider>
+      {/* ÜSTTEKİ "index" YAZISINI BURADAN SİLDİK */}
+      <Stack.Screen options={{ headerShown: false }} />
+      
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <KeyboardAvoidingView 
@@ -44,22 +48,22 @@ export default function LoginScreen() {
             ref={scrollRef}
             contentContainerStyle={[
               styles.scrollContent, 
-              !isKeyboardVisible && { height: SCREEN_HEIGHT - 40 } // Ekranı tam sığdırmak için pay bırakıldı
+              !isKeyboardVisible && { height: SCREEN_HEIGHT - 60 }
             ]} 
             scrollEnabled={isKeyboardVisible}
             keyboardShouldPersistTaps="handled"
             bounces={false}
           >
-            {/* LOGO BÖLÜMÜ - BOŞLUKLAR VE BOYUT KÜÇÜLTÜLDÜ */}
+            {/* LOGO BÖLÜMÜ - TAM 1 CM (50 BİRİM) AŞAĞIYA ÇEKİLDİ */}
             <View style={styles.headerContainer}>
               <View style={styles.logoSquare}>
-                <Ionicons name="shield-checkmark" size={45} color="#fff" />
+                <Ionicons name="shield-checkmark" size={40} color="#fff" />
               </View>
               <Text style={styles.brandName}>KALANDAR YAZILIM</Text>
-              <Text style={styles.appTitle}>Teknik Servis Takip v1.5</Text>
+              <Text style={styles.appTitle}>Teknik Servis Takip Programı</Text>
             </View>
 
-            {/* FORM ALANI - KUTUCUK VE YAZI BOYUTLARI DARALTILDI */}
+            {/* FORM ALANI - LOGOYLA ARASI DENGELENDİ */}
             <View style={styles.formContainer}>
               <Text style={styles.label}>Erişim Türü</Text>
               <View style={styles.roleContainer}>
@@ -86,8 +90,8 @@ export default function LoginScreen() {
                   placeholder="E-posta" 
                   autoCapitalize="none"
                   returnKeyType="next"
-                  onFocus={() => scrollRef.current?.scrollTo({ y: 50, animated: true })}
-                  onSubmitEditing={() => handleNextFocus(passwordRef, 140)}
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 150, animated: true })}
+                  onSubmitEditing={() => handleNextFocus(passwordRef, 230)}
                 />
               </View>
               
@@ -99,8 +103,8 @@ export default function LoginScreen() {
                   placeholder="Şifre" 
                   secureTextEntry 
                   returnKeyType="next"
-                  onFocus={() => scrollRef.current?.scrollTo({ y: 140, animated: true })}
-                  onSubmitEditing={() => handleNextFocus(captchaRef, 240)}
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 230, animated: true })}
+                  onSubmitEditing={() => handleNextFocus(captchaRef, 330)}
                 />
               </View>
 
@@ -113,7 +117,7 @@ export default function LoginScreen() {
                   placeholder="Sonuç" 
                   keyboardType="numeric"
                   returnKeyType="done"
-                  onFocus={() => scrollRef.current?.scrollTo({ y: 240, animated: true })}
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 330, animated: true })}
                 />
               </View>
               
@@ -122,7 +126,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {isKeyboardVisible && <View style={{ height: SCREEN_HEIGHT * 0.45 }} />}
+            {isKeyboardVisible && <View style={{ height: SCREEN_HEIGHT * 0.55 }} />}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -132,20 +136,20 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingHorizontal: 25, paddingVertical: 10, justifyContent: 'center' },
-  headerContainer: { alignItems: 'center', marginBottom: 20 }, // Boşluk daraltıldı
-  logoSquare: { width: 75, height: 75, backgroundColor: '#333', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 10, elevation: 4 }, // Boyut küçültüldü
-  brandName: { fontSize: 24, fontWeight: '900', color: '#333', letterSpacing: 1 }, // Yazı küçültüldü
-  appTitle: { fontSize: 13, color: '#007bff', fontWeight: 'bold' },
-  formContainer: { width: '100%' },
-  label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 6 }, // Etiket küçültüldü
-  roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 }, // Boşluk daraltıldı
-  roleButton: { flex: 1, height: 45, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' }, // Yükseklik azaldı
+  scrollContent: { paddingHorizontal: 25, paddingTop: 60 }, // LOGOYU ÜSTTEN 1 CM AŞAĞI İTEN DEĞER
+  headerContainer: { alignItems: 'center', marginBottom: 15 }, 
+  logoSquare: { width: 65, height: 65, backgroundColor: '#333', borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }, 
+  brandName: { fontSize: 22, fontWeight: '900', color: '#333' },
+  appTitle: { fontSize: 13, color: '#666', fontWeight: '600' }, // MAVİ YAZI GRİYE ÇEKİLDİ
+  formContainer: { width: '100%', marginTop: 35 }, 
+  label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 },
+  roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 },
+  roleButton: { flex: 1, height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' },
   roleActive: { backgroundColor: '#333', borderColor: '#333' },
   roleText: { marginLeft: 8, fontSize: 13, color: '#666', fontWeight: 'bold' },
   roleTextActive: { color: '#fff' },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 12, height: 52 }, // Yükseklik ve padding azaldı
-  input: { flex: 1, height: '100%', fontSize: 15, color: '#333' }, // Harf boyutu küçültüldü
-  button: { width: '100%', height: 55, backgroundColor: '#333', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8, elevation: 3 }, // Yükseklik azaldı
-  buttonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' } // Yazı boyutu ayarlandı
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, marginBottom: 10, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 10, height: 48 },
+  input: { flex: 1, height: '100%', fontSize: 14, color: '#333' },
+  button: { width: '100%', height: 50, backgroundColor: '#333', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
