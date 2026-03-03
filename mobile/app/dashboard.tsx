@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  Dimensions, ScrollView, StatusBar, Alert 
+  ScrollView, StatusBar, Alert 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,16 +13,20 @@ export default function DashboardScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stokSayisi, setStokSayisi] = useState(0); 
 
-  // CANLI VERİ BAĞLANTISI (Motor 5000 portunda gürlerken)
+  // ANDROID CANLI BAĞLANTI HATTI
   useEffect(() => {
     const fetchStok = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/stok-ikaz');
+        const response = await fetch('http://192.168.1.43:5000/api/stok-ikaz');
         const data = await response.json();
         setStokSayisi(data.length); 
-      } catch (e) { console.log("Bağlantı bekleniyor..."); }
+      } catch (e) { 
+        console.log("Bağlantı bekleniyor..."); 
+      }
     };
     fetchStok();
+    const interval = setInterval(fetchStok, 5000); 
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -36,7 +40,7 @@ export default function DashboardScreen() {
       <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         
-        {/* --- ÜST BAR (ana1 standartı) --- */}
+        {/* --- ÜST BAR (ana1 Standartı) --- */}
         <View style={[styles.topBar, isDarkMode && styles.darkBorder]}>
           <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
             <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
@@ -67,17 +71,19 @@ export default function DashboardScreen() {
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
           </TouchableOpacity>
 
-          {/* STOK İKAZI (2 CM + 3 MM AYARI) */}
+          {/* STOK İKAZI (2 CM + 3 MM KURALI) */}
           <View style={styles.alertBanner}>
             <Ionicons name="warning" size={22} color="#fff" />
             <View style={{marginLeft: 10}}>
               <Text style={styles.alertTitle}>STOK TAKİP SİSTEMİ</Text>
-              <Text style={styles.alertText}>{stokSayisi > 0 ? `${stokSayisi} Ürün Kritik Seviyede!` : "Stok Seviyesi Normal"}</Text>
+              <Text style={styles.alertText}>
+                {stokSayisi > 0 ? `${stokSayisi} Ürün Kritik Seviyede!` : "Stok Seviyesi Normal"}
+              </Text>
             </View>
           </View>
         </ScrollView>
 
-        {/* --- SANDÖVÇ (ZIRHLI VE İKONLU) --- */}
+        {/* --- SANDÖVÇ MENÜ (ana1 STANDARTINA DÖNÜLDÜ) --- */}
         {isMenuOpen && (
           <View style={styles.overlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} activeOpacity={1} />
@@ -151,7 +157,7 @@ const styles = StyleSheet.create({
   fixedInfoArea: { position: 'absolute', bottom: 30, left: 30, right: 30 },
   infoDivider: { height: 1, backgroundColor: '#eee', marginBottom: 15 },
   fixedInfoTitle: { fontSize: 16, fontWeight: '900', marginBottom: 12, color: '#333' },
-  fixedInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  fixedInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   fixedInfoText: { marginLeft: 10, fontSize: 14, color: '#666', fontWeight: 'bold' },
   darkText: { color: '#fff' }
 });
