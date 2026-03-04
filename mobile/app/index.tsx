@@ -1,31 +1,37 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Dimensions 
+  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Alert
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 export default function LoginScreen() {
   const router = useRouter();
   const [role, setRole] = useState<'user' | 'expert'>('user');
   
-  const scrollRef = useRef<ScrollView>(null);
+  // MÜHÜR: İlk girişte kullanıcı bilgileri yazılı gelsin
+  const [email, setEmail] = useState('user@kalandar.com');
+  const [password, setPassword] = useState('user123');
+  const [captchaInput, setCaptchaInput] = useState('');
+  
   const passwordRef = useRef<TextInput>(null);
   const captchaRef = useRef<TextInput>(null);
 
+  // KURAL: Sabit Captcha (3 + 2 = 5)
   const handleLogin = () => {
-    router.push('/dashboard'); 
-  };
-
-  // KLAVYE KAPANMADAN ODAK DEĞİŞTİRME
-  const goToNext = (nextRef: React.RefObject<TextInput | null>, scrollY: number) => {
-    nextRef.current?.focus();
-    // Klavye kapanmadığı için bekleme süresini (timeout) sıfıra indirdik
-    scrollRef.current?.scrollTo({ y: scrollY, animated: true });
+    if (captchaInput !== '5') {
+      Alert.alert("Hatalı İşlem", "Matematik mühürü tutmadı müdür!");
+      return;
+    }
+    
+    // Basit Giriş Kontrolü (Admin panel gelene kadar)
+    if (email === 'user@kalandar.com' || (email.startsWith('expert') && email.endsWith('@kalandar.com'))) {
+       router.push('/dashboard'); 
+    } else {
+       Alert.alert("Erişim Reddedildi", "Bu mail dükkanın listesinde yok.");
+    }
   };
 
   return (
@@ -34,15 +40,15 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'android' ? -100 : 0} // Android'de zıplamayı burası yutar
+          keyboardVerticalOffset={Platform.OS === 'android' ? 30 : 0} 
         >
           <ScrollView 
-            ref={scrollRef}
+            scrollEnabled={false} 
             contentContainerStyle={styles.scrollContent} 
-            keyboardShouldPersistTaps="always" // Ekrana dokunsan da klavye inmez
-            bounces={false}
+            keyboardShouldPersistTaps="always" 
+            bounces={false} 
           >
             <View style={styles.headerContainer}>
               <View style={styles.logoSquare}><Ionicons name="shield-checkmark" size={40} color="#fff" /></View>
@@ -54,11 +60,9 @@ export default function LoginScreen() {
               <Text style={styles.label}>Erişim Türü</Text>
               <View style={styles.roleContainer}>
                 <TouchableOpacity style={[styles.roleButton, role === 'user' && styles.roleActive]} onPress={() => setRole('user')}>
-                  <Ionicons name="person-circle" size={18} color={role === 'user' ? '#fff' : '#666'} />
                   <Text style={[styles.roleText, role === 'user' && styles.roleTextActive]}>Kullanıcı</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.roleButton, role === 'expert' && styles.roleActive]} onPress={() => setRole('expert')}>
-                  <Ionicons name="construct" size={18} color={role === 'expert' ? '#fff' : '#666'} />
                   <Text style={[styles.roleText, role === 'expert' && styles.roleTextActive]}>Uzman</Text>
                 </TouchableOpacity>
               </View>
@@ -67,11 +71,13 @@ export default function LoginScreen() {
                 <Ionicons name="mail-outline" size={18} color="#666" style={{marginRight: 10}} />
                 <TextInput 
                   style={styles.input} 
+                  value={email}
+                  onChangeText={setEmail}
                   placeholder="E-posta" 
                   autoCapitalize="none" 
                   returnKeyType="next"
-                  blurOnSubmit={false} // KLAVYE KAPANMASINI ÖNLER
-                  onSubmitEditing={() => goToNext(passwordRef, 100)}
+                  blurOnSubmit={false} 
+                  onSubmitEditing={() => passwordRef.current?.focus()} 
                 />
               </View>
               
@@ -80,11 +86,13 @@ export default function LoginScreen() {
                 <TextInput 
                   ref={passwordRef} 
                   style={styles.input} 
+                  value={password}
+                  onChangeText={setPassword}
                   placeholder="Şifre" 
                   secureTextEntry 
                   returnKeyType="next"
-                  blurOnSubmit={false} // KLAVYE KAPANMASINI ÖNLER
-                  onSubmitEditing={() => goToNext(captchaRef, 200)}
+                  blurOnSubmit={false} 
+                  onSubmitEditing={() => captchaRef.current?.focus()} 
                 />
               </View>
 
@@ -94,6 +102,8 @@ export default function LoginScreen() {
                 <TextInput 
                   ref={captchaRef} 
                   style={styles.input} 
+                  value={captchaInput}
+                  onChangeText={setCaptchaInput}
                   placeholder="Sonuç" 
                   keyboardType="numeric" 
                   returnKeyType="done"
@@ -105,8 +115,6 @@ export default function LoginScreen() {
                 <Text style={styles.buttonText}>SİSTEME GİRİŞ YAP</Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={{ height: 400 }} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -116,17 +124,17 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingHorizontal: 25, paddingTop: 60 },
-  headerContainer: { alignItems: 'center', marginBottom: 15 }, 
+  scrollContent: { flex: 1, paddingHorizontal: 25, justifyContent: 'center', alignItems: 'center' },
+  headerContainer: { alignItems: 'center', marginBottom: 20, width: '100%' }, 
   logoSquare: { width: 65, height: 65, backgroundColor: '#333', borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }, 
   brandName: { fontSize: 22, fontWeight: '900', color: '#333' },
   appTitle: { fontSize: 13, color: '#666', fontWeight: '900' },
-  formContainer: { width: '100%', marginTop: 20 }, 
+  formContainer: { width: '100%' }, 
   label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 },
   roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 },
-  roleButton: { flex: 1, height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' },
+  roleButton: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fdfdfd' },
   roleActive: { backgroundColor: '#333', borderColor: '#333' },
-  roleText: { marginLeft: 8, fontSize: 13, color: '#666', fontWeight: 'bold' },
+  roleText: { fontSize: 13, color: '#666', fontWeight: 'bold' },
   roleTextActive: { color: '#fff' },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, marginBottom: 10, borderWidth: 1.5, borderColor: '#eee', paddingHorizontal: 10, height: 48 },
   input: { flex: 1, height: '100%', fontSize: 14, color: '#333' },
