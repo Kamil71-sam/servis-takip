@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Modal, View, Text, TextInput, TouchableOpacity, 
   StyleSheet, KeyboardAvoidingView, Platform, 
-  ScrollView, Keyboard 
+  ScrollView, Keyboard, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -34,17 +34,52 @@ export default function YeniFirmaFormu({ visible, onClose }: YeniFirmaFormuProps
     Keyboard.dismiss();
   };
 
-  const handleKaydet = () => {
-    console.log("Firma Mühürlendi:", firmaAdi);
-    onClose();
+  /**
+   * [TEKNİK MÜHÜR]
+   * Bu fonksiyon verileri SQL mutfağına gönderir ve kullanıcıya resmi bildirim çıkarır.
+   */
+  const handleKaydet = async () => {
+    // Zorunlu alan kontrolü
+    if (!firmaAdi) {
+      Alert.alert("Eksik Bilgi", "Lütfen firma adını girmeden mühür basmayınız.");
+      return;
+    }
+
+    try {
+      // Sunucu bağlantısı (IP ve Port kontrolü önemlidir)
+      const response = await fetch('http://192.168.1.43:5000/api/save-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name: firmaAdi,      // index.js'deki isimlerle birebir eşleşme
+          tax_number: vergiNo,
+          authorized_person: yetkili,
+          phone_number: telefon
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // [RESMİ BİLDİRİM] Başarılı kayıt sonrası çıkan onay penceresi
+        Alert.alert(
+          "İşlem Başarılı", 
+          `Firma kaydı veritabanına mühürlenmiştir. \nKayıt No: ${data.id}`,
+          [{ text: "Tamam", onPress: () => onClose() }] // Onay verince formu kapatır
+        );
+      } else {
+        Alert.alert("Sistem Reddi", "Veritabanı kaydı kabul etmedi.");
+      }
+    } catch (error) {
+      Alert.alert("Bağlantı Kesildi", "Sunucu motoruna ulaşılamıyor. Terminali kontrol edin.");
+    }
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        {/* MÜHÜR: Pencere kısılmasını önlemek için 'padding' ve offset ayarı sabitlendi */}
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : undefined} // Android'de 'height' yerine 'undefined' yaparak zıplamayı kestik
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.container}
         >
           <View style={styles.formCard}>
@@ -59,7 +94,7 @@ export default function YeniFirmaFormu({ visible, onClose }: YeniFirmaFormuProps
               bounces={false} 
               showsVerticalScrollIndicator={false} 
               keyboardShouldPersistTaps="always"
-              contentContainerStyle={{ flexGrow: 1 }} // İçeriği yayarak boşluğu korur
+              contentContainerStyle={{ flexGrow: 1 }}
             >
               <Text style={styles.label}>Firma / Şirket Adı</Text>
               <TextInput 
@@ -126,8 +161,8 @@ export default function YeniFirmaFormu({ visible, onClose }: YeniFirmaFormuProps
 
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-  container: { width: '100%', justifyContent: 'center' }, // Ortalamayı burada sabitledik
-  formCard: { backgroundColor: '#fff', borderRadius: 25, padding: 25, minHeight: 500, maxHeight: '90%' }, // 'minHeight' ile çökme engellendi
+  container: { width: '100%', justifyContent: 'center' },
+  formCard: { backgroundColor: '#fff', borderRadius: 25, padding: 25, minHeight: 500, maxHeight: '90%' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   title: { fontSize: 18, fontWeight: '900', color: '#333' },
   closeBtn: { backgroundColor: '#fff', borderRadius: 16 },

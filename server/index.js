@@ -6,12 +6,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// [BÖLÜM 1] Bireysel Müşteri Kaydı
+/**
+ * [BÖLÜM 1] Bireysel Müşteri Kaydı
+ * Ad ve Soyadı SQL'deki first_name ve last_name sütunlarına ayırır.
+ */
 app.post('/api/yeni-musteri', async (req, res) => {
   const { full_name, phone_number, email, address } = req.body;
+  
+  // İsmi boşluktan bölerek ilk ismi ve geri kalanını (soyadı) ayırır
+  const nameParts = (full_name || '').trim().split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+
   try {
-    const query = `INSERT INTO customers (full_name, phone_number, email, address) VALUES (?, ?, ?, ?)`;
-    const [result] = await db.query(query, [full_name, phone_number, email, address]);
+    const query = `
+      INSERT INTO customers (first_name, last_name, phone, email, address, customer_type) 
+      VALUES (?, ?, ?, ?, ?, 'Müşteri')
+    `;
+    const [result] = await db.query(query, [firstName, lastName, phone_number, email, address]);
     res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
     console.error("Müşteri Kayıt Hatası:", err.message);
@@ -19,42 +31,40 @@ app.post('/api/yeni-musteri', async (req, res) => {
   }
 });
 
-
-
-// [BÖLÜM 2] Kurumsal Firma Kaydı
+/**
+ * [BÖLÜM 2] Kurumsal Firma Kaydı
+ * DİKKAT: Mobil taraftaki state isimlerini (firmaAdi, vergiNo vb.) karşılar.
+ */
 app.post('/api/save-company', async (req, res) => {
-  const { company_name, tax_number, authorized_person, phone_number } = req.body;
+  // YeniFirmaFormu.tsx içindeki state isimleriyle tam uyum sağlandı.
+  const { firmaAdi, vergiNo, yetkili, telefon } = req.body;
   
   try {
     const query = `
       INSERT INTO companies (company_name, tax_number, authorized_person, phone_number) 
       VALUES (?, ?, ?, ?)
     `;
-    const [result] = await db.query(query, [company_name, tax_number, authorized_person, phone_number]);
-    
-    // Mobil tarafa 'success' ve yeni 'id' bilgisini gönderiyoruz
+    // Gelen verileri SQL tablosundaki sütunlara (company_name, tax_number vb.) mühürler
+    const [result] = await db.query(query, [firmaAdi, vergiNo, yetkili, telefon]);
     res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
     console.error("Firma Kayıt Hatası:", err.message);
-    res.status(500).json({ success: false, error: "Sunucu SQL hatası verdi." });
+    res.status(500).json({ success: false, error: "Firma kaydı veritabanına işlenemedi." });
   }
 });
 
-
-
-
-
-
-// [BÖLÜM 3] Teknik Servis İş Emri Kaydı
+/**
+ * [BÖLÜM 3] Teknik Servis İş Emri Kaydı
+ * Foreign key hatalarını önlemek için dinamik ID çekme yapısı
+ */
 app.post('/api/yeni-servis', async (req, res) => {
   const { marka, model, seriNo, not } = req.body;
   try {
-    // FOREIGN KEY hatasını önlemek için mevcut olan ID'leri dinamik çeker
     const query = `
       INSERT INTO service_orders (
         customer_id, device_id, status_id, complaint, technician_note
       ) VALUES (
-        (SELECT id FROM customers ORDER BY id ASC LIMIT 1), 
+        (SELECT id FROM customers ORDER BY id DESC LIMIT 1), 
         (SELECT id FROM devices ORDER BY id ASC LIMIT 1), 
         (SELECT id FROM service_statuses ORDER BY id ASC LIMIT 1), 
         ?, ?
