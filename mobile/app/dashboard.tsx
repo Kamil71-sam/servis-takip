@@ -1,5 +1,6 @@
-
 import YeniKayitFormu from '../components/YeniKayitFormu';
+// LOGINESAS1: Yeni firma formu için import mührü
+import YeniFirmaFormu from '../components/YeniFirmaFormu'; 
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
@@ -15,8 +16,10 @@ export default function DashboardScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stokSayisi, setStokSayisi] = useState(0); 
   const [modalVisible, setModalVisible] = useState(false);
+  // ANA2: Firma formu için yeni asansör kilidi
+  const [firmaModalVisible, setFirmaModalVisible] = useState(false); 
 
-  // ANDROID CANLI BAĞLANTI
+  // ANDROID CANLI BAĞLANTI (192.168.1.43:5000)
   useEffect(() => {
     const fetchStok = async () => {
       try {
@@ -43,7 +46,7 @@ export default function DashboardScreen() {
       <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         
-        {/* --- ÜST BAR (Hava Durumu Sandöviç Yanında - Sabit) --- */}
+        {/* --- ÜST BAR (Hava Durumu Sandöviç Yanında) --- */}
         <View style={[styles.topBar, isDarkMode && styles.darkBorder]}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
@@ -67,7 +70,6 @@ export default function DashboardScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-          {/* --- TADİL EDİLEN BAŞLIK ALANI --- */}
           <View style={styles.headerSection}>
             <Text style={styles.bigTitleText}>TEKNİK SERVİS TAKİP PROGRAMI</Text>
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
@@ -83,7 +85,6 @@ export default function DashboardScreen() {
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
           </TouchableOpacity>
 
-          {/* STOK İKAZI (2 CM + 3 MM KURALI) */}
           <View style={styles.alertBanner}>
             <Ionicons name="warning" size={22} color="#fff" />
             <View style={{marginLeft: 10}}>
@@ -95,31 +96,50 @@ export default function DashboardScreen() {
           </View>
         </ScrollView>
 
-        {/* --- SANDÖVİÇ MENÜ (Mühürlü ana1) --- */}
+        {/* --- SANDÖVİÇ MENÜ (GÜNCELLENDİ) --- */}
         {isMenuOpen && (
           <View style={styles.overlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} activeOpacity={1} />
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
                <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
                
-            
-            <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => { 
-                     setModalVisible(true); // Formu açar
-                    setIsMenuOpen(false);  // Sandöviç menüyü kapatır (ekran temizlensin diye)
-                    }}
-                    >
-                 <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                 <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
-            </TouchableOpacity>
-            
-            
-              
-               
-               
-               <TouchableOpacity style={styles.menuItem}><Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text></TouchableOpacity>
-               <TouchableOpacity style={styles.menuItem}><Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} /><Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text></TouchableOpacity>
+               <ScrollView showsVerticalScrollIndicator={false}>
+                {/* YENİ MÜŞTERİ */}
+                <TouchableOpacity 
+                    style={styles.menuItem} 
+                    onPress={() => { setModalVisible(true); setIsMenuOpen(false); }}
+                >
+                  <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
+                </TouchableOpacity>
+
+                {/* YENİ FİRMA - ADIM 1 */}
+                <TouchableOpacity 
+                    style={styles.menuItem} 
+                    onPress={() => { setFirmaModalVisible(true); setIsMenuOpen(false); }}
+                >
+                  <Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text>
+                </TouchableOpacity>
+
+                {/* STOK YÖNETİMİ */}
+                <TouchableOpacity style={styles.menuItem}>
+                  <Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Yönetimi</Text>
+                </TouchableOpacity>
+
+                {/* MALİ İŞLEMLER */}
+                <TouchableOpacity style={styles.menuItem}>
+                  <Ionicons name="wallet-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Mali İşlemler</Text>
+                </TouchableOpacity>
+
+                {/* BARKOD & ETİKET */}
+                <TouchableOpacity style={styles.menuItem}>
+                  <Ionicons name="barcode-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Barkod & Etiket</Text>
+                </TouchableOpacity>
+              </ScrollView>
                
                <View style={styles.fixedInfoArea}>
                  <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
@@ -131,7 +151,9 @@ export default function DashboardScreen() {
           </View>
         )}
 
+        {/* ASANSÖR MODALLARI */}
         <YeniKayitFormu visible={modalVisible} onClose={() => setModalVisible(false)} />
+        <YeniFirmaFormu visible={firmaModalVisible} onClose={() => setFirmaModalVisible(false)} />
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -146,9 +168,9 @@ const styles = StyleSheet.create({
   topWeatherText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   topActions: { flexDirection: 'row', alignItems: 'center' },
   scrollContent: { padding: 25 },
-  headerSection: { marginBottom: 20, alignItems: 'center' }, // Ortalandı
-  bigTitleText: { fontSize: 19, fontWeight: '900', color: '#333', textAlign: 'center', marginBottom: 5 }, // Tek satır ve orta
-  welcomeText: { fontSize: 18, color: '#888', fontWeight: 'bold', textAlign: 'center' }, // Büyütüldü ve ortalandı
+  headerSection: { marginBottom: 20, alignItems: 'center' },
+  bigTitleText: { fontSize: 19, fontWeight: '900', color: '#333', textAlign: 'center', marginBottom: 5 },
+  welcomeText: { fontSize: 18, color: '#888', fontWeight: 'bold', textAlign: 'center' },
   chartCard: { backgroundColor: '#fff', borderRadius: 25, padding: 30, elevation: 6 },
   darkCard: { backgroundColor: '#1e1e1e' },
   cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
