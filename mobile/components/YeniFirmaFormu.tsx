@@ -51,7 +51,8 @@ export default function YeniFirmaFormu({ visible, onClose }: YeniFirmaFormuProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          company_name: firmaAdi,      // index.js'deki isimlerle birebir eşleşme
+          // FORMDAKİ DEĞİŞKENLERİ index.js'DEKİ İSİMLERLE EŞLİYORUZ
+          company_name: firmaAdi,      
           tax_number: vergiNo,
           authorized_person: yetkili,
           phone_number: telefon
@@ -65,12 +66,13 @@ export default function YeniFirmaFormu({ visible, onClose }: YeniFirmaFormuProps
         Alert.alert(
           "İşlem Başarılı", 
           `Firma kaydı veritabanına mühürlenmiştir. \nKayıt No: ${data.id}`,
-          [{ text: "Tamam", onPress: () => onClose() }] // Onay verince formu kapatır
+          [{ text: "Tamam", onPress: () => onClose() }] 
         );
       } else {
         Alert.alert("Sistem Reddi", "Veritabanı kaydı kabul etmedi.");
       }
     } catch (error) {
+      // Sunucu kapalıysa veya IP hatalıysa burası tetiklenir
       Alert.alert("Bağlantı Kesildi", "Sunucu motoruna ulaşılamıyor. Terminali kontrol edin.");
     }
   };
