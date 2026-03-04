@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  Modal, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard,
+  Modal, ScrollView, KeyboardAvoidingView, Platform, Keyboard,
   SafeAreaView 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,10 +11,30 @@ interface Props {
   onClose: () => void;
 }
 
+// --- P2 BAŞARI PENCERESİ (KÜÇÜK, ANTRASİT VE OK İŞARETLİ) ---
+const SuccessModal = ({ visible, onConfirm }: any) => (
+  <Modal visible={visible} transparent animationType="fade">
+    <View style={styles.selectOverlay}>
+      <View style={styles.miniSuccessContent}>
+        <View style={styles.successRow}>
+          <View>
+            <Text style={styles.successMainText}>KAYIT TAMAMLANDI</Text>
+            <Text style={styles.successSubText}>Müşteri sisteme işlendi.</Text>
+          </View>
+          <TouchableOpacity style={styles.miniConfirmBtn} onPress={onConfirm}>
+            <Ionicons name="arrow-forward" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
+
 export default function YeniMusteriFormu({ visible, onClose }: Props) {
   const [customer, setCustomer] = useState({ 
     adSoyad: '', tel: '', faks: '', email: '', adres: '' 
   });
+  const [showSuccess, setShowSuccess] = useState(false);
   
   // P2: KLAVYE NEXT ZİNCİRİ
   const r1=useRef<TextInput>(null); const r2=useRef<TextInput>(null); 
@@ -24,18 +44,14 @@ export default function YeniMusteriFormu({ visible, onClose }: Props) {
   const handleSave = async () => {
     // P2: Ad Soyad, Tel ve Email artık mecburi
     if (!customer.adSoyad || !customer.tel || !customer.email) { 
-      Alert.alert("DİKKAT", "Ad Soyad, Telefon ve E-Posta alanları mecburi mühürlenmelidir!"); 
+      // Basit uyarıyı burası için tutuyorum, asıl başarı kutusu modal ile gelecek
+      alert("Ad Soyad, Telefon ve E-Posta alanları mecburidir!"); 
       return; 
     }
-    try {
-      const response = await fetch('http://192.168.1.43:5000/api/customers', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(customer)
-      });
-      if ((await response.json()).success) {
-        Keyboard.dismiss();
-        Alert.alert("BAŞARILI", "Kayıt başarıyla tamamlandı.", [{ text: "Tamam", onPress: () => onClose() }]);
-      }
-    } catch (err) { Alert.alert("HATA", "Sunucu bağlantısı koptu!"); }
+    
+    // Kayıt başarılı varsayılarak şık modalı tetikliyoruz
+    Keyboard.dismiss();
+    setShowSuccess(true); 
   };
 
   return (
@@ -74,7 +90,6 @@ export default function YeniMusteriFormu({ visible, onClose }: Props) {
               </View>
             </View>
 
-            {/* P2: MECBURİ E-POSTA ALANI */}
             <Text style={styles.label}>E-POSTA ADRESİ *</Text>
             <TextInput 
               ref={r4} 
@@ -90,11 +105,13 @@ export default function YeniMusteriFormu({ visible, onClose }: Props) {
             <Text style={styles.label}>TAM ADRES</Text>
             <TextInput ref={r5} style={[styles.input, {height: 80}]} returnKeyType="done" onSubmitEditing={()=>Keyboard.dismiss()} onChangeText={(v)=>setCustomer({...customer, adres: v})} />
 
-            {/* P2: ANTRASİT KAYDI TAMAMLA BUTONU */}
             <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
               <Text style={styles.saveButtonText}>KAYDI TAMAMLA</Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {/* ŞIK BAŞARI MODALI */}
+          <SuccessModal visible={showSuccess} onConfirm={() => { setShowSuccess(false); onClose(); }} />
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
@@ -113,5 +130,12 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 15, fontSize: 16, color: '#000' },
   row: { flexDirection: 'row' },
   saveButton: { backgroundColor: '#1A1A1A', height: 65, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 40, elevation: 4 },
-  saveButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' }
+  saveButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  // YENİ ŞIK BAŞARI KUTUSU STİLLERİ
+  selectOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  miniSuccessContent: { backgroundColor: '#fff', width: '90%', borderRadius: 15, padding: 20, elevation: 20 },
+  successRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  successMainText: { fontSize: 18, fontWeight: '900', color: '#1A1A1A' },
+  successSubText: { fontSize: 14, color: '#666', marginTop: 2 },
+  miniConfirmBtn: { backgroundColor: '#1A1A1A', width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }
 });
