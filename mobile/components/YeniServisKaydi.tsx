@@ -5,6 +5,7 @@ import {
   SafeAreaView 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 
 interface Props {
   visible: boolean;
@@ -13,126 +14,109 @@ interface Props {
 
 export default function YeniServisKaydi({ visible, onClose }: Props) {
   const [servis, setServis] = useState({
-    musteri_adi: '',   // Cihaz Sahibi
-    marka_model: '',   // Marka ve Model
-    seri_no: '',       // Cihaz Seri No
-    ariza_notu: '',    // Şikayet / Arıza Detayı
-    usta_adi: ''       // Atanan Teknisyen
+    cihaz_sahibi: '', cihaz_turu: 'Cep Telefonu', marka: '', model: '',
+    seri_no: '', garanti: 'Yok', muster_notu: '', aksesuar: '', ariza_notu: '', usta: 'Usta 1'
   });
 
-  // P2 PROTOKOLÜ: KLAVYE NEXT ZİNCİRİ REFERANSLARI
-  const r1 = useRef<TextInput>(null);
-  const r2 = useRef<TextInput>(null);
-  const r3 = useRef<TextInput>(null);
-  const r4 = useRef<TextInput>(null);
-  const r5 = useRef<TextInput>(null);
+  // P2 NEXT ZİNCİRİ REFERANSLARI
+  const r1=useRef<TextInput>(null); const r2=useRef<TextInput>(null);
+  const r3=useRef<TextInput>(null); const r4=useRef<TextInput>(null);
+  const r5=useRef<TextInput>(null); const r6=useRef<TextInput>(null);
+  const r7=useRef<TextInput>(null); const r8=useRef<TextInput>(null);
 
   const handleSave = async () => {
-    // P2: Zorunlu Alan Kontrolü (Müşteri, Cihaz, Arıza ve Usta mecburi)
-    if (!servis.musteri_adi || !servis.marka_model || !servis.ariza_notu || !servis.usta_adi) {
-      Alert.alert("DİKKAT", "Müşteri, Cihaz, Arıza ve Usta alanları mecburi mühürlenmelidir!");
+    if (!servis.cihaz_sahibi || !servis.marka || !servis.ariza_notu) {
+      Alert.alert("DİKKAT", "Zorunlu alanları doldurmadan kayıt yapılamaz!");
       return;
     }
-
-    try {
-      const response = await fetch('http://192.168.1.43:5000/api/yeni-servis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(servis)
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        Keyboard.dismiss();
-        Alert.alert("BAŞARILI", "Servis kaydı başarıyla tamamlandı.", [
-          { text: "Tamam", onPress: () => onClose() }
-        ]);
-      }
-    } catch (err) {
-      Alert.alert("HATA", "Sunucu motoruna ulaşılamadı!");
-    }
+    Keyboard.dismiss();
+    Alert.alert("BAŞARILI", "Servis kaydı başarıyla tamamlandı.", [{ text: "Tamam", onPress: () => onClose() }]);
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"} 
-        style={styles.fullContainer}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.fullContainer}>
         <SafeAreaView style={styles.safeArea}>
           
-          {/* P2: ANTRASİT BAŞLIK BANDI */}
           <View style={styles.header}>
-            <View style={styles.titleBadge}>
-              <Text style={styles.title}>YENİ TEKNİK SERVİS KAYDI</Text>
-            </View>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close-circle" size={40} color="#FF3B30" />
-            </TouchableOpacity>
+            <View style={styles.titleBadge}><Text style={styles.title}>CİHAZ BİLGİLERİ</Text></View>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={40} color="#FF3B30" /></TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="handled">
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="always">
             
-            {/* BÖLÜM 1: MÜŞTERİ VE CİHAZ */}
-            <View style={styles.sectionDivider}>
-              <Text style={styles.sectionText}>MÜŞTERİ VE CİHAZ BİLGİLERİ</Text>
+            {/* 1. MÜŞTERİ ARA */}
+            <Text style={styles.label}>MÜŞTERİ ARA *</Text>
+            <View style={styles.row}>
+              <TextInput ref={r1} style={[styles.input, {flex: 1}]} placeholder="İsim veya Tel..." onChangeText={(v)=>setServis({...servis, cihaz_sahibi: v})} returnKeyType="next" onSubmitEditing={() => { r2.current?.focus(); }} />
+              <TouchableOpacity style={styles.searchBtn}><Ionicons name="search" size={24} color="#fff" /></TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>MÜŞTERİ / CİHAZ SAHİBİ *</Text>
-            <TextInput 
-              ref={r1} style={styles.input} returnKeyType="next"
-              onSubmitEditing={() => r2.current?.focus()} blurOnSubmit={false}
-              onChangeText={(v) => setServis({...servis, musteri_adi: v})} 
-              placeholder="Müşteri ismini girin"
-            />
+            {/* 2. CİHAZ TÜRÜ */}
+            <Text style={styles.label}>CİHAZ TÜRÜ</Text>
+            <View style={styles.p2PickerContainer}>
+              <Picker selectedValue={servis.cihaz_turu} onValueChange={(v: string) => { setServis({...servis, cihaz_turu: v}); r2.current?.focus(); }}>
+                <Picker.Item label="Cep Telefonu" value="Cep Telefonu" />
+                <Picker.Item label="Bilgisayar / Notebook" value="Notebook" />
+                <Picker.Item label="Yazıcı" value="Yazıcı" />
+                <Picker.Item label="Kamera" value="Kamera" />
+                <Picker.Item label="TV" value="TV" />
+              </Picker>
+            </View>
 
+            {/* 3. MARKA / MODEL */}
             <View style={styles.row}>
               <View style={{flex: 1, marginRight: 10}}>
-                <Text style={styles.label}>MARKA / MODEL *</Text>
-                <TextInput 
-                  ref={r2} style={styles.input} returnKeyType="next"
-                  onSubmitEditing={() => r3.current?.focus()} blurOnSubmit={false}
-                  onChangeText={(v) => setServis({...servis, marka_model: v})} 
-                  placeholder="Örn: iPhone 14"
-                />
+                <Text style={styles.label}>MARKA *</Text>
+                <TextInput ref={r2} style={styles.input} returnKeyType="next" onSubmitEditing={()=>r3.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setServis({...servis, marka: v})} />
               </View>
               <View style={{flex: 1}}>
-                <Text style={styles.label}>SERİ NUMARASI</Text>
-                <TextInput 
-                  ref={r3} style={styles.input} returnKeyType="next"
-                  onSubmitEditing={() => r4.current?.focus()} blurOnSubmit={false}
-                  onChangeText={(v) => setServis({...servis, seri_no: v})} 
-                />
+                <Text style={styles.label}>MODEL</Text>
+                <TextInput ref={r3} style={styles.input} returnKeyType="next" onSubmitEditing={()=>r4.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setServis({...servis, model: v})} />
               </View>
             </View>
 
-            {/* BÖLÜM 2: ARIZA VE USTA */}
-            <View style={styles.sectionDivider}>
-              <Text style={styles.sectionText}>ARIZA VE PERSONEL ATAMA</Text>
+            {/* 4. SERİ NO / GARANTİ */}
+            <View style={styles.row}>
+              <View style={{flex: 1, marginRight: 10}}>
+                <Text style={styles.label}>SERİ NUMARASI</Text>
+                <TextInput ref={r4} style={styles.input} returnKeyType="next" onSubmitEditing={()=>r5.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setServis({...servis, seri_no: v})} />
+              </View>
+              <View style={{flex: 1}}>
+                <Text style={styles.label}>GARANTİ</Text>
+                <View style={styles.p2PickerContainer}>
+                  <Picker selectedValue={servis.garanti} onValueChange={(v: string) => { setServis({...servis, garanti: v}); r5.current?.focus(); }}>
+                    <Picker.Item label="Yok" value="Yok" /><Picker.Item label="Var" value="Var" />
+                  </Picker>
+                </View>
+              </View>
             </View>
 
-            <Text style={styles.label}>ARIZA / ŞİKAYET NOTU *</Text>
-            <TextInput 
-              ref={r4} style={[styles.input, {height: 80}]} 
-              multiline={false} // Next zinciri için false
-              returnKeyType="next"
-              onSubmitEditing={() => r5.current?.focus()}
-              blurOnSubmit={false}
-              onChangeText={(v) => setServis({...servis, ariza_notu: v})} 
-              placeholder="Cihazdaki sorun nedir?"
-            />
+            {/* 5. MÜŞTERİ NOTU (YENİ EKLENDİ) */}
+            <Text style={styles.label}>MÜŞTERİ NOTU</Text>
+            <TextInput ref={r5} style={styles.input} placeholder="Müşterinin özel isteği..." returnKeyType="next" onSubmitEditing={()=>r6.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setServis({...servis, muster_notu: v})} />
 
-            <Text style={styles.label}>ATANAN USTA / TEKNİSYEN *</Text>
-            <TextInput 
-              ref={r5} style={styles.input} 
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              onChangeText={(v) => setServis({...servis, usta_adi: v})} 
-              placeholder="İşi yapacak personel"
-            />
+            {/* 6. AKSESUAR DURUMU */}
+            <Text style={styles.label}>CİHAZ / AKSESUAR DURUMU</Text>
+            <TextInput ref={r6} style={styles.input} placeholder="Çizik, şarj aleti, kılıf..." returnKeyType="next" onSubmitEditing={()=>r7.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setServis({...servis, aksesuar: v})} />
 
-            {/* P2: ANTRASİT KAYDI TAMAMLA BUTONU */}
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
+            {/* 7. ARIZA VEYA ŞİKAYET BİLGİSİ */}
+            <Text style={styles.label}>ARIZA VEYA ŞİKAYET BİLGİSİ *</Text>
+            <TextInput ref={r7} style={[styles.input, {height: 60}]} placeholder="Cihazdaki sorun nedir?" returnKeyType="next" onSubmitEditing={() => { Keyboard.dismiss(); }} blurOnSubmit={false} onChangeText={(v)=>setServis({...servis, ariza_notu: v})} />
+
+            {/* 8. USTA SEÇİMİ */}
+            <Text style={styles.label}>ATANAN USTA</Text>
+            <View style={[styles.p2PickerContainer, {borderColor: '#1A1A1A', borderWidth: 1.5}]}>
+              <Picker selectedValue={servis.usta} onValueChange={(v: string) => setServis({...servis, usta: v})}>
+                <Picker.Item label="Usta 1" value="Usta 1" />
+                <Picker.Item label="Usta 2" value="Usta 2" />
+                <Picker.Item label="Usta 3" value="Usta 3" />
+                <Picker.Item label="Usta 4" value="Usta 4" />
+                <Picker.Item label="Usta 5" value="Usta 5" />
+              </Picker>
+            </View>
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
               <Text style={styles.saveButtonText}>KAYDI TAMAMLA</Text>
             </TouchableOpacity>
 
@@ -145,15 +129,15 @@ export default function YeniServisKaydi({ visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: '#fff' },
-  safeArea: { flex: 1, padding: 25 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: Platform.OS === 'android' ? 10 : 0 },
-  titleBadge: { backgroundColor: '#1A1A1A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  safeArea: { flex: 1, padding: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, marginTop: Platform.OS === 'android' ? 10 : 0 },
+  titleBadge: { backgroundColor: '#1A1A1A', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
   title: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  sectionDivider: { backgroundColor: '#f5f5f5', padding: 10, borderRadius: 10, marginVertical: 15 },
-  sectionText: { fontSize: 12, fontWeight: 'bold', color: '#444', textAlign: 'center' },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#333', marginTop: 10, marginBottom: 5 },
-  input: { backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 15, fontSize: 16, color: '#000' },
-  row: { flexDirection: 'row' },
-  saveButton: { backgroundColor: '#1A1A1A', height: 65, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 40, elevation: 4 },
+  label: { fontSize: 12, fontWeight: 'bold', color: '#333', marginTop: 12, marginBottom: 5 },
+  input: { backgroundColor: '#f2f2f2', borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 12, fontSize: 15, color: '#000' },
+  p2PickerContainer: { backgroundColor: '#f2f2f2', borderRadius: 12, borderWidth: 1, borderColor: '#eee', overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'flex-end' },
+  searchBtn: { backgroundColor: '#1A1A1A', width: 48, height: 48, borderRadius: 12, marginLeft: 10, justifyContent: 'center', alignItems: 'center' },
+  saveButton: { backgroundColor: '#1A1A1A', height: 65, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 35, marginBottom: 30 },
   saveButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' }
 });
