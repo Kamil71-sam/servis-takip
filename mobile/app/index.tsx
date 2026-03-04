@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Alert
+  KeyboardAvoidingView, Platform, ScrollView, StatusBar, Alert, Keyboard 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,28 +10,62 @@ import { Stack, useRouter } from 'expo-router';
 export default function LoginScreen() {
   const router = useRouter();
   const [role, setRole] = useState<'user' | 'expert'>('user');
-  
-  // MÜHÜR: İlk girişte kullanıcı bilgileri yazılı gelsin
   const [email, setEmail] = useState('user@kalandar.com');
   const [password, setPassword] = useState('user123');
   const [captchaInput, setCaptchaInput] = useState('');
-  
+  const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, result: 0 });
+
   const passwordRef = useRef<TextInput>(null);
   const captchaRef = useRef<TextInput>(null);
 
-  // KURAL: Sabit Captcha (3 + 2 = 5)
+  const generateCaptcha = () => {
+    const n1 = Math.floor(Math.random() * 9) + 1;
+    const n2 = Math.floor(Math.random() * 9) + 1;
+    setCaptcha({ num1: n1, num2: n2, result: n1 + n2 });
+    setCaptchaInput('');
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
+
+  useEffect(() => {
+    if (role === 'user') {
+      setEmail('user@kalandar.com');
+      setPassword('user123');
+    } else {
+      setEmail('expert1@kalandar.com');
+      setPassword('expert123');
+    }
+  }, [role]);
+
+  // ANA2: Klavyeyi kapatan ama girişi tetiklemeyen yeni fonksiyon
+  const handleDone = () => {
+    Keyboard.dismiss(); // Klavyeyi indirir
+    // Buraya router.push eklemiyoruz ki direkt girmesin, butona basmanı beklesin.
+  };
+
   const handleLogin = () => {
-    if (captchaInput !== '5') {
+    if (parseInt(captchaInput) !== captcha.result) {
       Alert.alert("Hatalı İşlem", "Matematik mühürü tutmadı müdür!");
+      generateCaptcha();
       return;
     }
     
-    // Basit Giriş Kontrolü (Admin panel gelene kadar)
-    if (email === 'user@kalandar.com' || (email.startsWith('expert') && email.endsWith('@kalandar.com'))) {
-       router.push('/dashboard'); 
-    } else {
-       Alert.alert("Erişim Reddedildi", "Bu mail dükkanın listesinde yok.");
+    if (role === 'user' && email !== 'user@kalandar.com') {
+      Alert.alert("Hata", "Kullanıcı seçiliyken sadece kullanıcı maili ile girebilirsin.");
+      generateCaptcha();
+      return;
     }
+
+    if (role === 'expert' && !email.startsWith('expert')) {
+      Alert.alert("Hata", "Uzman seçiliyken uzman maili girmelisin.");
+      generateCaptcha();
+      return;
+    }
+
+    router.push('/dashboard'); 
+    setTimeout(() => generateCaptcha(), 500);
   };
 
   return (
@@ -75,7 +109,6 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   placeholder="E-posta" 
                   autoCapitalize="none" 
-                  returnKeyType="next"
                   blurOnSubmit={false} 
                   onSubmitEditing={() => passwordRef.current?.focus()} 
                 />
@@ -90,13 +123,12 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   placeholder="Şifre" 
                   secureTextEntry 
-                  returnKeyType="next"
                   blurOnSubmit={false} 
                   onSubmitEditing={() => captchaRef.current?.focus()} 
                 />
               </View>
 
-              <Text style={styles.label}>Doğrulama: 3 + 2 = ?</Text>
+              <Text style={styles.label}>Doğrulama: {captcha.num1} + {captcha.num2} = ?</Text>
               <View style={styles.inputWrapper}>
                 <Ionicons name="calculator-outline" size={18} color="#666" style={{marginRight: 10}} />
                 <TextInput 
@@ -107,7 +139,7 @@ export default function LoginScreen() {
                   placeholder="Sonuç" 
                   keyboardType="numeric" 
                   returnKeyType="done"
-                  onSubmitEditing={handleLogin} 
+                  onSubmitEditing={handleDone} // ARTIK DİREKT GİRMEZ, KLAVYEYİ KAPATIR
                 />
               </View>
               
