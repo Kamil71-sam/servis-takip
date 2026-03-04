@@ -51,5 +51,5 @@ app.post('/api/save-company', async (req, res) => {
 
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`[BAŞARILI] Sunucu aktif: http://192.168.1.43:${PORT}`);
+  console.log(`[BAŞARILI] Sunucu aktif: http://192.168.1.39:${PORT}`);
 });

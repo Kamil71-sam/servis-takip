@@ -47,7 +47,7 @@ export default function YeniFirmaFormu({ visible, onClose }: YeniFirmaFormuProps
 
     try {
       // Sunucu bağlantısı (IP ve Port kontrolü önemlidir)
-      const response = await fetch('http://192.168.1.43:5000/api/save-company', {
+      const response = await fetch('http://192.168.1.39:5000/api/save-company', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
