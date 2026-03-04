@@ -6,12 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- SİSTEM DURUM KONTROLÜ ---
-app.get('/', (req, res) => {
-  res.send('Kalandar Yazılım Teknik Servis Sunucusu Aktif.');
-});
-
-// --- [BÖLÜM 1] MÜŞTERİ KAYDI ---
+// [BÖLÜM 1] Bireysel Müşteri Kaydı
 app.post('/api/yeni-musteri', async (req, res) => {
   const { full_name, phone_number, email, address } = req.body;
   try {
@@ -20,11 +15,11 @@ app.post('/api/yeni-musteri', async (req, res) => {
     res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
     console.error("Müşteri Kayıt Hatası:", err.message);
-    res.status(500).json({ success: false, error: "SQL Müşteri Tablo Hatası" });
+    res.status(500).json({ success: false, error: "Müşteri kayıt hatası." });
   }
 });
 
-// --- [BÖLÜM 2] FİRMA KAYDI ---
+// [BÖLÜM 2] Kurumsal Firma Kaydı
 app.post('/api/save-company', async (req, res) => {
   const { company_name, tax_number, authorized_person, phone_number } = req.body;
   try {
@@ -33,30 +28,40 @@ app.post('/api/save-company', async (req, res) => {
     res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
     console.error("Firma Kayıt Hatası:", err.message);
-    res.status(500).json({ success: false, error: "SQL Firma Tablo Hatası" });
+    res.status(500).json({ success: false, error: "Firma kayıt hatası." });
   }
 });
 
-// --- [BÖLÜM 3] SERVİS İŞ KAYDI (TABLO VE SÜTUNLAR DÜZELTİLDİ) ---
+// [BÖLÜM 3] Teknik Servis İş Emri Kaydı (Hata Giderilmiş)
 app.post('/api/yeni-servis', async (req, res) => {
   const { marka, model, seriNo, not } = req.body;
   try {
-    // MÜHÜR: Tablo ismini senin veritabanındaki 'service_orders' yaptık
+    /** * KRİTİK DÜZELTME: Foreign key hatasını önlemek için 
+     * veritabanındaki mevcut olan customer_id ve device_id kullanılmalıdır.
+     */
     const query = `
       INSERT INTO service_orders (
-        device_name, device_model, serial_number, description, status
-      ) VALUES (?, ?, ?, ?, 'Beklemede')
+        customer_id, device_id, status_id, complaint, technician_note
+      ) VALUES (
+        (SELECT id FROM customers LIMIT 1), 
+        (SELECT id FROM devices LIMIT 1), 
+        (SELECT id FROM service_statuses LIMIT 1), 
+        ?, ?
+      )
     `;
-    const [result] = await db.query(query, [marka, model, seriNo, not]);
+    
+    const fullDescription = `${marka} ${model} (Seri No: ${seriNo})`;
+    const [result] = await db.query(query, [fullDescription, not]);
+    
     res.json({ success: true, id: result.insertId }); 
   } catch (err) {
-    // Terminalde hata verirse sütun isimlerini kontrol etmek için detaylı log
-    console.error("Servis İş Hatası (Sütun İsimlerini Kontrol Et):", err.message);
-    res.status(500).json({ success: false, error: "Veritabanı sütun uyumsuzluğu!" });
+    // Terminalde hatayı detaylı görmek için
+    console.error("Servis İş Kayıt Hatası:", err.message);
+    res.status(500).json({ success: false, error: "Veritabanı ilişki hatası. Lütfen önce müşteri ve cihaz ekleyin." });
   }
 });
 
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`[SİSTEM] Sunucu 5000 portu üzerinden aktif edildi.`);
+  console.log(`Sunucu ${PORT} portu üzerinden aktif edildi.`);
 });

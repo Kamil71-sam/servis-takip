@@ -1,11 +1,10 @@
 const mysql = require('mysql2');
 
-// Veritabanı bağlantı ayarları
 const pool = mysql.createPool({
   host: 'localhost',
-  user: 'root',      // Genelde root olur
-  password: '',      // Şifren varsa buraya yaz
-  database: 'teknik_takip_db', // Veritabanı adın
+  user: 'root',
+  password: '',
+  database: 'servis_takip_db', // BURASI 'teknik_takip_db' OLMAMALIDIR
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
