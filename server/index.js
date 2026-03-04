@@ -1,71 +1,62 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./db'); // Veritabanı bağlantısı (db.js dosyandan geliyor)
+const db = require('./db'); 
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // Mobil formdan gelen JSON paketini anlaması için şart
+app.use(express.json());
 
-// --- TEST ROTASI: Motor çalışıyor mu? ---
+// --- SİSTEM DURUM KONTROLÜ ---
 app.get('/', (req, res) => {
-  res.send('Kalandar Yazılım Teknik Servis Sunucusu Aktif! FORM1 Mühürlü.');
+  res.send('Kalandar Yazılım Teknik Servis Sunucusu Aktif.');
 });
 
-// --- YENİ SERVİS KAYDI (Müdürün FORM1 Taslağı) ---
-app.post('/api/yeni-servis', async (req, res) => {
-  // Mobil uygulamadan gelen tüm FORM1 verilerini burada karşılıyoruz
-  const { 
-    adSoyad, tel, email, adres, faks, 
-    marka, model, seriNo, garanti, aksesuar, 
-    gorunum, not, personel, randevuTarihi, randevuDurumu 
-  } = req.body;
-
+// --- [BÖLÜM 1] MÜŞTERİ KAYDI ---
+app.post('/api/yeni-musteri', async (req, res) => {
+  const { full_name, phone_number, email, address } = req.body;
   try {
-    // SQL'deki o yeni açtığımız raflara (kolonlara) verileri diziyoruz
-    const query = `
-      INSERT INTO service_jobs (
-        firma_adi, customer_id, service_type, status,
-        faks, marka, model, seri_no, 
-        garanti_durumu, aksesuar_durumu, gorunum_detayi, 
-        kullanici_notu, yonlendirilen_personel, randevu_tarihi, 
-        randevu_durumu, gelis_tarihi
-      ) VALUES (?, 1, 'Dükkan', 'Cihaz Alındı', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `;
-
-    // Verileri SQL kolon sırasına göre mühürlüyoruz
-    const values = [
-      adSoyad,      // firma_adi kolonuna gider
-      faks,         // faks kolonuna gider
-      marka,        // marka kolonuna gider
-      model,        // model kolonuna gider
-      seriNo,       // seri_no kolonuna gider
-      garanti || 'Garantisiz', 
-      aksesuar,     // aksesuar_durumu kolonuna gider
-      gorunum,      // gorunum_detayi kolonuna gider
-      not,          // kullanici_notu kolonuna gider
-      personel,     // yonlendirilen_personel kolonuna gider
-      randevuTarihi || null, 
-      randevuDurumu || 'Beklemede'
-    ];
-
-    // Sorguyu mutfağa (SQL) gönderiyoruz
-    const [result] = await db.query(query, values);
-    
-    // SQL'in otomatik verdiği 'id' artık bizim 'Takip No'muz oluyor
-    // Mobil tarafa "İşlem Başarılı" ve "Numaran Budur" mesajını uçuruyoruz
-    res.json({ 
-      success: true, 
-      id: result.insertId // İşte o beklediğimiz Takip Numarası!
-    }); 
-
+    const query = `INSERT INTO customers (full_name, phone_number, email, address) VALUES (?, ?, ?, ?)`;
+    const [result] = await db.query(query, [full_name, phone_number, email, address]);
+    res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
-    console.error("SQL Hatası Müdür:", err.message);
-    res.status(500).json({ success: false, error: "Kayıt mühürlenemedi!" });
+    console.error("Müşteri Kayıt Hatası:", err.message);
+    res.status(500).json({ success: false, error: "SQL Müşteri Tablo Hatası" });
   }
 });
 
-// MOTORU ATEŞLE (Port 5000 üzerinden)
+// --- [BÖLÜM 2] FİRMA KAYDI ---
+app.post('/api/save-company', async (req, res) => {
+  const { company_name, tax_number, authorized_person, phone_number } = req.body;
+  try {
+    const query = `INSERT INTO companies (company_name, tax_number, authorized_person, phone_number) VALUES (?, ?, ?, ?)`;
+    const [result] = await db.query(query, [company_name, tax_number, authorized_person, phone_number]);
+    res.status(200).json({ success: true, id: result.insertId });
+  } catch (err) {
+    console.error("Firma Kayıt Hatası:", err.message);
+    res.status(500).json({ success: false, error: "SQL Firma Tablo Hatası" });
+  }
+});
+
+// --- [BÖLÜM 3] SERVİS İŞ KAYDI (TABLO VE SÜTUNLAR DÜZELTİLDİ) ---
+app.post('/api/yeni-servis', async (req, res) => {
+  const { marka, model, seriNo, not } = req.body;
+  try {
+    // MÜHÜR: Tablo ismini senin veritabanındaki 'service_orders' yaptık
+    const query = `
+      INSERT INTO service_orders (
+        device_name, device_model, serial_number, description, status
+      ) VALUES (?, ?, ?, ?, 'Beklemede')
+    `;
+    const [result] = await db.query(query, [marka, model, seriNo, not]);
+    res.json({ success: true, id: result.insertId }); 
+  } catch (err) {
+    // Terminalde hata verirse sütun isimlerini kontrol etmek için detaylı log
+    console.error("Servis İş Hatası (Sütun İsimlerini Kontrol Et):", err.message);
+    res.status(500).json({ success: false, error: "Veritabanı sütun uyumsuzluğu!" });
+  }
+});
+
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`Motor ${PORT} portunda gürlüyor kaptan! FORM1 mühürlendi.`);
+  console.log(`[SİSTEM] Sunucu 5000 portu üzerinden aktif edildi.`);
 });
