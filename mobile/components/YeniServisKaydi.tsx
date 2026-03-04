@@ -22,7 +22,7 @@ const CustomSelect = ({ visible, title, data, onSelect, onClose }: any) => (
   </Modal>
 );
 
-// --- P2 DURUM PENCERESİ (NO GÖSTERİMİ BURAYA EKLENDİ) ---
+// --- P2 DURUM PENCERESİ (FOKUS DESTEKLİ) ---
 const StatusModal = ({ visible, type, message, recordNo, onConfirm }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <View style={styles.selectOverlay}>
@@ -57,7 +57,8 @@ export default function YeniServisKaydi({ visible, onClose }: any) {
   const [servis, setServis] = useState(initialState);
   const [focusField, setFocusField] = useState<string>('sahibi');
   const [modalType, setModalType] = useState<'tür' | 'garanti' | 'usta' | null>(null);
-  const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', recordNo: '' });
+  // errorTarget: Hata anında hangi kutuya odaklanılacağını tutar
+  const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', recordNo: '', errorTarget: '' });
 
   const r1=useRef<TextInput>(null); const r2=useRef<TextInput>(null);
   const r3=useRef<TextInput>(null); const r4=useRef<TextInput>(null);
@@ -71,25 +72,44 @@ export default function YeniServisKaydi({ visible, onClose }: any) {
     }
   }, [visible]);
 
-  // KAYIT NUMARASI ÜRETİCİ (YYAAGGSIRA)
   const generateRecordNo = () => {
     const d = new Date();
     const yy = d.getFullYear().toString().slice(-2);
     const mm = (d.getMonth() + 1).toString().padStart(2, '0');
     const dd = d.getDate().toString().padStart(2, '0');
-    const sira = "01"; 
-    return `${yy}${mm}${dd}${sira}`;
+    return `${yy}${mm}${dd}01`;
   };
 
   const handleSaveAttempt = () => {
-    if (!servis.cihaz_sahibi || servis.cihaz_sahibi.trim().length < 2 || 
-        servis.cihaz_turu === 'Seçiniz...' || !servis.marka || !servis.ariza_notu) {
-      setStatus({ visible: true, type: 'error', msg: 'Zorunlu alanları doldurunuz.', recordNo: '' });
+    if (!servis.cihaz_sahibi || servis.cihaz_sahibi.trim().length < 2) {
+      setStatus({ visible: true, type: 'error', msg: 'Müşteri ismi mecburidir.', recordNo: '', errorTarget: 'sahibi' });
       return;
     }
-    const yeniNo = generateRecordNo();
+    if (servis.cihaz_turu === 'Seçiniz...') {
+      setStatus({ visible: true, type: 'error', msg: 'Cihaz türünü seçiniz.', recordNo: '', errorTarget: 'tür' });
+      return;
+    }
+    if (!servis.marka || servis.marka.trim().length < 1) {
+      setStatus({ visible: true, type: 'error', msg: 'Cihaz markası mecburidir.', recordNo: '', errorTarget: 'marka' });
+      return;
+    }
+    if (!servis.ariza_notu || servis.ariza_notu.trim().length < 3) {
+      setStatus({ visible: true, type: 'error', msg: 'Arıza notu mecburidir.', recordNo: '', errorTarget: 'ariza' });
+      return;
+    }
     Keyboard.dismiss();
-    setStatus({ visible: true, type: 'success', msg: 'Cihaz başarıyla işlendi.', recordNo: yeniNo });
+    setStatus({ visible: true, type: 'success', msg: 'Cihaz başarıyla işlendi.', recordNo: generateRecordNo(), errorTarget: '' });
+  };
+
+  // HATA ONAYI SONRASI KURSORU KONUMLANDIRAN TAMİRLİ MOTOR
+  const handleErrorConfirm = () => {
+    setStatus({ ...status, visible: false });
+    setTimeout(() => {
+      if (status.errorTarget === 'sahibi') r1.current?.focus();
+      else if (status.errorTarget === 'tür') { setFocusField('tür'); setModalType('tür'); }
+      else if (status.errorTarget === 'marka') r2.current?.focus();
+      else if (status.errorTarget === 'ariza') r7.current?.focus();
+    }, 150); // Klavye ve modal geçişi için kritik bekleme süresi
   };
 
   const resetFormAndClose = () => {
@@ -104,17 +124,19 @@ export default function YeniServisKaydi({ visible, onClose }: any) {
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
             <View style={styles.titleBadge}><Text style={styles.title}>CİHAZ BİLGİLERİ</Text></View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+              <Ionicons name="close-circle" size={42} color="#FF3B30" />
+            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="always" contentContainerStyle={{ paddingBottom: 150 }}>
-            <Text style={styles.label}>MÜŞTERİ ARA *</Text>
+            <Text style={styles.label}>MÜŞTERİ ARA (*) </Text>
             <View style={styles.row}>
               <TextInput ref={r1} style={[styles.input, {flex: 1}, focusField === 'sahibi' && styles.focusedBorder]} placeholder="İsim veya Tel..." onFocus={() => setFocusField('sahibi')} value={servis.cihaz_sahibi} onChangeText={(v)=>setServis({...servis, cihaz_sahibi: v})} returnKeyType="next" onSubmitEditing={() => { Keyboard.dismiss(); setModalType('tür'); }} />
               <TouchableOpacity style={styles.searchBtn}><Ionicons name="search" size={24} color="#fff" /></TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>CİHAZ TÜRÜ *</Text>
+            <Text style={styles.label}>CİHAZ TÜRÜ (*) </Text>
             <TouchableOpacity style={[styles.p2SelectBox, focusField === 'tür' && styles.focusedBorder]} onPress={() => { setFocusField('tür'); Keyboard.dismiss(); setModalType('tür'); }}>
               <Text style={styles.p2SelectText}>{servis.cihaz_turu}</Text>
               <Ionicons name="chevron-down" size={20} color="#1A1A1A" />
@@ -122,7 +144,7 @@ export default function YeniServisKaydi({ visible, onClose }: any) {
 
             <View style={styles.rowLayout}>
               <View style={{flex: 1, marginRight: 10}}>
-                <Text style={styles.label}>MARKA *</Text>
+                <Text style={styles.label}>MARKA (*) </Text>
                 <TextInput ref={r2} style={[styles.input, focusField === 'marka' && styles.focusedBorder]} onFocus={() => setFocusField('marka')} value={servis.marka} onChangeText={(v)=>setServis({...servis, marka: v})} returnKeyType="next" onSubmitEditing={()=>r3.current?.focus()} blurOnSubmit={false} />
               </View>
               <View style={{flex: 1}}>
@@ -151,7 +173,7 @@ export default function YeniServisKaydi({ visible, onClose }: any) {
             <Text style={styles.label}>AKSESUAR DURUMU</Text>
             <TextInput ref={r6} style={[styles.input, focusField === 'aksesuar' && styles.focusedBorder]} onFocus={() => setFocusField('aksesuar')} value={servis.aksesuar} onChangeText={(v)=>setServis({...servis, aksesuar: v})} returnKeyType="next" onSubmitEditing={()=>r7.current?.focus()} blurOnSubmit={false} />
 
-            <Text style={styles.label}>ARIZA / ŞİKAYET BİLGİSİ *</Text>
+            <Text style={styles.label}>ARIZA / ŞİKAYET BİLGİSİ (*) </Text>
             <TextInput ref={r7} style={[styles.input, {height: 60}, focusField === 'ariza' && styles.focusedBorder]} onFocus={() => setFocusField('ariza')} value={servis.ariza_notu} onChangeText={(v)=>setServis({...servis, ariza_notu: v})} returnKeyType="next" onSubmitEditing={() => { Keyboard.dismiss(); setModalType('usta'); }} blurOnSubmit={false} />
 
             <Text style={styles.label}>ATANAN USTA</Text>
@@ -167,7 +189,8 @@ export default function YeniServisKaydi({ visible, onClose }: any) {
           <CustomSelect visible={modalType === 'garanti'} title="GARANTİ" data={['Yok', 'Var (Resmi)', 'Var (Dükkan)']} onSelect={(v: string) => { setServis({...servis, garanti: v}); setModalType(null); setFocusField('not'); setTimeout(() => r5.current?.focus(), 450); }} onClose={() => setModalType(null)} />
           <CustomSelect visible={modalType === 'usta'} title="USTA ATAMA" data={['Seçilmedi', 'Usta 1', 'Usta 2', 'Usta 3', 'Usta 4', 'Usta 5']} onSelect={(v: string) => { setServis({...servis, usta: v}); setModalType(null); setFocusField('usta'); }} onClose={() => setModalType(null)} />
           
-          <StatusModal visible={status.visible} type={status.type} message={status.msg} recordNo={status.recordNo} onConfirm={() => { if (status.type === 'success') resetFormAndClose(); else setStatus({ ...status, visible: false }); }} />
+          <StatusModal visible={status.visible} type={status.type} message={status.msg} recordNo={status.recordNo} 
+            onConfirm={() => { if (status.type === 'success') resetFormAndClose(); else handleErrorConfirm(); }} />
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
@@ -180,7 +203,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 52 : 32, marginBottom: 20 },
   titleBadge: { backgroundColor: '#1A1A1A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   title: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  closeBtn: { padding: 5 },
+  closeBtn: { padding: 8, marginRight: -8 },
   label: { fontSize: 12, fontWeight: 'bold', color: '#333', marginTop: 15, marginBottom: 5 },
   input: { backgroundColor: '#f2f2f2', borderWidth: 1.5, borderColor: '#eee', borderRadius: 12, padding: 12, fontSize: 15, color: '#000', marginBottom: 15 },
   focusedBorder: { borderColor: '#FF3B30', backgroundColor: '#fff' },
