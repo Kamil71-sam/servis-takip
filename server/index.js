@@ -6,7 +6,38 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// [BÖLÜM 1] KURUMSAL FİRMA KAYDI
+// [MÜHÜRLEME MERKEZİ] Hem Müşteri Hem Servis Kaydı
+app.post('/api/yeni-servis', async (req, res) => {
+  // Mobil taraftan gelebilecek tüm ihtimalleri karşılıyoruz
+  const data = req.body;
+  const isim = data.musterıAdı || data.full_name || 'Bilinmeyen Müşteri';
+  const tel = data.telefon || data.phone_number || '000';
+  const cihaz = `${data.marka || ''} ${data.model || ''} (SN: ${data.serıNo || ''})`.trim();
+  const not = data.arızaNotu || data.technician_note || 'Not yok';
+
+  try {
+    // 1. Müşteriyi mühürle
+    const [custRes] = await db.query(
+      `INSERT INTO customers (full_name, phone_number) VALUES (?, ?)`, 
+      [isim, tel]
+    );
+    const yeniMusteriId = custRes.insertId;
+
+    // 2. Servis kaydını o müşteriye bağla
+    const [servRes] = await db.query(
+      `INSERT INTO service_orders (customer_id, device_id, status_id, complaint, technician_note) VALUES (?, 1, 1, ?, ?)`,
+      [yeniMusteriId, cihaz, not]
+    );
+    
+    // 3. Kayıt No'yu gönder
+    res.json({ success: true, id: servRes.insertId }); 
+  } catch (err) {
+    console.error("Hata:", err.message);
+    res.status(500).json({ success: false, error: "Kayıt mühürlenemedi!" });
+  }
+});
+
+// Firma kaydını da bozmadan ekliyoruz
 app.post('/api/save-company', async (req, res) => {
   const { company_name, tax_number, authorized_person, phone_number } = req.body;
   try {
@@ -14,35 +45,7 @@ app.post('/api/save-company', async (req, res) => {
     const [result] = await db.query(query, [company_name, tax_number, authorized_person, phone_number]);
     res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
-    res.status(500).json({ success: false, error: "Firma mühürlenemedi." });
-  }
-});
-
-// [BÖLÜM 2] TEKNİK SERVİS VE MÜŞTERİ KAYDI (TÜM KUTULARI DOLDURUR)
-app.post('/api/yeni-servis', async (req, res) => {
-  // Mobil formdan gelen Türkçe isimleri yakalıyoruz
-  const { musterıAdı, telefon, marka, model, serıNo, arızaNotu } = req.body;
-
-  try {
-    // 1. ADIM: Müşteriyi 'customers' tablosuna yaz
-    const [custRes] = await db.query(
-      `INSERT INTO customers (full_name, phone_number) VALUES (?, ?)`, 
-      [musterıAdı, telefon]
-    );
-    const yeniMusteriId = custRes.insertId;
-
-    // 2. ADIM: Servis detaylarını 'service_orders' tablosuna yaz ve müşteriye bağla
-    const cihazBilgisi = `${marka} ${model} (SN: ${serıNo})`;
-    const [servRes] = await db.query(
-      `INSERT INTO service_orders (customer_id, device_id, status_id, complaint, technician_note) VALUES (?, 1, 1, ?, ?)`,
-      [yeniMusteriId, cihazBilgisi, arızaNotu]
-    );
-    
-    // 3. ADIM: Uygulamaya 'Kayıt No'yu (Servis ID) gönder
-    res.json({ success: true, id: servRes.insertId }); 
-  } catch (err) {
-    console.error("Mühürleme Hatası:", err.message);
-    res.status(500).json({ success: false, error: "Veriler kutulara sığmadı!" });
+    res.status(500).json({ success: false });
   }
 });
 
