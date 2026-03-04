@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, Alert, ScrollView } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { 
+  StyleSheet, Text, View, TextInput, TouchableOpacity, 
+  Modal, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard,
+  SafeAreaView 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
@@ -9,74 +13,106 @@ interface Props {
 
 export default function YeniFirmaFormu({ visible, onClose }: Props) {
   const [firma, setFirma] = useState({
-    firma_adi: '', // SQL: company_name
-    vergi_no: '',  // SQL: tax_number
-    yetkili: '',   // SQL: authorized_person
-    tel: ''        // SQL: phone_number
+    firma_adi: '', yetkili_kisi: '', tel: '', email: '', adres: '', vergi_no: ''
   });
 
+  const r1=useRef<TextInput>(null); const r2=useRef<TextInput>(null); 
+  const r3=useRef<TextInput>(null); const r4=useRef<TextInput>(null); 
+  const r5=useRef<TextInput>(null); const r6=useRef<TextInput>(null);
+
   const handleSave = async () => {
-    if (!firma.firma_adi || !firma.tel) {
-      Alert.alert("Eksik Bilgi", "Firma Adı ve Telefon mühürlenmeden kayıt olmaz!");
+    // P2: Email artık mecburi
+    if (!firma.firma_adi || !firma.tel || !firma.email) {
+      Alert.alert("DİKKAT", "Firma Adı, Telefon ve E-Posta alanları mecburi mühürlenmelidir!");
       return;
     }
+
     try {
-      const response = await fetch('http://192.168.1.39:5000/api/save-company', {
+      const response = await fetch('http://192.168.1.43:5000/api/save-company', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(firma)
       });
       const data = await response.json();
+      
       if (data.success) {
-        Alert.alert("Başarılı", "Firma sisteme mühürlendi!");
-        onClose();
+        Keyboard.dismiss();
+        Alert.alert("BAŞARILI", "Kayıt başarıyla tamamlandı.", [
+          { text: "Tamam", onPress: () => onClose() }
+        ]);
       }
-    } catch (error) {
-      Alert.alert("Hata", "Sunucu motoru çalışmıyor!");
+    } catch (err) {
+      Alert.alert("HATA", "Sunucu motoruna ulaşılamadı!");
     }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
+    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.fullContainer}>
+        <SafeAreaView style={styles.safeArea}>
+          
           <View style={styles.header}>
-            <Text style={styles.title}>🏢 YENİ FİRMA KAYDI</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close-circle" size={35} color="#FF3B30" />
-            </TouchableOpacity>
+            <View style={styles.titleBadge}><Text style={styles.title}>YENİ FİRMA KAYDI</Text></View>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={40} color="#FF3B30" /></TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.label}>FİRMA ADI / ÜNVANI *</Text>
-            <TextInput style={styles.input} value={firma.firma_adi} onChangeText={(v)=>setFirma({...firma, firma_adi: v})} placeholder="Şirket İsmi" />
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="handled">
+            <View style={styles.sectionDivider}><Text style={styles.sectionText}>FİRMA VE İLETİŞİM BİLGİLERİ</Text></View>
 
-            <Text style={styles.label}>VERGİ NUMARASI</Text>
-            <TextInput style={styles.input} value={firma.vergi_no} onChangeText={(v)=>setFirma({...firma, vergi_no: v})} keyboardType="numeric" />
+            <Text style={styles.label}>FİRMA ADI / ÜNVANI *</Text>
+            <TextInput ref={r1} style={styles.input} returnKeyType="next" onSubmitEditing={()=>r2.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setFirma({...firma, firma_adi: v})} />
 
             <Text style={styles.label}>YETKİLİ KİŞİ</Text>
-            <TextInput style={styles.input} value={firma.yetkili} onChangeText={(v)=>setFirma({...firma, yetkili: v})} />
+            <TextInput ref={r2} style={styles.input} returnKeyType="next" onSubmitEditing={()=>r3.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setFirma({...firma, yetkili_kisi: v})} />
 
-            <Text style={styles.label}>İLETİŞİM TELEFONU *</Text>
-            <TextInput style={styles.input} value={firma.tel} onChangeText={(v)=>setFirma({...firma, tel: v})} keyboardType="numeric" />
+            <View style={styles.row}>
+              <View style={{flex: 1, marginRight: 10}}>
+                <Text style={styles.label}>TELEFON *</Text>
+                <TextInput ref={r3} style={styles.input} keyboardType="phone-pad" returnKeyType="next" onSubmitEditing={()=>r4.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setFirma({...firma, tel: v})} />
+              </View>
+              <View style={{flex: 1}}>
+                <Text style={styles.label}>VERGİ NO</Text>
+                <TextInput ref={r4} style={styles.input} keyboardType="numeric" returnKeyType="next" onSubmitEditing={()=>r5.current?.focus()} blurOnSubmit={false} onChangeText={(v)=>setFirma({...firma, vergi_no: v})} />
+              </View>
+            </View>
 
-            <TouchableOpacity style={styles.button} onPress={handleSave}>
-              <Text style={styles.buttonText}>FİRMAYI MÜHÜRLE</Text>
+            <Text style={styles.label}>E-POSTA ADRESİ *</Text>
+            <TextInput 
+              ref={r5} 
+              style={styles.input} 
+              keyboardType="email-address" 
+              autoCapitalize="none" 
+              returnKeyType="next" 
+              onSubmitEditing={()=>r6.current?.focus()} 
+              blurOnSubmit={false} 
+              onChangeText={(v)=>setFirma({...firma, email: v})} 
+            />
+
+            <Text style={styles.label}>TAM ADRES</Text>
+            <TextInput ref={r6} style={[styles.input, {height: 80}]} returnKeyType="done" onSubmitEditing={()=>Keyboard.dismiss()} onChangeText={(v)=>setFirma({...firma, adres: v})} />
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
+              <Text style={styles.saveButtonText}>KAYDI TAMAMLA</Text>
             </TouchableOpacity>
+
           </ScrollView>
-        </View>
-      </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, height: '85%' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 20, fontWeight: 'bold' },
-  label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginTop: 15 },
-  input: { backgroundColor: '#f0f0f0', borderRadius: 12, padding: 12, marginTop: 5, fontSize: 16 },
-  button: { backgroundColor: '#007AFF', padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 25 },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  fullContainer: { flex: 1, backgroundColor: '#fff' },
+  safeArea: { flex: 1, padding: 25 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: Platform.OS === 'android' ? 10 : 0 },
+  titleBadge: { backgroundColor: '#1A1A1A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  title: { fontSize: 17, fontWeight: '900', color: '#fff' },
+  sectionDivider: { backgroundColor: '#f5f5f5', padding: 10, borderRadius: 10, marginVertical: 15 },
+  sectionText: { fontSize: 12, fontWeight: 'bold', color: '#444', textAlign: 'center' },
+  label: { fontSize: 13, fontWeight: 'bold', color: '#333', marginTop: 10, marginBottom: 5 },
+  input: { backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 15, fontSize: 16, color: '#000' },
+  row: { flexDirection: 'row' },
+  saveButton: { backgroundColor: '#1A1A1A', height: 65, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 40, elevation: 4 },
+  saveButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' }
 });
