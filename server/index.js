@@ -6,38 +6,44 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// [MÜHÜRLEME MERKEZİ] Hem Müşteri Hem Servis Kaydı
+/**
+ * [KRİTİK BÖLÜM] Teknik Servis ve Müşteri Kaydı
+ * YeniKayitFormu.tsx'den gelen değişken isimleriyle tam uyumlu hale getirildi.
+ */
 app.post('/api/yeni-servis', async (req, res) => {
-  // Mobil taraftan gelebilecek tüm ihtimalleri karşılıyoruz
-  const data = req.body;
-  const isim = data.musterıAdı || data.full_name || 'Bilinmeyen Müşteri';
-  const tel = data.telefon || data.phone_number || '000';
-  const cihaz = `${data.marka || ''} ${data.model || ''} (SN: ${data.serıNo || ''})`.trim();
-  const not = data.arızaNotu || data.technician_note || 'Not yok';
+  // Mobil formdaki JSON paketinden gelen isimler:
+  const { adSoyad, tel, email, adres, marka, model, seriNo, not, personel } = req.body;
 
   try {
-    // 1. Müşteriyi mühürle
-    const [custRes] = await db.query(
-      `INSERT INTO customers (full_name, phone_number) VALUES (?, ?)`, 
-      [isim, tel]
-    );
+    // 1. ADIM: Müşteriyi 'customers' tablosuna mühürle
+    const customerQuery = `INSERT INTO customers (full_name, phone_number, email, address) VALUES (?, ?, ?, ?)`;
+    const [custRes] = await db.query(customerQuery, [adSoyad, tel, email, adres]);
     const yeniMusteriId = custRes.insertId;
 
-    // 2. Servis kaydını o müşteriye bağla
-    const [servRes] = await db.query(
-      `INSERT INTO service_orders (customer_id, device_id, status_id, complaint, technician_note) VALUES (?, 1, 1, ?, ?)`,
-      [yeniMusteriId, cihaz, not]
-    );
+    // 2. ADIM: Servis kaydını aç ve cihaz bilgilerini mühürle
+    // Cihaz detayı marka, model ve seri no birleştirilerek kaydedilir.
+    const fullDesc = `${marka} ${model} (SN: ${seriNo})`;
+    const techNote = `Personel: ${personel} | Not: ${not}`;
     
-    // 3. Kayıt No'yu gönder
-    res.json({ success: true, id: servRes.insertId }); 
+    const serviceQuery = `
+      INSERT INTO service_orders (customer_id, device_id, status_id, complaint, technician_note) 
+      VALUES (?, 1, 1, ?, ?)
+    `;
+    const [servRes] = await db.query(serviceQuery, [yeniMusteriId, fullDesc, techNote]);
+    
+    // 3. ADIM: Mobil uygulamaya "Sistem Takip No"yu geri gönder
+    res.json({ 
+      success: true, 
+      id: servRes.insertId, 
+      customer_id: yeniMusteriId 
+    }); 
   } catch (err) {
-    console.error("Hata:", err.message);
-    res.status(500).json({ success: false, error: "Kayıt mühürlenemedi!" });
+    console.error("Mühürleme Hatası:", err.message);
+    res.status(500).json({ success: false, error: "Veritabanı bağlantı hatası." });
   }
 });
 
-// Firma kaydını da bozmadan ekliyoruz
+// [FİRMA KAYDI] Mevcut yapıyı koruyoruz
 app.post('/api/save-company', async (req, res) => {
   const { company_name, tax_number, authorized_person, phone_number } = req.body;
   try {
@@ -45,7 +51,7 @@ app.post('/api/save-company', async (req, res) => {
     const [result] = await db.query(query, [company_name, tax_number, authorized_person, phone_number]);
     res.status(200).json({ success: true, id: result.insertId });
   } catch (err) {
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: "Firma kaydı başarısız." });
   }
 });
 
