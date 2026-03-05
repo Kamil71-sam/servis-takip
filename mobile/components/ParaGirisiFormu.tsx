@@ -191,11 +191,17 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                 </>
               )}
 
+              {/* MÜDÜR: İŞTE BURASI. TAMİRDEN GİRİŞ SEÇİLDİĞİNDE FİYAT TEKLİFİ AÇILIR */}
               {f.tur === 'Tamirden Giriş' && (
                 <>
                   <Text style={[styles.label, { color: theme.labelColor }]}>KAYIT NO</Text>
                   <View style={[styles.input, { backgroundColor: theme.dbBoxBg, borderColor: theme.dbBoxBorder, borderStyle: 'dashed' }]}>
                     <Text style={{color: theme.dbLabelColor, fontWeight: '500'}}>Cihaz kayıt esnasında verilen numara</Text>
+                  </View>
+
+                  <Text style={[styles.label, { color: theme.labelColor }]}>MÜŞTERİYE VERİLEN FİYAT TEKLİFİ</Text>
+                  <View style={[styles.input, { backgroundColor: theme.dbBoxBg, borderColor: theme.dbBoxBorder }]}>
+                    <Text style={{color: theme.dbValueColor, fontStyle: 'italic'}}>DB'den Alınacak...</Text>
                   </View>
 
                   <Text style={[styles.label, { color: theme.labelColor }]}>HANGİ USTA (*)</Text>
@@ -211,7 +217,6 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
               {f.tur !== 'Seçiniz...' && (
                 <>
                   <Text style={[styles.label, { color: theme.labelColor }]}>İŞLEM TUTARI (₺) (*)</Text>
-                  {/* MÜDÜR: onBlur İLE FORMATLAMA MÜHÜRLENDİ. decimal-pad KLAVYESİ EKLENDİ. */}
                   <TextInput 
                     ref={rTutar} 
                     style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'tutar' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
@@ -226,7 +231,6 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                   />
 
                   <Text style={[styles.label, { color: theme.labelColor }]}>AÇIKLAMA / NOT</Text>
-                  {/* MÜDÜR: blurOnSubmit={true} MÜHRÜ VURULDU. "BİTTİ" (DONE) TUŞU ÇALIŞACAK */}
                   <TextInput 
                     ref={rAciklama} 
                     style={[styles.input, { height: 80, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'aciklama' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
@@ -239,7 +243,6 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                     onSubmitEditing={() => Keyboard.dismiss()} 
                   />
 
-                  {/* VİTRİN KUTUSU DA FORMATLI YANSITIYOR */}
                   <View style={[styles.dbPriceBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
                     <Text style={[styles.dbPriceLabel, { color: theme.labelColor }]}>BU İŞLEMDE KASAYA GİREN (GENEL TOPLAM)</Text>
                     <Text style={[styles.dbPriceValue, { color: theme.textColor }]}>

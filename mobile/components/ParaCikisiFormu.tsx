@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// --- ÖZEL SEÇİM PENCERESİ (TÜR SEÇİMİ İÇİN) ---
+// --- ÖZEL SEÇİM PENCERESİ ---
 const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
@@ -48,7 +48,6 @@ const formatMoney = (val: string) => {
   let clean = val.toString().replace(/\./g, '').replace(',', '.');
   let num = parseFloat(clean);
   if (isNaN(num)) return '';
-  
   let parts = num.toFixed(2).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return parts.join(',');
@@ -60,16 +59,46 @@ const parseMoney = (val: string) => {
   return parseFloat(clean) || 0;
 };
 
+// MÜDÜR: AKILLI TARİH MOTORU (GG.AA.YYYY)
+const formatDate = (val: string) => {
+  if (!val) return '';
+  let clean = val.replace(/\D/g, ''); 
+  if (clean.length > 8) clean = clean.slice(0, 8);
+  let match = clean.match(/^(\d{0,2})(\d{0,2})(\d{0,4})$/);
+  if (match) {
+    return !match[2] ? match[1] : `${match[1]}.${match[2]}${match[3] ? `.${match[3]}` : ''}`;
+  }
+  return val;
+};
+
+// BUGÜNÜN TARİHİNİ VEREN KÜÇÜK MOTOR (TAKVİM İKONU İÇİN)
+const getTodayString = () => {
+  const d = new Date();
+  return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
+};
+
 export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
-  const initialState = { tur: 'Seçiniz...', tutar: '', aciklama: '' };
+  const initialState = { 
+    tur: 'Seçiniz...', tutar: '', aciklama: '',
+    malzemeIsmi: '', marka: '', model: '', parcaNo: '', siparisNo: '',
+    siparisTarihi: '', gelisTarihi: '', 
+    talepTuru: 'Seçiniz...', usta: 'Seçiniz...'
+  };
   
   const [f, setF] = useState(initialState);
   const [focus, setFocus] = useState('');
-  const [showTurModal, setShowTurModal] = useState(false);
+  const [modalState, setModalState] = useState<'tur' | 'talepTuru' | 'usta' | null>(null);
   const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', errorTarget: '' });
 
   const rTutar = useRef<TextInput>(null);
   const rAciklama = useRef<TextInput>(null);
+  const rMalzeme = useRef<TextInput>(null);
+  const rMarka = useRef<TextInput>(null);
+  const rModel = useRef<TextInput>(null);
+  const rParcaNo = useRef<TextInput>(null);
+  const rSiparisNo = useRef<TextInput>(null);
+  const rSiparisTarihi = useRef<TextInput>(null);
+  const rGelisTarihi = useRef<TextInput>(null);
 
   useEffect(() => {
     if (visible) {
@@ -86,8 +115,11 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
       const target = status.errorTarget;
       setStatus({ ...status, visible: false });
       setTimeout(() => {
-        if (target === 'tur') setShowTurModal(true);
+        if (target === 'tur') setModalState('tur');
+        else if (target === 'talepTuru') setModalState('talepTuru');
+        else if (target === 'usta') setModalState('usta');
         else if (target === 'tutar') rTutar.current?.focus();
+        else if (target === 'malzeme') rMalzeme.current?.focus();
         else if (target === 'aciklama') rAciklama.current?.focus();
       }, 300);
     }
@@ -96,6 +128,18 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
   const handleSaveAttempt = () => {
     if (f.tur === 'Seçiniz...') { setStatus({ visible: true, type: 'error', msg: 'Lütfen işlem türünü seçiniz! (*)', errorTarget: 'tur' }); return; }
     
+    if (f.tur === 'Stok Alımı') {
+      if (!f.malzemeIsmi || f.malzemeIsmi.length < 2) {
+        setStatus({ visible: true, type: 'error', msg: 'Malzeme ismini giriniz! (*)', errorTarget: 'malzeme' }); return;
+      }
+      if (f.talepTuru === 'Seçiniz...') {
+        setStatus({ visible: true, type: 'error', msg: 'Alım amacını (Uzman/Stok) seçiniz! (*)', errorTarget: 'talepTuru' }); return;
+      }
+      if (f.talepTuru === 'Uzman Talebi' && f.usta === 'Seçiniz...') {
+        setStatus({ visible: true, type: 'error', msg: 'Lütfen talep eden uzmanı seçiniz! (*)', errorTarget: 'usta' }); return;
+      }
+    }
+
     const rawTutar = parseMoney(f.tutar);
     if (rawTutar <= 0) { setStatus({ visible: true, type: 'error', msg: 'Lütfen geçerli bir tutar giriniz! (*)', errorTarget: 'tutar' }); return; }
 
@@ -110,7 +154,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
     borderColor: isDarkMode ? '#444' : '#eee',
     textColor: isDarkMode ? '#fff' : '#000',
     labelColor: isDarkMode ? '#aaa' : '#333',
-    // MÜDÜR: BUTONLAR ANTRASİT, ETİKET İSE KIRMIZI (#FF3B30) OLACAK
     badgeBtnBg: isDarkMode ? '#333' : '#1A1A1A', 
   };
 
@@ -121,7 +164,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
           <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
             
             <View style={styles.header}>
-              {/* MÜDÜR: ÇIKIŞ ETİKETİNE KIRMIZI FON MÜHRÜNÜ VURDUM */}
               <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
                 <Text style={styles.bt}>PARA ÇIKIŞI</Text>
               </View>
@@ -133,11 +175,130 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
               <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TÜRÜ (*)</Text>
               <TouchableOpacity 
                 style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'tur' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                onPress={() => { setShowTurModal(true); setFocus('tur'); Keyboard.dismiss(); }}
+                onPress={() => { setModalState('tur'); setFocus('tur'); Keyboard.dismiss(); }}
               >
                 <Text style={{color: f.tur !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.tur}</Text>
               </TouchableOpacity>
 
+              {f.tur === 'Stok Alımı' && (
+                <>
+                  <Text style={[styles.label, { color: theme.labelColor }]}>MALZEME İSMİ (*)</Text>
+                  <TextInput ref={rMalzeme} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'malzeme' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('malzeme')} value={f.malzemeIsmi} onChangeText={(v)=>setF({...f, malzemeIsmi:v})} returnKeyType="next" onSubmitEditing={()=>rMarka.current?.focus()} blurOnSubmit={false} />
+
+                  <View style={styles.rowLayout}>
+                    <View style={{flex: 1, marginRight: 10}}>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>MARKASI</Text>
+                      <TextInput ref={rMarka} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'marka' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('marka')} value={f.marka} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" onSubmitEditing={()=>rModel.current?.focus()} blurOnSubmit={false} />
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>MODEL</Text>
+                      <TextInput ref={rModel} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'model' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('model')} value={f.model} onChangeText={(v)=>setF({...f, model:v})} returnKeyType="next" onSubmitEditing={()=>rParcaNo.current?.focus()} blurOnSubmit={false} />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowLayout}>
+                    <View style={{flex: 1, marginRight: 10}}>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>PARÇA NO</Text>
+                      <TextInput ref={rParcaNo} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'parcaNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('parcaNo')} value={f.parcaNo} onChangeText={(v)=>setF({...f, parcaNo:v})} returnKeyType="next" onSubmitEditing={()=>rSiparisNo.current?.focus()} blurOnSubmit={false} />
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ NO</Text>
+                      {/* MÜDÜR: SİPARİŞ NO -> TARİHE GEÇİŞİ ZAMANLAYICI İLE DÜZELTTİK */}
+                      <TextInput 
+                        ref={rSiparisNo} 
+                        style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'siparisNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                        onFocus={()=>setFocus('siparisNo')} 
+                        value={f.siparisNo} 
+                        onChangeText={(v)=>setF({...f, siparisNo:v})} 
+                        returnKeyType="next" 
+                        blurOnSubmit={false} 
+                        onSubmitEditing={() => { 
+                          setFocus('siparisTarihi'); 
+                          setTimeout(() => rSiparisTarihi.current?.focus(), 150); 
+                        }} 
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowLayout}>
+                    <View style={{flex: 1, marginRight: 10}}>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ TARİHİ</Text>
+                      <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'siparisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
+                        {/* MÜDÜR: SİPARİŞ TARİHİ -> GELİŞ TARİHİNE GEÇİŞİ ZAMANLAYICI İLE DÜZELTTİK */}
+                        <TextInput 
+                          ref={rSiparisTarihi} 
+                          style={[styles.flexInput, { color: theme.textColor }]} 
+                          onFocus={()=>setFocus('siparisTarihi')} 
+                          keyboardType="numeric" 
+                          maxLength={10} 
+                          placeholder="GG.AA.YYYY" 
+                          placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
+                          value={f.siparisTarihi} 
+                          onChangeText={(v)=>setF({...f, siparisTarihi: formatDate(v)})} 
+                          returnKeyType="next" 
+                          blurOnSubmit={false}
+                          onSubmitEditing={() => { 
+                            setFocus('gelisTarihi'); 
+                            setTimeout(() => rGelisTarihi.current?.focus(), 150); 
+                          }} 
+                        />
+                        <TouchableOpacity onPress={() => setF({...f, siparisTarihi: getTodayString()})}>
+                          <Ionicons name="calendar" size={24} color={theme.labelColor} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>GELİŞ TARİHİ</Text>
+                      <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'gelisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
+                        {/* MÜDÜR: GELİŞ TARİHİ -> UZMAN MODALI AÇILIŞI ZAMANLAYICI İLE DÜZELTİLDİ */}
+                        <TextInput 
+                          ref={rGelisTarihi} 
+                          style={[styles.flexInput, { color: theme.textColor }]} 
+                          onFocus={()=>setFocus('gelisTarihi')} 
+                          keyboardType="numeric" 
+                          maxLength={10} 
+                          placeholder="GG.AA.YYYY" 
+                          placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
+                          value={f.gelisTarihi} 
+                          onChangeText={(v)=>setF({...f, gelisTarihi: formatDate(v)})} 
+                          returnKeyType="next" 
+                          blurOnSubmit={false}
+                          onSubmitEditing={() => { 
+                            Keyboard.dismiss(); 
+                            setFocus('talepTuru'); 
+                            setTimeout(() => setModalState('talepTuru'), 150); 
+                          }} 
+                        />
+                        <TouchableOpacity onPress={() => setF({...f, gelisTarihi: getTodayString()})}>
+                          <Ionicons name="calendar" size={24} color={theme.labelColor} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.label, { color: theme.labelColor }]}>ALIM AMACI (*)</Text>
+                  <TouchableOpacity 
+                    style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'talepTuru' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                    onPress={() => { setModalState('talepTuru'); setFocus('talepTuru'); Keyboard.dismiss(); }}
+                  >
+                    <Text style={{color: f.talepTuru !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.talepTuru}</Text>
+                  </TouchableOpacity>
+
+                  {f.talepTuru === 'Uzman Talebi' && (
+                    <>
+                      <Text style={[styles.label, { color: theme.labelColor }]}>HANGİ UZMAN / USTA (*)</Text>
+                      <TouchableOpacity 
+                        style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'usta' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                        onPress={() => { setModalState('usta'); setFocus('usta'); Keyboard.dismiss(); }}
+                      >
+                        <Text style={{color: f.usta !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.usta}</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* === ORTAK ÇIKIŞ ALANLARI === */}
               {f.tur !== 'Seçiniz...' && (
                 <>
                   <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TUTARI (₺) (*)</Text>
@@ -155,7 +316,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                   />
 
                   <Text style={[styles.label, { color: theme.labelColor }]}>AÇIKLAMA / NOT (Örn: Fatura, Tedarikçi vb.)</Text>
-                  {/* MÜDÜR: KLAVYE ÖPÜŞME BOŞLUĞU (marginBottom: 30) VE BİTTİ TUŞU (blurOnSubmit) EKLENDİ */}
                   <TextInput 
                     ref={rAciklama} 
                     style={[styles.input, { height: 80, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'aciklama' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
@@ -168,7 +328,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                     onSubmitEditing={() => Keyboard.dismiss()} 
                   />
 
-                  {/* VİTRİN KUTUSU: ÇIKIŞ OLDUĞU İÇİN EKSİ VE KIRMIZI YAZACAK */}
                   <View style={[styles.dbPriceBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
                     <Text style={[styles.dbPriceLabel, { color: theme.labelColor }]}>BU İŞLEMDE KASADAN ÇIKAN (GENEL TOPLAM)</Text>
                     <Text style={[styles.dbPriceValue, { color: '#FF3B30' }]}>
@@ -184,16 +343,31 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
 
             </ScrollView>
 
+            {/* --- SEÇİM MODALLARI --- */}
             <CustomSelect 
-              visible={showTurModal} 
-              title="ÇIKIŞ TÜRÜ" 
-              data={['Genel Gider', 'Stok Alımı', 'Diğer Giderler']} 
-              isDarkMode={isDarkMode} 
+              visible={modalState === 'tur'} title="ÇIKIŞ TÜRÜ" data={['Genel Gider', 'Stok Alımı', 'Diğer Giderler']} isDarkMode={isDarkMode} 
               onSelect={(v: string) => { 
-                setF({...f, tur: v}); setShowTurModal(false); 
-                setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); 
+                setF({...f, tur: v}); setModalState(null); 
+                if(v === 'Stok Alımı') { setFocus('malzeme'); setTimeout(() => rMalzeme.current?.focus(), 450); }
+                else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
               }} 
-              onClose={() => setShowTurModal(false)} 
+              onClose={() => setModalState(null)} 
+            />
+
+            <CustomSelect 
+              visible={modalState === 'talepTuru'} title="ALIM AMACI" data={['Uzman Talebi', 'Stok Tamamlama']} isDarkMode={isDarkMode} 
+              onSelect={(v: string) => { 
+                setF({...f, talepTuru: v}); setModalState(null); 
+                if(v === 'Uzman Talebi') { setFocus('usta'); setTimeout(() => setModalState('usta'), 450); }
+                else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
+              }} 
+              onClose={() => setModalState(null)} 
+            />
+
+            <CustomSelect 
+              visible={modalState === 'usta'} title="UZMAN / USTA SEÇİMİ" data={['Usta 1', 'Usta 2', 'Usta 3']} isDarkMode={isDarkMode} 
+              onSelect={(v: string) => { setF({...f, usta: v}); setModalState(null); setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }} 
+              onClose={() => setModalState(null)} 
             />
 
             <StatusModal visible={status.visible} type={status.type} message={status.msg} onConfirm={handleConfirmAction} isDarkMode={isDarkMode} />
@@ -211,9 +385,12 @@ const styles = StyleSheet.create({
   bt: { color: '#fff', fontWeight: '900', fontSize: 13 },
   label: { fontSize: 11, fontWeight: '900', marginTop: 15, marginBottom: 5 },
   input: { borderRadius: 12, padding: 15, borderWidth: 1.5, fontSize: 16, fontWeight: '500' },
+  inputWithIcon: { borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  flexInput: { flex: 1, fontSize: 16, fontWeight: '500' },
   redBorder: { borderColor: '#FF3B30' },
+  rowLayout: { flexDirection: 'row', justifyContent: 'space-between' },
   dbPriceBox: { padding: 20, borderRadius: 15, marginTop: 10, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1.5 },
-  dbPriceLabel: { fontSize: 10, fontWeight: '900' },
+  dbPriceLabel: { fontSize: 10, fontWeight: '900', textAlign: 'center' },
   dbPriceValue: { fontSize: 26, fontWeight: '900', marginTop: 5 },
   saveBtn: { height: 65, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 30, marginBottom: 40 },
   saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '900' },
