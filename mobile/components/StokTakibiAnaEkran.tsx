@@ -1,72 +1,78 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, Modal, 
-  SafeAreaView, Platform 
+  Platform, SafeAreaView 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import StokGirisiFormu from './StokGirisiFormu'; // Stok Girişi asansörü
+import StokGirisiFormu from './StokGirisiFormu';
 
 export default function StokTakibiAnaEkran({ visible, onClose }: any) {
   const [entryVisible, setEntryVisible] = useState(false);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent>
-      <SafeAreaView style={styles.fullContainer}>
+    <Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
+      <View style={styles.overlay}>
+        {/* BLUR HATASI ALMAMAK İÇİN ŞIK BİR ŞEFFAF ARKA PLAN */}
+        <TouchableOpacity style={styles.absFill} activeOpacity={1} onPress={onClose} />
         
-        {/* P2 STANDART BAŞLIK */}
-        <View style={styles.header}>
-          <View style={styles.titleBadge}>
-            <Text style={styles.title}>STOK HAREKETLERİ</Text>
+        <View style={styles.modernCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>STOK YÖNETİMİ</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close-circle" size={36} color="#FF3B30" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-            <Ionicons name="close-circle" size={42} color="#FF3B30" />
-          </TouchableOpacity>
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={styles.actionBtn} 
+              onPress={() => setEntryVisible(true)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconBox, {backgroundColor: '#E8F5E9'}]}>
+                <Ionicons name="arrow-down-circle" size={40} color="#4CD964" />
+              </View>
+              <Text style={styles.btnText}>STOK GİRİŞİ</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionBtn} 
+              onPress={() => alert('Stok Çıkışı Hazırlanıyor...')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconBox, {backgroundColor: '#FFEBEE'}]}>
+                <Ionicons name="arrow-up-circle" size={40} color="#FF3B30" />
+              </View>
+              <Text style={styles.btnText}>STOK ÇIKIŞI</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* SEÇİM KARTLARI */}
-        <View style={styles.menuContent}>
-          <TouchableOpacity 
-            style={styles.actionCard} 
-            onPress={() => setEntryVisible(true)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="arrow-down-circle" size={50} color="#4CD964" />
-            </View>
-            <Text style={styles.cardText}>STOK GİRİŞİ</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionCard} 
-            onPress={() => alert('Stok Çıkışı Yakında!')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}>
-              <Ionicons name="arrow-up-circle" size={50} color="#FF3B30" />
-            </View>
-            <Text style={styles.cardText}>STOK ÇIKIŞI</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* STOK GİRİŞİ FORMU ASANSÖRÜ */}
-        <StokGirisiFormu 
-          visible={entryVisible} 
-          onClose={() => setEntryVisible(false)} 
-        />
-
-      </SafeAreaView>
+        <StokGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} />
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  fullContainer: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 52 : 32, marginBottom: 40 },
-  titleBadge: { backgroundColor: '#1A1A1A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
-  title: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
+  absFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  modernCard: { 
+    backgroundColor: '#fff', 
+    width: '85%', 
+    borderRadius: 30, 
+    padding: 25, 
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  cardTitle: { fontSize: 18, fontWeight: '900', color: '#1A1A1A' },
   closeBtn: { padding: 5 },
-  menuContent: { flexDirection: 'row', justifyContent: 'space-between' },
-  actionCard: { backgroundColor: '#f9f9f9', width: '47%', height: 180, borderRadius: 25, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#eee', elevation: 4 },
-  iconCircle: { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  cardText: { fontSize: 16, fontWeight: '900', color: '#1A1A1A' }
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  actionBtn: { width: '45%', alignItems: 'center' },
+  iconBox: { width: 80, height: 80, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  btnText: { fontSize: 14, fontWeight: '900', color: '#333' }
 });
