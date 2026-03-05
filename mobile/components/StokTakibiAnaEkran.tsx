@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import StokGirisiFormu from './StokGirisiFormu';
-import StokCikisiFormu from './StokCikisiFormu'; // MÜDÜR, EKSİK OLAN İTHALATI BURAYA EKLEDİM
+import StokCikisiFormu from './StokCikisiFormu'; 
 
-export default function StokTakibiAnaEkran({ visible, onClose }: any) {
+// isDarkMode parametresini ekledik
+export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode }: any) {
   const [entryVisible, setEntryVisible] = useState(false);
-  const [exitVisible, setExitVisible] = useState(false); // ÇIKIŞ FORMU İÇİN YENİ STATE
+  const [exitVisible, setExitVisible] = useState(false); 
 
   return (
     <Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
@@ -17,9 +18,10 @@ export default function StokTakibiAnaEkran({ visible, onClose }: any) {
         {/* EKRAN DIŞINA BASILINCA KAPANMA ÖZELLİĞİ */}
         <TouchableOpacity style={styles.absFill} activeOpacity={1} onPress={onClose} />
         
-        <View style={styles.modernCard}>
+        {/* GECE MODUNA GÖRE KARTIN RENGİ DEĞİŞİR */}
+        <View style={[styles.modernCard, isDarkMode && styles.darkCard]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>STOK YÖNETİMİ</Text>
+            <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>STOK YÖNETİMİ</Text>
           </View>
 
           <View style={styles.buttonRow}>
@@ -29,29 +31,31 @@ export default function StokTakibiAnaEkran({ visible, onClose }: any) {
               onPress={() => setEntryVisible(true)}
               activeOpacity={0.8}
             >
-              <View style={[styles.iconBox, {backgroundColor: '#E8F5E9'}]}>
+              {/* GECE MODUNDA İKON KUTUSUNUN RENGİ KOYULAŞIR */}
+              <View style={[styles.iconBox, {backgroundColor: isDarkMode ? '#1a3320' : '#E8F5E9'}]}>
                 <Ionicons name="arrow-down-circle" size={40} color="#4CD964" />
               </View>
-              <Text style={styles.btnText}>STOK GİRİŞİ</Text>
+              <Text style={[styles.btnText, isDarkMode && styles.darkText]}>STOK GİRİŞİ</Text>
             </TouchableOpacity>
 
-            {/* STOK ÇIKIŞI BUTONU: ARTIK AKTİF */}
+            {/* STOK ÇIKIŞI BUTONU */}
             <TouchableOpacity 
               style={styles.actionBtn} 
               onPress={() => setExitVisible(true)}
               activeOpacity={0.8}
             >
-              <View style={[styles.iconBox, {backgroundColor: '#FFEBEE'}]}>
+              {/* GECE MODUNDA İKON KUTUSUNUN RENGİ KOYULAŞIR */}
+              <View style={[styles.iconBox, {backgroundColor: isDarkMode ? '#331a1a' : '#FFEBEE'}]}>
                 <Ionicons name="arrow-up-circle" size={40} color="#FF3B30" />
               </View>
-              <Text style={styles.btnText}>STOK ÇIKIŞI</Text>
+              <Text style={[styles.btnText, isDarkMode && styles.darkText]}>STOK ÇIKIŞI</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* FORMLARIN ÇAĞRILMASI */}
-        <StokGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} />
-        <StokCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} />
+        {/* FORMLARA GECE MODU BİLGİSİ İLETİLİYOR */}
+        <StokGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} isDarkMode={isDarkMode} />
+        <StokCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} />
       </View>
     </Modal>
   );
@@ -71,6 +75,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20
   },
+  // GECE MODU İÇİN KART STİLİ
+  darkCard: {
+    backgroundColor: '#1e1e1e',
+    shadowColor: '#fff',
+    shadowOpacity: 0.1,
+  },
   cardHeader: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
@@ -78,6 +88,10 @@ const styles = StyleSheet.create({
     marginBottom: 30 
   },
   cardTitle: { fontSize: 18, fontWeight: '900', color: '#1A1A1A' },
+  // GECE MODU İÇİN YAZI STİLİ
+  darkText: {
+    color: '#fff',
+  },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
   actionBtn: { width: '45%', alignItems: 'center' },
   iconBox: { width: 80, height: 80, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },

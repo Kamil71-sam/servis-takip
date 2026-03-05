@@ -139,11 +139,11 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ASANSÖRLER (MODALLAR) */}
-        <YeniMusteriFormu visible={musteriVisible} onClose={() => setMusteriVisible(false)} />
-        <YeniFirmaFormu visible={firmaVisible} onClose={() => setFirmaVisible(false)} />
-        <YeniServisKaydi visible={servisVisible} onClose={() => setServisVisible(false)} />
-        <StokTakibiAnaEkran visible={stokVisible} onClose={() => setStokVisible(false)} />
+        {/* --- GECE MODU (isDarkMode) TÜM ASANSÖRLERE MÜHÜRLENDİ --- */}
+        <YeniMusteriFormu visible={musteriVisible} onClose={() => setMusteriVisible(false)} isDarkMode={isDarkMode} />
+        <YeniFirmaFormu visible={firmaVisible} onClose={() => setFirmaVisible(false)} isDarkMode={isDarkMode} />
+        <YeniServisKaydi visible={servisVisible} onClose={() => setServisVisible(false)} isDarkMode={isDarkMode} />
+        <StokTakibiAnaEkran visible={stokVisible} onClose={() => setStokVisible(false)} isDarkMode={isDarkMode} />
       </SafeAreaView>
     </SafeAreaProvider>
   );

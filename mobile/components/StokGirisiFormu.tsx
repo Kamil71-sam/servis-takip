@@ -5,20 +5,20 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// --- P2 DURUM PENCERESİ (OK İŞARETLİ VE RESMİ) ---
-const StatusModal = ({ visible, type, message, onConfirm }: any) => (
+// --- P2 DURUM PENCERESİ (GECE MODU DESTEKLİ) ---
+const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onConfirm}>
-      <View style={[styles.miniStatusContent, type === 'error' && { borderColor: '#FF3B30', borderWidth: 1.5 }]}>
+      <View style={[styles.miniStatusContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, type === 'error' && { borderColor: '#FF3B30', borderWidth: 1.5 }]}>
         <View style={styles.statusRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.statusMainText, type === 'error' && { color: '#FF3B30' }]}>
+            <Text style={[styles.statusMainText, { color: isDarkMode ? '#fff' : '#1A1A1A' }, type === 'error' && { color: '#FF3B30' }]}>
               {type === 'success' ? 'KAYIT TAMAMLANDI' : 'İŞLEM ENGELLENDİ'}
             </Text>
-            <Text style={styles.statusSubText}>{message}</Text>
+            <Text style={[styles.statusSubText, { color: isDarkMode ? '#aaa' : '#666' }]}>{message}</Text>
           </View>
           <TouchableOpacity 
-            style={[styles.miniConfirmBtn, type === 'error' && { backgroundColor: '#FF3B30' }]} 
+            style={[styles.miniConfirmBtn, { backgroundColor: isDarkMode ? '#333' : '#1A1A1A' }, type === 'error' && { backgroundColor: '#FF3B30' }]} 
             onPress={onConfirm}
           >
             <Ionicons name={type === 'success' ? "arrow-forward" : "close"} size={24} color="#fff" />
@@ -29,7 +29,7 @@ const StatusModal = ({ visible, type, message, onConfirm }: any) => (
   </Modal>
 );
 
-export default function StokGirisiFormu({ visible, onClose }: any) {
+export default function StokGirisiFormu({ visible, onClose, isDarkMode }: any) {
   const initialState = {
     tur: '', marka: '', isim: '', no: '', aciklama: '', firma: '',
     alis: '', kar: '30', kdv: '20', iskonto: '0', satis: '0.00'
@@ -84,7 +84,7 @@ export default function StokGirisiFormu({ visible, onClose }: any) {
         else if (target === 'isim') rIsim.current?.focus();
         else if (target === 'no') rNo.current?.focus();
         else if (target === 'alis') rAlis.current?.focus();
-        else if (target === 'iskonto') rIsk.current?.focus(); // Zarar durumunda buraya fırlatır
+        else if (target === 'iskonto') rIsk.current?.focus();
       }, 300);
     }
   };
@@ -113,83 +113,108 @@ export default function StokGirisiFormu({ visible, onClose }: any) {
     setStatus({ visible: true, type: 'success', msg: 'Stok kaydı yapıldı.', errorTarget: '' });
   };
 
+  // DİNAMİK STİLLER (Şaltere Bağlı)
+  const theme = {
+    bg: isDarkMode ? '#121212' : '#fff',
+    cardBg: isDarkMode ? '#1e1e1e' : '#f9f9f9',
+    inputBg: isDarkMode ? '#2c2c2c' : '#f9f9f9',
+    minInputBg: isDarkMode ? '#333' : '#f2f2f2',
+    borderColor: isDarkMode ? '#444' : '#eee',
+    textColor: isDarkMode ? '#fff' : '#000',
+    labelColor: isDarkMode ? '#aaa' : '#555',
+    badgeBtnBg: isDarkMode ? '#333' : '#1A1A1A'
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={40} style={{flex: 1, backgroundColor: '#fff'}}>
-        <SafeAreaView style={styles.safe}>
-          
-          <View style={styles.header}>
-            <View style={styles.badge}><Text style={styles.bt}>STOK GİRİŞİ</Text></View>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={{paddingBottom: 150}}>
+    // MÜDÜR: MODALI ŞEFFAF YAPTIK, ARKADAN BEYAZ PLAKA SIZMASIN DİYE
+    <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
+      
+      {/* DIŞ KAPLAMA: TÜM BOŞLUKLARI GECE MODU RENGİYLE DOLDURUR, BEYAZ ÇİZGİYİ SİLER */}
+      <View style={{ flex: 1, backgroundColor: theme.bg }}>
+        
+        {/* ANDROID'DE BOŞLUK YARATAN OFFSET DEĞERİNİ (40) GERİ GETİRDİM, EKRAN FERAH OLSUN */}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+          keyboardVerticalOffset={40} 
+          style={{flex: 1}}
+        >
+          <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
             
-            <Text style={styles.label}>İŞLEM TÜRÜ (*)</Text>
-            <TouchableOpacity 
-              style={[styles.input, focus === 'tur' && styles.redBorder]} 
-              onPress={() => { setShowTurModal(true); setFocus('tur'); Keyboard.dismiss(); }}
-            >
-              <Text style={{color: f.tur ? '#000' : '#aaa', fontWeight: '500'}}>{f.tur || 'Seçiniz...'}</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.label}>MARKA</Text>
-            <TextInput ref={rMarka} style={[styles.input, focus === 'marka' && styles.redBorder]} onFocus={()=>setFocus('marka')} value={f.marka} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rIsim.current?.focus()} />
-
-            <Text style={styles.label}>PARÇA İSMİ (*)</Text>
-            <TextInput ref={rIsim} style={[styles.input, focus === 'isim' && styles.redBorder]} onFocus={()=>setFocus('isim')} value={f.isim} onChangeText={(v)=>setF({...f, isim:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rNo.current?.focus()} />
-
-            <Text style={styles.label}>PARÇA NO (*)</Text>
-            <TextInput ref={rNo} style={[styles.input, focus === 'no' && styles.redBorder, {marginBottom: 30}]} onFocus={()=>setFocus('no')} value={f.no} onChangeText={(v)=>setF({...f, no:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rAlis.current?.focus()} />
-
-            <Text style={styles.label}>ALIŞ FİYATI (₺) (*)</Text>
-            <TextInput ref={rAlis} style={[styles.input, focus === 'alis' && styles.redBorder]} onFocus={()=>setFocus('alis')} keyboardType="numeric" value={f.alis} onChangeText={(v)=>setF({...f, alis:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rKar.current?.focus()} />
-
-            <View style={styles.ratioRow}>
-              <View style={styles.ratioCol}><Text style={styles.minLabel}>KÂR %</Text>
-                <TextInput ref={rKar} style={[styles.minInput, focus === 'kar' && styles.redBorder]} onFocus={()=>setFocus('kar')} keyboardType="numeric" value={f.kar} onChangeText={(v)=>setF({...f, kar:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rKdv.current?.focus()} />
-              </View>
-              <View style={styles.ratioCol}><Text style={styles.minLabel}>KDV %</Text>
-                <TextInput ref={rKdv} style={[styles.minInput, focus === 'kdv' && styles.redBorder]} onFocus={()=>setFocus('kdv')} keyboardType="numeric" value={f.kdv} onChangeText={(v)=>setF({...f, kdv:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rIsk.current?.focus()} />
-              </View>
-              <View style={styles.ratioCol}><Text style={styles.minLabel}>İSK %</Text>
-                <TextInput ref={rIsk} style={[styles.minInput, focus === 'iskonto' && styles.redBorder]} onFocus={()=>setFocus('iskonto')} keyboardType="numeric" value={f.iskonto} onChangeText={(v)=>setF({...f, iskonto:v})} returnKeyType="done" onSubmitEditing={() => { Keyboard.dismiss(); setFocus('kayit'); }} />
-              </View>
+            <View style={styles.header}>
+              <View style={[styles.badge, { backgroundColor: theme.badgeBtnBg }]}><Text style={styles.bt}>STOK GİRİŞİ</Text></View>
+              <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>HESAPLANAN SATIŞ FİYATI</Text>
-            {/* ZARAR DURUMUNDA KUTU VE YAZI KIRMIZIYA DÖNER */}
-            <View style={[styles.resultBox, (parseFloat(f.satis) < parseFloat(f.alis)) && styles.errorResultBox]}>
-              <Text style={[styles.resultValue, (parseFloat(f.satis) < parseFloat(f.alis)) && {color: '#FF3B30'}]}>
-                {f.satis} ₺
-              </Text>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={{paddingBottom: 150}}>
+              
+              <Text style={[styles.label, { color: theme.labelColor }]}>İŞLEM TÜRÜ (*)</Text>
+              <TouchableOpacity 
+                style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'tur' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                onPress={() => { setShowTurModal(true); setFocus('tur'); Keyboard.dismiss(); }}
+              >
+                <Text style={{color: f.tur ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.tur || 'Seçiniz...'}</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAttempt}>
-              <Text style={styles.saveBtnText}>KAYDI TAMAMLA</Text>
-            </TouchableOpacity>
-          </ScrollView>
+              <Text style={[styles.label, { color: theme.labelColor }]}>MARKA</Text>
+              <TextInput ref={rMarka} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'marka' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('marka')} value={f.marka} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rIsim.current?.focus()} />
 
-          <Modal visible={showTurModal} transparent animationType="fade">
-            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={()=>setShowTurModal(false)}>
-              <View style={styles.miniMenu}>
-                {['Stok Tamamlama', 'Bekleyen Parça'].map(t => (
-                  <TouchableOpacity key={t} style={styles.menuItem} onPress={()=>{setF({...f, tur:t}); setShowTurModal(false); setFocus('marka'); setTimeout(()=>rMarka.current?.focus(), 400);}}>
-                    <Text style={styles.menuText}>{t}</Text>
-                  </TouchableOpacity>
-                ))}
+              <Text style={[styles.label, { color: theme.labelColor }]}>PARÇA İSMİ (*)</Text>
+              <TextInput ref={rIsim} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'isim' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('isim')} value={f.isim} onChangeText={(v)=>setF({...f, isim:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rNo.current?.focus()} />
+
+              <Text style={[styles.label, { color: theme.labelColor }]}>PARÇA NO (*)</Text>
+              <TextInput ref={rNo} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'no' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('no')} value={f.no} onChangeText={(v)=>setF({...f, no:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rAlis.current?.focus()} />
+
+              <Text style={[styles.label, { color: theme.labelColor }]}>ALIŞ FİYATI (₺) (*)</Text>
+              <TextInput ref={rAlis} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'alis' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('alis')} keyboardType="numeric" value={f.alis} onChangeText={(v)=>setF({...f, alis:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rKar.current?.focus()} />
+
+              <View style={styles.ratioRow}>
+                <View style={styles.ratioCol}><Text style={[styles.minLabel, { color: theme.labelColor }]}>KÂR %</Text>
+                  <TextInput ref={rKar} style={[styles.minInput, { backgroundColor: theme.minInputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'kar' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('kar')} keyboardType="numeric" value={f.kar} onChangeText={(v)=>setF({...f, kar:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rKdv.current?.focus()} />
+                </View>
+                <View style={styles.ratioCol}><Text style={[styles.minLabel, { color: theme.labelColor }]}>KDV %</Text>
+                  <TextInput ref={rKdv} style={[styles.minInput, { backgroundColor: theme.minInputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'kdv' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('kdv')} keyboardType="numeric" value={f.kdv} onChangeText={(v)=>setF({...f, kdv:v})} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={()=>rIsk.current?.focus()} />
+                </View>
+                <View style={styles.ratioCol}><Text style={[styles.minLabel, { color: theme.labelColor }]}>İSK %</Text>
+                  {/* MÜDÜR: İSK % KUTUSUNA TAM 30px MARJİN (BOŞLUK) MÜHÜRLEDİM, KLAVYEYLE ÖPÜŞMEZ ARTIK */}
+                  <TextInput ref={rIsk} style={[styles.minInput, { backgroundColor: theme.minInputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'iskonto' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('iskonto')} keyboardType="numeric" value={f.iskonto} onChangeText={(v)=>setF({...f, iskonto:v})} returnKeyType="done" onSubmitEditing={() => { Keyboard.dismiss(); setFocus('kayit'); }} />
+                </View>
               </View>
-            </TouchableOpacity>
-          </Modal>
 
-          <StatusModal 
-            visible={status.visible} 
-            type={status.type} 
-            message={status.msg} 
-            onConfirm={handleConfirmAction} 
-          />
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+              <Text style={[styles.label, { color: theme.labelColor }]}>HESAPLANAN SATIŞ FİYATI</Text>
+              <View style={[styles.resultBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }, (parseFloat(f.satis) < parseFloat(f.alis)) && styles.errorResultBox]}>
+                <Text style={[styles.resultValue, { color: theme.textColor }, (parseFloat(f.satis) < parseFloat(f.alis)) && {color: '#FF3B30'}]}>
+                  {f.satis} ₺
+                </Text>
+              </View>
+
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}>
+                <Text style={styles.saveBtnText}>KAYDI TAMAMLA</Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* İŞLEM TÜRÜ MODALI (GECE MODU) */}
+            <Modal visible={showTurModal} transparent animationType="fade">
+              <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={()=>setShowTurModal(false)}>
+                <View style={[styles.miniMenu, { backgroundColor: theme.cardBg }]}>
+                  {['Stok Tamamlama', 'Bekleyen Parça'].map(t => (
+                    <TouchableOpacity key={t} style={[styles.menuItem, { borderBottomColor: theme.borderColor }]} onPress={()=>{setF({...f, tur:t}); setShowTurModal(false); setFocus('marka'); setTimeout(()=>rMarka.current?.focus(), 400);}}>
+                      <Text style={[styles.menuText, { color: theme.textColor }]}>{t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+            <StatusModal 
+              visible={status.visible} 
+              type={status.type} 
+              message={status.msg} 
+              onConfirm={handleConfirmAction} 
+              isDarkMode={isDarkMode}
+            />
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -197,28 +222,27 @@ export default function StokGirisiFormu({ visible, onClose }: any) {
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 50 : 20, marginBottom: 15 },
-  badge: { backgroundColor: '#1A1A1A', padding: 12, borderRadius: 12 },
+  badge: { padding: 12, borderRadius: 12 },
   bt: { color: '#fff', fontWeight: '900', fontSize: 13 },
-  label: { fontSize: 11, fontWeight: '900', color: '#555', marginTop: 15, marginBottom: 5 },
-  input: { backgroundColor: '#f9f9f9', borderRadius: 12, padding: 15, borderWidth: 1.5, borderColor: '#eee', fontSize: 16, fontWeight: '500' },
-  redBorder: { borderColor: '#FF3B30', backgroundColor: '#fff' },
+  label: { fontSize: 11, fontWeight: '900', marginTop: 15, marginBottom: 5 },
+  input: { borderRadius: 12, padding: 15, borderWidth: 1.5, fontSize: 16, fontWeight: '500' },
+  redBorder: { borderColor: '#FF3B30' },
   ratioRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
   ratioCol: { width: '30%' },
-  minLabel: { fontSize: 10, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, color: '#333' },
-  minInput: { backgroundColor: '#f2f2f2', borderRadius: 10, padding: 12, textAlign: 'center', fontWeight: '500', fontSize: 16, borderWidth: 1.5, borderColor: '#eee' },
-  resultBox: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 12, borderWidth: 1.5, borderColor: '#eee', alignItems: 'center', marginTop: 5 },
-  errorResultBox: { borderColor: '#FF3B30', backgroundColor: '#FFF5F5' },
-  resultValue: { color: '#1A1A1A', fontSize: 24, fontWeight: '900' },
-  saveBtn: { backgroundColor: '#1A1A1A', height: 65, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 30, marginBottom: 40 },
+  minLabel: { fontSize: 10, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
+  minInput: { borderRadius: 10, padding: 12, textAlign: 'center', fontWeight: '500', fontSize: 16, borderWidth: 1.5 },
+  resultBox: { padding: 15, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', marginTop: 5 },
+  errorResultBox: { borderColor: '#FF3B30', backgroundColor: '#331a1a' },
+  resultValue: { fontSize: 24, fontWeight: '900' },
+  saveBtn: { height: 65, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 30, marginBottom: 40 },
   saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '900' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  miniMenu: { backgroundColor: '#fff', width: '85%', borderRadius: 30, padding: 15 },
-  menuItem: { padding: 22, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', alignItems: 'center' },
-  menuText: { fontSize: 17, fontWeight: '500', color: '#1A1A1A', letterSpacing: 0.3 },
-  selectOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  miniStatusContent: { backgroundColor: '#fff', width: '90%', borderRadius: 15, padding: 20, elevation: 20 },
+  miniMenu: { width: '85%', borderRadius: 30, padding: 15 },
+  menuItem: { padding: 22, borderBottomWidth: 1, alignItems: 'center' },
+  menuText: { fontSize: 17, fontWeight: '500', letterSpacing: 0.3 },
+  miniStatusContent: { width: '90%', borderRadius: 15, padding: 20, elevation: 20 },
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statusMainText: { fontSize: 18, fontWeight: '900', color: '#1A1A1A' },
-  statusSubText: { fontSize: 14, color: '#666', marginTop: 5, fontWeight: '500' },
-  miniConfirmBtn: { backgroundColor: '#1A1A1A', width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }
+  statusMainText: { fontSize: 18, fontWeight: '900' },
+  statusSubText: { fontSize: 14, marginTop: 5, fontWeight: '500' },
+  miniConfirmBtn: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }
 });
