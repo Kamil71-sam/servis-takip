@@ -11,6 +11,7 @@ import { Stack, useRouter } from 'expo-router';
 import YeniMusteriFormu from '../components/YeniMusteriFormu'; 
 import YeniFirmaFormu from '../components/YeniFirmaFormu'; 
 import YeniServisKaydi from '../components/YeniServisKaydi'; 
+import StokTakibiAnaEkran from '../components/StokTakibiAnaEkran'; // STOK ANA EKRAN İTHALATI
 
 export default function DashboardScreen() {
   const router = useRouter(); 
@@ -18,10 +19,11 @@ export default function DashboardScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stokSayisi, setStokSayisi] = useState(0); 
 
-  // --- ASANSÖR KİLİTLERİ (MODAL STATES) ---
+  // --- ASANSÖR KİLİTLERİ (HEPSİ KAPALI BAŞLAR - BOZUKLUK GİDERİLDİ) ---
   const [musteriVisible, setMusteriVisible] = useState(false);
   const [firmaVisible, setFirmaVisible] = useState(false);
   const [servisVisible, setServisVisible] = useState(false);
+  const [stokVisible, setStokVisible] = useState(false); // STOK TAKİBİ İÇİN YENİ KİLİT
 
   // ANDROID CANLI BAĞLANTI (192.168.1.43:5000)
   useEffect(() => {
@@ -87,54 +89,66 @@ export default function DashboardScreen() {
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
           </TouchableOpacity>
 
-          <View style={styles.alertBanner}>
+          {/* STOK İKAZ BANNERI - TIKLANABİLİR YAPILDI */}
+          <TouchableOpacity 
+            style={styles.alertBanner} 
+            activeOpacity={0.9} 
+            onPress={() => setStokVisible(true)}
+          >
             <Ionicons name="warning" size={22} color="#fff" />
             <View style={{marginLeft: 10}}>
               <Text style={styles.alertTitle}>STOK TAKİP SİSTEMİ</Text>
               <Text style={styles.alertText}>{stokSayisi > 0 ? `${stokSayisi} Ürün Kritik!` : "Normal"}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </ScrollView>
 
         {isMenuOpen && (
           <View style={styles.overlay}>
             <TouchableOpacity style={{flex: 1}} onPress={() => setIsMenuOpen(false)} />
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
-               <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
-               <ScrollView showsVerticalScrollIndicator={false}>
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setMusteriVisible(true); setIsMenuOpen(false); }}>
-                  <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
-                </TouchableOpacity>
+                <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMusteriVisible(true); setIsMenuOpen(false); }}>
+                   <Ionicons name="person-add-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                   <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Müşteri Kaydı</Text>
+                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setFirmaVisible(true); setIsMenuOpen(false); }}>
-                  <Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text>
-                </TouchableOpacity>
+                 <TouchableOpacity style={styles.menuItem} onPress={() => { setFirmaVisible(true); setIsMenuOpen(false); }}>
+                   <Ionicons name="business-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                   <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Yeni Firma Kaydı</Text>
+                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setServisVisible(true); setIsMenuOpen(false); }}>
-                  <Ionicons name="construct-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
-                  <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Teknik Servis Kaydı</Text>
-                </TouchableOpacity>
-              </ScrollView>
-               
-               <View style={styles.fixedInfoArea}>
-                 <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
-                 <View style={styles.fixedInfoRow}><Ionicons name="cube" size={18} color="#FF3B30" /><Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Stok: {stokSayisi}</Text></View>
-               </View>
+                 <TouchableOpacity style={styles.menuItem} onPress={() => { setServisVisible(true); setIsMenuOpen(false); }}>
+                   <Ionicons name="construct-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                   <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Teknik Servis Kaydı</Text>
+                 </TouchableOpacity>
+
+                 {/* YENİ STOK TAKİBİ BUTONU */}
+                 <TouchableOpacity style={styles.menuItem} onPress={() => { setStokVisible(true); setIsMenuOpen(false); }}>
+                   <Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                   <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Takibi</Text>
+                 </TouchableOpacity>
+               </ScrollView>
+                
+                <View style={styles.fixedInfoArea}>
+                  <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
+                  <View style={styles.fixedInfoRow}><Ionicons name="cube" size={18} color="#FF3B30" /><Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Stok: {stokSayisi}</Text></View>
+                </View>
             </View>
           </View>
         )}
 
+        {/* ASANSÖRLER (MODALLAR) */}
         <YeniMusteriFormu visible={musteriVisible} onClose={() => setMusteriVisible(false)} />
         <YeniFirmaFormu visible={firmaVisible} onClose={() => setFirmaVisible(false)} />
         <YeniServisKaydi visible={servisVisible} onClose={() => setServisVisible(false)} />
+        <StokTakibiAnaEkran visible={stokVisible} onClose={() => setStokVisible(false)} />
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-// --- TÜM HATALARI SİLECEK OLAN KRİTİK STYLES BÖLÜMÜ ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fdfdfd' },
   darkContainer: { backgroundColor: '#121212' },
