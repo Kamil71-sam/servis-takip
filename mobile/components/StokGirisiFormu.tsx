@@ -13,7 +13,7 @@ const StatusModal = ({ visible, type, message, onConfirm }: any) => (
         <View style={styles.statusRow}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.statusMainText, type === 'error' && { color: '#FF3B30' }]}>
-              {type === 'success' ? 'KAYIT TAMAMLANDI' : 'EKSİK BİLGİ'}
+              {type === 'success' ? 'KAYIT TAMAMLANDI' : 'İŞLEM ENGELLENDİ'}
             </Text>
             <Text style={styles.statusSubText}>{message}</Text>
           </View>
@@ -21,7 +21,6 @@ const StatusModal = ({ visible, type, message, onConfirm }: any) => (
             style={[styles.miniConfirmBtn, type === 'error' && { backgroundColor: '#FF3B30' }]} 
             onPress={onConfirm}
           >
-            {/* ÇEK İŞARETİ SÖKÜLDÜ, OK İŞARETİ MÜHÜRLENDİ */}
             <Ionicons name={type === 'success' ? "arrow-forward" : "close"} size={24} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -56,6 +55,7 @@ export default function StokGirisiFormu({ visible, onClose }: any) {
     }
   }, [visible]);
 
+  // HESAPLAMA MOTORU (KAR+ / KDV+ / İSKONTO-)
   useEffect(() => {
     const a = parseFloat(f.alis) || 0;
     const kr = parseFloat(f.kar) || 0;
@@ -84,11 +84,26 @@ export default function StokGirisiFormu({ visible, onClose }: any) {
         else if (target === 'isim') rIsim.current?.focus();
         else if (target === 'no') rNo.current?.focus();
         else if (target === 'alis') rAlis.current?.focus();
+        else if (target === 'iskonto') rIsk.current?.focus(); // Zarar durumunda buraya fırlatır
       }, 300);
     }
   };
 
   const handleSaveAttempt = () => {
+    const alisRakam = parseFloat(f.alis) || 0;
+    const satisRakam = parseFloat(f.satis) || 0;
+
+    // --- KRİTİK KONTROL: ZARARINA SATIŞ ENGELLİ ---
+    if (alisRakam > 0 && satisRakam < alisRakam) {
+      setStatus({ 
+        visible: true, 
+        type: 'error', 
+        msg: 'Zararına işlem yapılamaz! Satış fiyatı alışın altında.', 
+        errorTarget: 'iskonto' 
+      });
+      return;
+    }
+
     if (!f.tur) { setStatus({ visible: true, type: 'error', msg: 'Lütfen İşlem Türü seçiniz! (*)', errorTarget: 'tur' }); return; }
     if (!f.isim) { setStatus({ visible: true, type: 'error', msg: 'Lütfen Parça İsmi giriniz! (*)', errorTarget: 'isim' }); return; }
     if (!f.no) { setStatus({ visible: true, type: 'error', msg: 'Lütfen Parça No giriniz! (*)', errorTarget: 'no' }); return; }
@@ -143,8 +158,11 @@ export default function StokGirisiFormu({ visible, onClose }: any) {
             </View>
 
             <Text style={styles.label}>HESAPLANAN SATIŞ FİYATI</Text>
-            <View style={styles.resultBox}>
-              <Text style={styles.resultValue}>{f.satis} ₺</Text>
+            {/* ZARAR DURUMUNDA KUTU VE YAZI KIRMIZIYA DÖNER */}
+            <View style={[styles.resultBox, (parseFloat(f.satis) < parseFloat(f.alis)) && styles.errorResultBox]}>
+              <Text style={[styles.resultValue, (parseFloat(f.satis) < parseFloat(f.alis)) && {color: '#FF3B30'}]}>
+                {f.satis} ₺
+              </Text>
             </View>
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAttempt}>
@@ -189,6 +207,7 @@ const styles = StyleSheet.create({
   minLabel: { fontSize: 10, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, color: '#333' },
   minInput: { backgroundColor: '#f2f2f2', borderRadius: 10, padding: 12, textAlign: 'center', fontWeight: '500', fontSize: 16, borderWidth: 1.5, borderColor: '#eee' },
   resultBox: { backgroundColor: '#f9f9f9', padding: 15, borderRadius: 12, borderWidth: 1.5, borderColor: '#eee', alignItems: 'center', marginTop: 5 },
+  errorResultBox: { borderColor: '#FF3B30', backgroundColor: '#FFF5F5' },
   resultValue: { color: '#1A1A1A', fontSize: 24, fontWeight: '900' },
   saveBtn: { backgroundColor: '#1A1A1A', height: 65, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 30, marginBottom: 40 },
   saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '900' },

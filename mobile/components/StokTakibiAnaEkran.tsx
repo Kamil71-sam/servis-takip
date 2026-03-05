@@ -5,25 +5,25 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import StokGirisiFormu from './StokGirisiFormu';
+import StokCikisiFormu from './StokCikisiFormu'; // MÜDÜR, EKSİK OLAN İTHALATI BURAYA EKLEDİM
 
 export default function StokTakibiAnaEkran({ visible, onClose }: any) {
   const [entryVisible, setEntryVisible] = useState(false);
+  const [exitVisible, setExitVisible] = useState(false); // ÇIKIŞ FORMU İÇİN YENİ STATE
 
   return (
     <Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
       <View style={styles.overlay}>
-        {/* BLUR HATASI ALMAMAK İÇİN ŞIK BİR ŞEFFAF ARKA PLAN */}
+        {/* EKRAN DIŞINA BASILINCA KAPANMA ÖZELLİĞİ */}
         <TouchableOpacity style={styles.absFill} activeOpacity={1} onPress={onClose} />
         
         <View style={styles.modernCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>STOK YÖNETİMİ</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close-circle" size={36} color="#FF3B30" />
-            </TouchableOpacity>
           </View>
 
           <View style={styles.buttonRow}>
+            {/* STOK GİRİŞİ BUTONU */}
             <TouchableOpacity 
               style={styles.actionBtn} 
               onPress={() => setEntryVisible(true)}
@@ -35,9 +35,10 @@ export default function StokTakibiAnaEkran({ visible, onClose }: any) {
               <Text style={styles.btnText}>STOK GİRİŞİ</Text>
             </TouchableOpacity>
 
+            {/* STOK ÇIKIŞI BUTONU: ARTIK AKTİF */}
             <TouchableOpacity 
               style={styles.actionBtn} 
-              onPress={() => alert('Stok Çıkışı Hazırlanıyor...')}
+              onPress={() => setExitVisible(true)}
               activeOpacity={0.8}
             >
               <View style={[styles.iconBox, {backgroundColor: '#FFEBEE'}]}>
@@ -48,7 +49,9 @@ export default function StokTakibiAnaEkran({ visible, onClose }: any) {
           </View>
         </View>
 
+        {/* FORMLARIN ÇAĞRILMASI */}
         <StokGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} />
+        <StokCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} />
       </View>
     </Modal>
   );
@@ -68,9 +71,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 30 
+  },
   cardTitle: { fontSize: 18, fontWeight: '900', color: '#1A1A1A' },
-  closeBtn: { padding: 5 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
   actionBtn: { width: '45%', alignItems: 'center' },
   iconBox: { width: 80, height: 80, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
