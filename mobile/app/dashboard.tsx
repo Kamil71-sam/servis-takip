@@ -11,7 +11,8 @@ import { Stack, useRouter } from 'expo-router';
 import YeniMusteriFormu from '../components/YeniMusteriFormu'; 
 import YeniFirmaFormu from '../components/YeniFirmaFormu'; 
 import YeniServisKaydi from '../components/YeniServisKaydi'; 
-import StokTakibiAnaEkran from '../components/StokTakibiAnaEkran'; // STOK ANA EKRAN İTHALATI
+import StokTakibiAnaEkran from '../components/StokTakibiAnaEkran';
+import MaliIslemlerAnaEkran from '../components/MaliIslemlerAnaEkran'; // MÜDÜR: YENİ MALİ İŞLEMLER İTHALATI EKLENDİ
 
 export default function DashboardScreen() {
   const router = useRouter(); 
@@ -19,11 +20,12 @@ export default function DashboardScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stokSayisi, setStokSayisi] = useState(0); 
 
-  // --- ASANSÖR KİLİTLERİ (HEPSİ KAPALI BAŞLAR - BOZUKLUK GİDERİLDİ) ---
+  // --- ASANSÖR KİLİTLERİ ---
   const [musteriVisible, setMusteriVisible] = useState(false);
   const [firmaVisible, setFirmaVisible] = useState(false);
   const [servisVisible, setServisVisible] = useState(false);
-  const [stokVisible, setStokVisible] = useState(false); // STOK TAKİBİ İÇİN YENİ KİLİT
+  const [stokVisible, setStokVisible] = useState(false); 
+  const [maliVisible, setMaliVisible] = useState(false); // MÜDÜR: MALİ İŞLEMLER İÇİN YENİ KİLİT
 
   // ANDROID CANLI BAĞLANTI (192.168.1.43:5000)
   useEffect(() => {
@@ -129,6 +131,13 @@ export default function DashboardScreen() {
                    <Ionicons name="cube-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
                    <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Stok Takibi</Text>
                  </TouchableOpacity>
+
+                 {/* MÜDÜR: MALİ İŞLEMLER BUTONU BURAYA EKLENDİ */}
+                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMaliVisible(true); setIsMenuOpen(false); }}>
+                   <Ionicons name="wallet-outline" size={24} color={isDarkMode ? "#fff" : "#333"} />
+                   <Text style={[styles.menuItemText, isDarkMode && styles.darkText]}>Mali İşlemler</Text>
+                 </TouchableOpacity>
+
                </ScrollView>
                 
                 <View style={styles.fixedInfoArea}>
@@ -144,6 +153,9 @@ export default function DashboardScreen() {
         <YeniFirmaFormu visible={firmaVisible} onClose={() => setFirmaVisible(false)} isDarkMode={isDarkMode} />
         <YeniServisKaydi visible={servisVisible} onClose={() => setServisVisible(false)} isDarkMode={isDarkMode} />
         <StokTakibiAnaEkran visible={stokVisible} onClose={() => setStokVisible(false)} isDarkMode={isDarkMode} />
+        
+        {/* MÜDÜR: YENİ MALİ İŞLEMLER ASANSÖRÜ BURAYA EKLENDİ */}
+        <MaliIslemlerAnaEkran visible={maliVisible} onClose={() => setMaliVisible(false)} isDarkMode={isDarkMode} />
       </SafeAreaView>
     </SafeAreaProvider>
   );
