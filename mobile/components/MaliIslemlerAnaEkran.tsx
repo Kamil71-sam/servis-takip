@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ParaGirisiFormu from './ParaGirisiFormu';
-// import ParaCikisiFormu from './ParaCikisiFormu'; // Birazdan ekleyeceğiz
+import ParaCikisiFormu from './ParaCikisiFormu'; // MÜDÜR: Yorum satırı kaldırıldı, asansör bağlandı!
 
 export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: any) {
   const [entryVisible, setEntryVisible] = useState(false);
@@ -23,15 +23,15 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
           </View>
 
           <View style={styles.buttonRow}>
-            {/* PARA GİRİŞİ BUTONU */}
+            {/* PARA GİRİŞİ BUTONU - MÜDÜR: YEŞİL TAMAMEN SİLİNDİ, ANTRASİT NİZAMI GELDİ */}
             <TouchableOpacity style={styles.actionBtn} onPress={() => setEntryVisible(true)} activeOpacity={0.8}>
-              <View style={[styles.iconBox, {backgroundColor: isDarkMode ? '#1a3320' : '#E8F5E9'}]}>
-                <Ionicons name="cash" size={40} color="#4CD964" />
+              <View style={[styles.iconBox, {backgroundColor: isDarkMode ? '#2c2c2c' : '#f2f2f2'}]}>
+                <Ionicons name="cash" size={40} color={isDarkMode ? '#fff' : '#1A1A1A'} />
               </View>
               <Text style={[styles.btnText, isDarkMode && styles.darkText]}>PARA GİRİŞİ</Text>
             </TouchableOpacity>
 
-            {/* PARA ÇIKIŞI BUTONU */}
+            {/* PARA ÇIKIŞI BUTONU - MÜDÜR: BURASI ZATEN KIRMIZI/BEYAZ NİZAMINDA */}
             <TouchableOpacity style={styles.actionBtn} onPress={() => setExitVisible(true)} activeOpacity={0.8}>
               <View style={[styles.iconBox, {backgroundColor: isDarkMode ? '#331a1a' : '#FFEBEE'}]}>
                 <Ionicons name="card" size={40} color="#FF3B30" />
@@ -43,7 +43,8 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
 
         {/* FORMLARA GECE MODU BİLGİSİ İLETİLİYOR */}
         <ParaGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} isDarkMode={isDarkMode} />
-        {/* <ParaCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} /> */}
+        {/* ÇIKIŞ FORMU ARTIK AKTİF */}
+        <ParaCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} />
       </View>
     </Modal>
   );
