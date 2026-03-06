@@ -154,11 +154,13 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : undefined} 
-          style={{ flex: 1 }}
-        >
+      {/* MÜDÜR: Android klavyesini tamamen kendi haline bıraktım (undefined). İtişi ScrollView içindeki dev boşluk halledecek. */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : undefined} 
+        style={{ flex: 1, backgroundColor: theme.bg }}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          
           <View style={[styles.header, { paddingHorizontal: 20 }]}>
             <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
               <Text style={styles.bt}>PARA ÇIKIŞI</Text>
@@ -172,7 +174,7 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
             style={{ flex: 1, paddingHorizontal: 20 }}
             showsVerticalScrollIndicator={false} 
             keyboardShouldPersistTaps="handled" 
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: 400 }} 
+            contentContainerStyle={{ flexGrow: 1 }} 
           >
             
             <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TÜRÜ (*)</Text>
@@ -337,6 +339,9 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                 <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}>
                   <Text style={styles.saveBtnText}>KASADAN DÜŞ</Text>
                 </TouchableOpacity>
+
+                {/* MÜDÜR: İŞTE BETON BLOK BURADA. KLAVYE AÇILDIĞINDA EKRANI İSTEDİĞİN KADAR YUKARI İTEBİLMENİ SAĞLAYACAK */}
+                <View style={{ height: 400 }} />
               </>
             )}
 
