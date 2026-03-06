@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  Modal, ScrollView, SafeAreaView, Platform, TextInput, Keyboard 
+  Modal, ScrollView, SafeAreaView, Platform, TextInput, Keyboard, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ParaGirisiFormu from './ParaGirisiFormu';
@@ -23,7 +23,7 @@ const getTodayString = () => {
   return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
 };
 
-// --- MÜDÜR: İŞTE O YENİ, JİLET GİBİ ÇIKTI ALMA PENCERESİ ---
+// ÇIKTI ALMA ASANSÖRÜ
 const CiktiAlModal = ({ visible, onClose, onConfirm, isDarkMode }: any) => {
   const theme = {
     bg: isDarkMode ? '#1e1e1e' : '#fff',
@@ -59,7 +59,7 @@ const CiktiAlModal = ({ visible, onClose, onConfirm, isDarkMode }: any) => {
   );
 };
 
-// --- FİLTRE ASANSÖRÜ ---
+// FİLTRE ASANSÖRÜ
 const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => {
   const [aktifSekme, setAktifSekme] = useState('zaman'); 
   const [seciliAyar, setSeciliAyar] = useState('Bu Ay'); 
@@ -81,8 +81,9 @@ const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => 
 
   const handleUygula = () => {
     let filtreOzeti = '';
+    
     if (aktifSekme === 'zaman') {
-      filtreOzeti = seciliAyar === 'Tarih Aralığı' ? `${baslangic} - ${bitis}` : `Zaman: ${seciliAyar}`;
+      filtreOzeti = seciliAyar === 'Tarih Aralığı' ? `${baslangic} - ${bitis}` : `${seciliAyar} Nakit Hareketleri`;
     } else if (aktifSekme === 'gelir') {
       if (gelirTipi === 'Tamir') {
         filtreOzeti = seciliUsta === 'Tümü' ? 'Tüm Tamir Gelirleri' : `Tamir Geliri (${seciliUsta})`;
@@ -94,6 +95,7 @@ const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => 
     } else {
       filtreOzeti = seciliAyar === 'Tümü' ? 'Tüm Gider Kalemleri' : `${seciliAyar} Çıkışları`;
     }
+    
     onApply(filtreOzeti);
   };
 
@@ -194,8 +196,8 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [ciktiModalVisible, setCiktiModalVisible] = useState(false);
   
-  // Arka planda filtre çalışmaya devam edecek ama ekranda yazısı görünmeyecek
-  const [aktifFiltreMetni, setAktifFiltreMetni] = useState('Son 5 Hareket');
+  // MÜDÜR: İLK AÇILIŞTA "SON 5 NAKİT HAREKETİ" YAZACAK
+  const [aktifFiltreMetni, setAktifFiltreMetni] = useState('Son 5 Nakit Hareketi');
 
   const handleFiltreUygula = (ozetMetni: string) => {
     setAktifFiltreMetni(ozetMetni);
@@ -204,7 +206,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
 
   const handlePdfOnayla = () => {
     setCiktiModalVisible(false);
-    // DB Bağlanınca buraya PDF indirme motoru eklenecek
     console.log("PDF Çıktısı Hazırlanıyor...");
   };
 
@@ -267,21 +268,22 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               </TouchableOpacity>
             </View>
 
-            {/* MÜDÜR: İSTEDİĞİN GİBİ DÜZENLENEN BAŞLIK KISMI */}
             <View style={styles.listHeaderRow}>
-              {/* SOL: HUNİ (FİLTRE) */}
               <TouchableOpacity style={[styles.iconActionBtn, { backgroundColor: theme.btnBg }]} onPress={() => setFilterModalVisible(true)}>
                 <Ionicons name="funnel" size={20} color={theme.textColor} />
               </TouchableOpacity>
               
-              {/* ORTA: YAZI (Altındaki açıklama silindi, tam ortalandı) */}
               <Text style={[styles.sectionTitleCentered, { color: theme.textColor }]}>NAKİT HAREKETLERİ</Text>
               
-              {/* SAĞ: YAZICI (ÇIKTI) */}
               <TouchableOpacity style={[styles.iconActionBtn, { backgroundColor: theme.btnBg }]} onPress={() => setCiktiModalVisible(true)}>
                 <Ionicons name="print" size={22} color={theme.textColor} />
               </TouchableOpacity>
             </View>
+
+            {/* MÜDÜR: İŞTE YENİ EKLENEN AKILLI ALT BAŞLIK */}
+            <Text style={[styles.listSubHeader, { color: theme.subText }]}>
+              • {aktifFiltreMetni.toUpperCase()}
+            </Text>
 
             <View style={[styles.listContainer, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
               {MOCK_HAREKETLER.map((islem, index) => (
@@ -339,7 +341,10 @@ const styles = StyleSheet.create({
 
   listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   iconActionBtn: { width: 44, height: 44, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  sectionTitleCentered: { flex: 1, fontSize: 16, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 },
+  sectionTitleCentered: { flex: 1, fontSize: 17, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 },
+  
+  // MÜDÜR: ALT BAŞLIĞIN STİLİ
+  listSubHeader: { fontSize: 12, fontWeight: 'bold', marginBottom: 10, marginLeft: 5, letterSpacing: 0.5 },
 
   listContainer: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 15, elevation: 2 },
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15 },
@@ -351,7 +356,6 @@ const styles = StyleSheet.create({
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   
-  // FİLTRE PANELİ STİLLERİ
   filterPanelContent: { width: '90%', borderRadius: 25, padding: 25, elevation: 20 },
   filterTabsRow: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, marginBottom: 15 },
   filterTab: { flex: 1, alignItems: 'center', paddingVertical: 15, borderBottomWidth: 3, borderBottomColor: 'transparent' },
@@ -364,7 +368,6 @@ const styles = StyleSheet.create({
   applyBtn: { width: '100%', paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: 10 },
   applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
 
-  // ÇIKTI AL MODALI STİLLERİ
   ciktiModalContent: { width: '85%', borderRadius: 25, padding: 25, alignItems: 'center', elevation: 20 },
   ciktiIconBox: { width: 70, height: 70, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   ciktiTitle: { fontSize: 18, fontWeight: '900', marginBottom: 10 },

@@ -153,20 +153,27 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
-      {/* MÜDÜR: KeyboardAvoidingView VE SafeAreaView YENİDEN YAPILANDIRILDI - ARTIK EZİLMEZ */}
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: theme.bg }}>
-        <SafeAreaView style={styles.safe}>
-          
-          <View style={styles.header}>
+    <Modal visible={visible} animationType="slide" transparent={false}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : undefined} 
+          style={{ flex: 1 }}
+        >
+          <View style={[styles.header, { paddingHorizontal: 20 }]}>
             <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
               <Text style={styles.bt}>PARA ÇIKIŞI</Text>
             </View>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color={theme.textColor} /></TouchableOpacity>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close-circle" size={42} color={theme.textColor} />
+            </TouchableOpacity>
           </View>
 
-          {/* MÜDÜR: contentContainerStyle={ flexGrow: 1, paddingBottom: 100 } EKLENDİ. KLAVYE ÇIKINCA OTOMATİK SCROLL OLACAK */}
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
+          <ScrollView 
+            style={{ flex: 1, paddingHorizontal: 20 }}
+            showsVerticalScrollIndicator={false} 
+            keyboardShouldPersistTaps="handled" 
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 400 }} 
+          >
             
             <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TÜRÜ (*)</Text>
             <TouchableOpacity 
@@ -207,7 +214,10 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                       onChangeText={(v)=>setF({...f, siparisNo:v})} 
                       returnKeyType="next" 
                       blurOnSubmit={false} 
-                      onSubmitEditing={() => { setFocus('siparisTarihi'); setTimeout(() => rSiparisTarihi.current?.focus(), 150); }} 
+                      onSubmitEditing={() => { 
+                        setFocus('siparisTarihi'); 
+                        setTimeout(() => rSiparisTarihi.current?.focus(), 150); 
+                      }} 
                     />
                   </View>
                 </View>
@@ -228,7 +238,10 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                         onChangeText={(v)=>setF({...f, siparisTarihi: formatDate(v)})} 
                         returnKeyType="next" 
                         blurOnSubmit={false}
-                        onSubmitEditing={() => { setFocus('gelisTarihi'); setTimeout(() => rGelisTarihi.current?.focus(), 150); }} 
+                        onSubmitEditing={() => { 
+                          setFocus('gelisTarihi'); 
+                          setTimeout(() => rGelisTarihi.current?.focus(), 150); 
+                        }} 
                       />
                       <TouchableOpacity onPress={() => setF({...f, siparisTarihi: getTodayString()})}>
                         <Ionicons name="calendar" size={24} color={theme.labelColor} />
@@ -250,7 +263,11 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                         onChangeText={(v)=>setF({...f, gelisTarihi: formatDate(v)})} 
                         returnKeyType="done" 
                         blurOnSubmit={true}
-                        onSubmitEditing={() => { Keyboard.dismiss(); setFocus('talepTuru'); setTimeout(() => setModalState('talepTuru'), 150); }} 
+                        onSubmitEditing={() => { 
+                          Keyboard.dismiss(); 
+                          setFocus('talepTuru'); 
+                          setTimeout(() => setModalState('talepTuru'), 150); 
+                        }} 
                       />
                       <TouchableOpacity onPress={() => setF({...f, gelisTarihi: getTodayString()})}>
                         <Ionicons name="calendar" size={24} color={theme.labelColor} />
@@ -359,7 +376,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 50 : 20, marginBottom: 15 },
   badge: { padding: 12, borderRadius: 12 },
   bt: { color: '#fff', fontWeight: '900', fontSize: 13 },
