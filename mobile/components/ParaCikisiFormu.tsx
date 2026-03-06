@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// --- ÖZEL SEÇİM PENCERESİ ---
 const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
@@ -21,7 +20,6 @@ const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: a
   </Modal>
 );
 
-// --- DURUM PENCERESİ ---
 const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onConfirm}>
@@ -156,218 +154,206 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
-          <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
-            
-            <View style={styles.header}>
-              <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
-                <Text style={styles.bt}>PARA ÇIKIŞI</Text>
-              </View>
-              <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color={theme.textColor} /></TouchableOpacity>
+      {/* MÜDÜR: KeyboardAvoidingView VE SafeAreaView YENİDEN YAPILANDIRILDI - ARTIK EZİLMEZ */}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: theme.bg }}>
+        <SafeAreaView style={styles.safe}>
+          
+          <View style={styles.header}>
+            <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
+              <Text style={styles.bt}>PARA ÇIKIŞI</Text>
             </View>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color={theme.textColor} /></TouchableOpacity>
+          </View>
 
-            {/* MÜDÜR: İŞTE O TAMPON BURADA (paddingBottom: 350) KLAVYEYİ EZER GEÇER */}
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom: 350}}>
-              
-              <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TÜRÜ (*)</Text>
-              <TouchableOpacity 
-                style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'tur' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                onPress={() => { setModalState('tur'); setFocus('tur'); Keyboard.dismiss(); }}
-              >
-                <Text style={{color: f.tur !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.tur}</Text>
-              </TouchableOpacity>
+          {/* MÜDÜR: contentContainerStyle={ flexGrow: 1, paddingBottom: 100 } EKLENDİ. KLAVYE ÇIKINCA OTOMATİK SCROLL OLACAK */}
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
+            
+            <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TÜRÜ (*)</Text>
+            <TouchableOpacity 
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'tur' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+              onPress={() => { setModalState('tur'); setFocus('tur'); Keyboard.dismiss(); }}
+            >
+              <Text style={{color: f.tur !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.tur}</Text>
+            </TouchableOpacity>
 
-              {f.tur === 'Stok Alımı' && (
-                <>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>MALZEME İSMİ (*)</Text>
-                  <TextInput ref={rMalzeme} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'malzeme' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('malzeme')} value={f.malzemeIsmi} onChangeText={(v)=>setF({...f, malzemeIsmi:v})} returnKeyType="next" onSubmitEditing={()=>rMarka.current?.focus()} blurOnSubmit={false} />
+            {f.tur === 'Stok Alımı' && (
+              <>
+                <Text style={[styles.label, { color: theme.labelColor }]}>MALZEME İSMİ (*)</Text>
+                <TextInput ref={rMalzeme} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'malzeme' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('malzeme')} value={f.malzemeIsmi} onChangeText={(v)=>setF({...f, malzemeIsmi:v})} returnKeyType="next" onSubmitEditing={()=>rMarka.current?.focus()} blurOnSubmit={false} />
 
-                  <View style={styles.rowLayout}>
-                    <View style={{flex: 1, marginRight: 10}}>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>MARKASI</Text>
-                      <TextInput ref={rMarka} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'marka' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('marka')} value={f.marka} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" onSubmitEditing={()=>rModel.current?.focus()} blurOnSubmit={false} />
-                    </View>
-                    <View style={{flex: 1}}>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>MODEL</Text>
-                      <TextInput ref={rModel} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'model' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('model')} value={f.model} onChangeText={(v)=>setF({...f, model:v})} returnKeyType="next" onSubmitEditing={()=>rParcaNo.current?.focus()} blurOnSubmit={false} />
-                    </View>
+                <View style={styles.rowLayout}>
+                  <View style={{flex: 1, marginRight: 10}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>MARKASI</Text>
+                    <TextInput ref={rMarka} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'marka' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('marka')} value={f.marka} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" onSubmitEditing={()=>rModel.current?.focus()} blurOnSubmit={false} />
                   </View>
+                  <View style={{flex: 1}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>MODEL</Text>
+                    <TextInput ref={rModel} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'model' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('model')} value={f.model} onChangeText={(v)=>setF({...f, model:v})} returnKeyType="next" onSubmitEditing={()=>rParcaNo.current?.focus()} blurOnSubmit={false} />
+                  </View>
+                </View>
 
-                  <View style={styles.rowLayout}>
-                    <View style={{flex: 1, marginRight: 10}}>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>PARÇA NO</Text>
-                      <TextInput ref={rParcaNo} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'parcaNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('parcaNo')} value={f.parcaNo} onChangeText={(v)=>setF({...f, parcaNo:v})} returnKeyType="next" onSubmitEditing={()=>rSiparisNo.current?.focus()} blurOnSubmit={false} />
-                    </View>
-                    <View style={{flex: 1}}>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ NO</Text>
+                <View style={styles.rowLayout}>
+                  <View style={{flex: 1, marginRight: 10}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>PARÇA NO</Text>
+                    <TextInput ref={rParcaNo} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'parcaNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('parcaNo')} value={f.parcaNo} onChangeText={(v)=>setF({...f, parcaNo:v})} returnKeyType="next" onSubmitEditing={()=>rSiparisNo.current?.focus()} blurOnSubmit={false} />
+                  </View>
+                  <View style={{flex: 1}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ NO</Text>
+                    <TextInput 
+                      ref={rSiparisNo} 
+                      style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'siparisNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                      onFocus={()=>setFocus('siparisNo')} 
+                      value={f.siparisNo} 
+                      onChangeText={(v)=>setF({...f, siparisNo:v})} 
+                      returnKeyType="next" 
+                      blurOnSubmit={false} 
+                      onSubmitEditing={() => { setFocus('siparisTarihi'); setTimeout(() => rSiparisTarihi.current?.focus(), 150); }} 
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.rowLayout}>
+                  <View style={{flex: 1, marginRight: 10}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ TARİHİ</Text>
+                    <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'siparisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
                       <TextInput 
-                        ref={rSiparisNo} 
-                        style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'siparisNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                        onFocus={()=>setFocus('siparisNo')} 
-                        value={f.siparisNo} 
-                        onChangeText={(v)=>setF({...f, siparisNo:v})} 
+                        ref={rSiparisTarihi} 
+                        style={[styles.flexInput, { color: theme.textColor }]} 
+                        onFocus={()=>setFocus('siparisTarihi')} 
+                        keyboardType="numeric" 
+                        maxLength={10} 
+                        placeholder="GG.AA.YYYY" 
+                        placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
+                        value={f.siparisTarihi} 
+                        onChangeText={(v)=>setF({...f, siparisTarihi: formatDate(v)})} 
                         returnKeyType="next" 
-                        blurOnSubmit={false} 
-                        onSubmitEditing={() => { 
-                          setFocus('siparisTarihi'); 
-                          setTimeout(() => rSiparisTarihi.current?.focus(), 150); 
-                        }} 
+                        blurOnSubmit={false}
+                        onSubmitEditing={() => { setFocus('gelisTarihi'); setTimeout(() => rGelisTarihi.current?.focus(), 150); }} 
                       />
-                    </View>
-                  </View>
-
-                  <View style={styles.rowLayout}>
-                    <View style={{flex: 1, marginRight: 10}}>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ TARİHİ</Text>
-                      <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'siparisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
-                        <TextInput 
-                          ref={rSiparisTarihi} 
-                          style={[styles.flexInput, { color: theme.textColor }]} 
-                          onFocus={()=>setFocus('siparisTarihi')} 
-                          keyboardType="numeric" 
-                          maxLength={10} 
-                          placeholder="GG.AA.YYYY" 
-                          placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
-                          value={f.siparisTarihi} 
-                          onChangeText={(v)=>setF({...f, siparisTarihi: formatDate(v)})} 
-                          returnKeyType="next" 
-                          blurOnSubmit={false}
-                          onSubmitEditing={() => { 
-                            setFocus('gelisTarihi'); 
-                            setTimeout(() => rGelisTarihi.current?.focus(), 150); 
-                          }} 
-                        />
-                        <TouchableOpacity onPress={() => setF({...f, siparisTarihi: getTodayString()})}>
-                          <Ionicons name="calendar" size={24} color={theme.labelColor} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    <View style={{flex: 1}}>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>GELİŞ TARİHİ</Text>
-                      <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'gelisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
-                        <TextInput 
-                          ref={rGelisTarihi} 
-                          style={[styles.flexInput, { color: theme.textColor }]} 
-                          onFocus={()=>setFocus('gelisTarihi')} 
-                          keyboardType="numeric" 
-                          maxLength={10} 
-                          placeholder="GG.AA.YYYY" 
-                          placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
-                          value={f.gelisTarihi} 
-                          onChangeText={(v)=>setF({...f, gelisTarihi: formatDate(v)})} 
-                          returnKeyType="next" 
-                          blurOnSubmit={false}
-                          onSubmitEditing={() => { 
-                            Keyboard.dismiss(); 
-                            setFocus('talepTuru'); 
-                            setTimeout(() => setModalState('talepTuru'), 150); 
-                          }} 
-                        />
-                        <TouchableOpacity onPress={() => setF({...f, gelisTarihi: getTodayString()})}>
-                          <Ionicons name="calendar" size={24} color={theme.labelColor} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-
-                  <Text style={[styles.label, { color: theme.labelColor }]}>ALIM AMACI (*)</Text>
-                  <TouchableOpacity 
-                    style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'talepTuru' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                    onPress={() => { setModalState('talepTuru'); setFocus('talepTuru'); Keyboard.dismiss(); }}
-                  >
-                    <Text style={{color: f.talepTuru !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.talepTuru}</Text>
-                  </TouchableOpacity>
-
-                  {f.talepTuru === 'Uzman Talebi' && (
-                    <>
-                      <Text style={[styles.label, { color: theme.labelColor }]}>HANGİ UZMAN / USTA (*)</Text>
-                      <TouchableOpacity 
-                        style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'usta' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                        onPress={() => { setModalState('usta'); setFocus('usta'); Keyboard.dismiss(); }}
-                      >
-                        <Text style={{color: f.usta !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.usta}</Text>
+                      <TouchableOpacity onPress={() => setF({...f, siparisTarihi: getTodayString()})}>
+                        <Ionicons name="calendar" size={24} color={theme.labelColor} />
                       </TouchableOpacity>
-                    </>
-                  )}
-                </>
-              )}
-
-              {/* === ORTAK ÇIKIŞ ALANLARI === */}
-              {f.tur !== 'Seçiniz...' && (
-                <>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TUTARI (₺) (*)</Text>
-                  <TextInput 
-                    ref={rTutar} 
-                    style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'tutar' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                    onFocus={()=>setFocus('tutar')} 
-                    onBlur={() => setF({...f, tutar: formatMoney(f.tutar)})}
-                    keyboardType="decimal-pad" 
-                    value={f.tutar} 
-                    onChangeText={(v)=>setF({...f, tutar:v})} 
-                    returnKeyType="next" 
-                    blurOnSubmit={false} 
-                    onSubmitEditing={()=>rAciklama.current?.focus()} 
-                  />
-
-                  <Text style={[styles.label, { color: theme.labelColor }]}>AÇIKLAMA / NOT</Text>
-                  <TextInput 
-                    ref={rAciklama} 
-                    style={[styles.input, { height: 80, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'aciklama' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                    onFocus={()=>setFocus('aciklama')} 
-                    multiline={true} 
-                    blurOnSubmit={true} 
-                    returnKeyType="done"
-                    value={f.aciklama} 
-                    onChangeText={(v)=>setF({...f, aciklama:v})} 
-                    onSubmitEditing={() => Keyboard.dismiss()} 
-                  />
-
-                  <View style={[styles.dbPriceBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-                    <Text style={[styles.dbPriceLabel, { color: theme.labelColor }]}>BU İŞLEMDE KASADAN ÇIKAN (GENEL TOPLAM)</Text>
-                    <Text style={[styles.dbPriceValue, { color: '#FF3B30' }]}>
-                      {f.tutar ? `- ${formatMoney(f.tutar)} ₺` : '- 0,00 ₺'}
-                    </Text>
+                    </View>
                   </View>
+                  <View style={{flex: 1}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>GELİŞ TARİHİ</Text>
+                    <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'gelisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
+                      <TextInput 
+                        ref={rGelisTarihi} 
+                        style={[styles.flexInput, { color: theme.textColor }]} 
+                        onFocus={()=>setFocus('gelisTarihi')} 
+                        keyboardType="numeric" 
+                        maxLength={10} 
+                        placeholder="GG.AA.YYYY" 
+                        placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
+                        value={f.gelisTarihi} 
+                        onChangeText={(v)=>setF({...f, gelisTarihi: formatDate(v)})} 
+                        returnKeyType="done" 
+                        blurOnSubmit={true}
+                        onSubmitEditing={() => { Keyboard.dismiss(); setFocus('talepTuru'); setTimeout(() => setModalState('talepTuru'), 150); }} 
+                      />
+                      <TouchableOpacity onPress={() => setF({...f, gelisTarihi: getTodayString()})}>
+                        <Ionicons name="calendar" size={24} color={theme.labelColor} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
 
-                  <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}>
-                    <Text style={styles.saveBtnText}>KASADAN DÜŞ</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+                <Text style={[styles.label, { color: theme.labelColor }]}>ALIM AMACI (*)</Text>
+                <TouchableOpacity 
+                  style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'talepTuru' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                  onPress={() => { setModalState('talepTuru'); setFocus('talepTuru'); Keyboard.dismiss(); }}
+                >
+                  <Text style={{color: f.talepTuru !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.talepTuru}</Text>
+                </TouchableOpacity>
 
-            </ScrollView>
+                {f.talepTuru === 'Uzman Talebi' && (
+                  <>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>HANGİ UZMAN / USTA (*)</Text>
+                    <TouchableOpacity 
+                      style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'usta' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                      onPress={() => { setModalState('usta'); setFocus('usta'); Keyboard.dismiss(); }}
+                    >
+                      <Text style={{color: f.usta !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.usta}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </>
+            )}
 
-            <CustomSelect 
-              visible={modalState === 'tur'} title="ÇIKIŞ TÜRÜ" data={['Genel Gider', 'Stok Alımı', 'Diğer Giderler']} isDarkMode={isDarkMode} 
-              onSelect={(v: string) => { 
-                setF({...f, tur: v}); setModalState(null); 
-                if(v === 'Stok Alımı') { setFocus('malzeme'); setTimeout(() => rMalzeme.current?.focus(), 450); }
-                else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
-              }} 
-              onClose={() => setModalState(null)} 
-            />
+            {f.tur !== 'Seçiniz...' && (
+              <>
+                <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TUTARI (₺) (*)</Text>
+                <TextInput 
+                  ref={rTutar} 
+                  style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'tutar' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                  onFocus={()=>setFocus('tutar')} 
+                  onBlur={() => setF({...f, tutar: formatMoney(f.tutar)})}
+                  keyboardType="decimal-pad" 
+                  value={f.tutar} 
+                  onChangeText={(v)=>setF({...f, tutar:v})} 
+                  returnKeyType="next" 
+                  blurOnSubmit={false} 
+                  onSubmitEditing={()=>rAciklama.current?.focus()} 
+                />
 
-            <CustomSelect 
-              visible={modalState === 'talepTuru'} title="ALIM AMACI" data={['Uzman Talebi', 'Stok Tamamlama']} isDarkMode={isDarkMode} 
-              onSelect={(v: string) => { 
-                setF({...f, talepTuru: v}); setModalState(null); 
-                if(v === 'Uzman Talebi') { setFocus('usta'); setTimeout(() => setModalState('usta'), 450); }
-                else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
-              }} 
-              onClose={() => setModalState(null)} 
-            />
+                <Text style={[styles.label, { color: theme.labelColor }]}>AÇIKLAMA / NOT</Text>
+                <TextInput 
+                  ref={rAciklama} 
+                  style={[styles.input, { height: 80, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'aciklama' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
+                  onFocus={()=>setFocus('aciklama')} 
+                  multiline={true} 
+                  blurOnSubmit={true} 
+                  returnKeyType="done"
+                  value={f.aciklama} 
+                  onChangeText={(v)=>setF({...f, aciklama:v})} 
+                  onSubmitEditing={() => Keyboard.dismiss()} 
+                />
 
-            <CustomSelect 
-              visible={modalState === 'usta'} title="UZMAN / USTA SEÇİMİ" data={['Usta 1', 'Usta 2', 'Usta 3']} isDarkMode={isDarkMode} 
-              onSelect={(v: string) => { setF({...f, usta: v}); setModalState(null); setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }} 
-              onClose={() => setModalState(null)} 
-            />
+                <View style={[styles.dbPriceBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+                  <Text style={[styles.dbPriceLabel, { color: theme.labelColor }]}>BU İŞLEMDE KASADAN ÇIKAN (GENEL TOPLAM)</Text>
+                  <Text style={[styles.dbPriceValue, { color: '#FF3B30' }]}>
+                    {f.tutar ? `- ${formatMoney(f.tutar)} ₺` : '- 0,00 ₺'}
+                  </Text>
+                </View>
 
-            <StatusModal visible={status.visible} type={status.type} message={status.msg} onConfirm={handleConfirmAction} isDarkMode={isDarkMode} />
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </View>
+                <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}>
+                  <Text style={styles.saveBtnText}>KASADAN DÜŞ</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+          </ScrollView>
+
+          <CustomSelect 
+            visible={modalState === 'tur'} title="ÇIKIŞ TÜRÜ" data={['Genel Gider', 'Stok Alımı', 'Diğer Giderler']} isDarkMode={isDarkMode} 
+            onSelect={(v: string) => { 
+              setF({...f, tur: v}); setModalState(null); 
+              if(v === 'Stok Alımı') { setFocus('malzeme'); setTimeout(() => rMalzeme.current?.focus(), 450); }
+              else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
+            }} 
+            onClose={() => setModalState(null)} 
+          />
+
+          <CustomSelect 
+            visible={modalState === 'talepTuru'} title="ALIM AMACI" data={['Uzman Talebi', 'Stok Tamamlama']} isDarkMode={isDarkMode} 
+            onSelect={(v: string) => { 
+              setF({...f, talepTuru: v}); setModalState(null); 
+              if(v === 'Uzman Talebi') { setFocus('usta'); setTimeout(() => setModalState('usta'), 450); }
+              else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
+            }} 
+            onClose={() => setModalState(null)} 
+          />
+
+          <CustomSelect 
+            visible={modalState === 'usta'} title="UZMAN / USTA SEÇİMİ" data={['Usta 1', 'Usta 2', 'Usta 3']} isDarkMode={isDarkMode} 
+            onSelect={(v: string) => { setF({...f, usta: v}); setModalState(null); setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }} 
+            onClose={() => setModalState(null)} 
+          />
+
+          <StatusModal visible={status.visible} type={status.type} message={status.msg} onConfirm={handleConfirmAction} isDarkMode={isDarkMode} />
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

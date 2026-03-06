@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import ParaGirisiFormu from './ParaGirisiFormu';
 import ParaCikisiFormu from './ParaCikisiFormu';
 
-// AKILLI TARİH MOTORLARI 
 const formatDate = (val: string) => {
   if (!val) return '';
   let clean = val.replace(/\D/g, ''); 
@@ -24,88 +23,162 @@ const getTodayString = () => {
   return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
 };
 
-// TARİH ARALIĞI SEÇME ASANSÖRÜ
-const DateRangeModal = ({ visible, onClose, onApply, isDarkMode }: any) => {
+// --- MÜDÜR: İŞTE O YENİ, JİLET GİBİ ÇIKTI ALMA PENCERESİ ---
+const CiktiAlModal = ({ visible, onClose, onConfirm, isDarkMode }: any) => {
+  const theme = {
+    bg: isDarkMode ? '#1e1e1e' : '#fff',
+    text: isDarkMode ? '#fff' : '#1A1A1A',
+    subText: isDarkMode ? '#aaa' : '#666',
+    cancelBg: isDarkMode ? '#333' : '#e0e0e0',
+    cancelText: isDarkMode ? '#fff' : '#333'
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.ciktiModalContent, { backgroundColor: theme.bg }]}>
+          <View style={[styles.ciktiIconBox, { backgroundColor: '#FFEBEE' }]}>
+            <Ionicons name="document-text" size={36} color="#FF3B30" />
+          </View>
+          <Text style={[styles.ciktiTitle, { color: theme.text }]}>PDF ÇIKTISI AL</Text>
+          <Text style={[styles.ciktiDesc, { color: theme.subText }]}>
+            Ekranda listelenen nakit hareketleri PDF formatında hazırlanıp cihazınıza indirilecektir. Onaylıyor musunuz?
+          </Text>
+          
+          <View style={styles.ciktiBtnRow}>
+            <TouchableOpacity style={[styles.ciktiBtn, { backgroundColor: theme.cancelBg }]} onPress={onClose}>
+              <Text style={[styles.ciktiBtnText, { color: theme.cancelText }]}>İPTAL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.ciktiBtn, { backgroundColor: '#FF3B30' }]} onPress={onConfirm}>
+              <Text style={[styles.ciktiBtnText, { color: '#fff' }]}>OLUŞTUR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// --- FİLTRE ASANSÖRÜ ---
+const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => {
+  const [aktifSekme, setAktifSekme] = useState('zaman'); 
+  const [seciliAyar, setSeciliAyar] = useState('Bu Ay'); 
+  
   const [baslangic, setBaslangic] = useState('');
   const [bitis, setBitis] = useState('');
-
-  const handleSorgula = () => {
-    Keyboard.dismiss();
-    if (baslangic && bitis) {
-      onApply(baslangic, bitis);
-    }
-  };
+  
+  const [gelirTipi, setGelirTipi] = useState('Tümü');
+  const [seciliUsta, setSeciliUsta] = useState('Tümü');
 
   const theme = {
     bg: isDarkMode ? '#1e1e1e' : '#fff',
     text: isDarkMode ? '#fff' : '#1A1A1A',
     subText: isDarkMode ? '#aaa' : '#666',
-    inputBg: isDarkMode ? '#2c2c2c' : '#f2f2f2',
-    borderColor: isDarkMode ? '#444' : '#eee',
-    btnBg: isDarkMode ? '#333' : '#1A1A1A'
+    border: isDarkMode ? '#333' : '#eee',
+    activeBg: isDarkMode ? '#333' : '#1A1A1A',
+    inputBg: isDarkMode ? '#2c2c2c' : '#f9f9f9',
+  };
+
+  const handleUygula = () => {
+    let filtreOzeti = '';
+    if (aktifSekme === 'zaman') {
+      filtreOzeti = seciliAyar === 'Tarih Aralığı' ? `${baslangic} - ${bitis}` : `Zaman: ${seciliAyar}`;
+    } else if (aktifSekme === 'gelir') {
+      if (gelirTipi === 'Tamir') {
+        filtreOzeti = seciliUsta === 'Tümü' ? 'Tüm Tamir Gelirleri' : `Tamir Geliri (${seciliUsta})`;
+      } else if (gelirTipi === 'Tümü') {
+        filtreOzeti = 'Tüm Gelir Kalemleri';
+      } else {
+        filtreOzeti = `${gelirTipi} Gelirleri`;
+      }
+    } else {
+      filtreOzeti = seciliAyar === 'Tümü' ? 'Tüm Gider Kalemleri' : `${seciliAyar} Çıkışları`;
+    }
+    onApply(filtreOzeti);
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.rangeContent, { backgroundColor: theme.bg }]}>
-          <Text style={[styles.rangeTitle, { color: theme.text }]}>TARİH ARALIĞI SEÇ</Text>
+        <View style={[styles.filterPanelContent, { backgroundColor: theme.bg }]}>
           
-          <Text style={[styles.rangeLabel, { color: theme.subText }]}>BAŞLANGIÇ TARİHİ</Text>
-          <View style={[styles.rangeInputBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }]}>
-            <TextInput style={[styles.rangeInput, { color: theme.text }]} keyboardType="numeric" maxLength={10} placeholder="GG.AA.YYYY" placeholderTextColor={theme.subText} value={baslangic} onChangeText={(v)=>setBaslangic(formatDate(v))} returnKeyType="next" />
-            <TouchableOpacity onPress={() => setBaslangic(getTodayString())}>
-              <Ionicons name="calendar" size={24} color={theme.subText} />
+          <View style={[styles.filterTabsRow, { borderBottomColor: theme.border }]}>
+            <TouchableOpacity style={[styles.filterTab, aktifSekme === 'zaman' && { borderBottomColor: '#FF3B30' }]} onPress={() => setAktifSekme('zaman')}>
+              <Text style={[styles.filterTabText, { color: aktifSekme === 'zaman' ? theme.text : theme.subText }]}>ZAMAN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.filterTab, aktifSekme === 'gelir' && { borderBottomColor: '#FF3B30' }]} onPress={() => setAktifSekme('gelir')}>
+              <Text style={[styles.filterTabText, { color: aktifSekme === 'gelir' ? theme.text : theme.subText }]}>GELİR</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.filterTab, aktifSekme === 'gider' && { borderBottomColor: '#FF3B30' }]} onPress={() => setAktifSekme('gider')}>
+              <Text style={[styles.filterTabText, { color: aktifSekme === 'gider' ? theme.text : theme.subText }]}>GİDER</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.rangeLabel, { color: theme.subText }]}>BİTİŞ TARİHİ</Text>
-          <View style={[styles.rangeInputBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }]}>
-            <TextInput style={[styles.rangeInput, { color: theme.text }]} keyboardType="numeric" maxLength={10} placeholder="GG.AA.YYYY" placeholderTextColor={theme.subText} value={bitis} onChangeText={(v)=>setBitis(formatDate(v))} returnKeyType="done" onSubmitEditing={handleSorgula} />
-            <TouchableOpacity onPress={() => setBitis(getTodayString())}>
-              <Ionicons name="calendar" size={24} color={theme.subText} />
-            </TouchableOpacity>
-          </View>
+          <ScrollView style={{ maxHeight: 300, paddingVertical: 15 }} showsVerticalScrollIndicator={false}>
+            {aktifSekme === 'zaman' && (
+              <View style={styles.filterOptionsGrid}>
+                {['Bugün', 'Bu Hafta', 'Bu Ay', 'Tarih Aralığı'].map(opt => (
+                  <TouchableOpacity key={opt} style={[styles.filterOptBtn, { borderColor: theme.border }, seciliAyar === opt && { backgroundColor: theme.activeBg, borderColor: theme.activeBg }]} onPress={() => setSeciliAyar(opt)}>
+                    <Text style={[styles.filterOptText, { color: seciliAyar === opt ? '#fff' : theme.text }]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+                
+                {seciliAyar === 'Tarih Aralığı' && (
+                  <View style={{ width: '100%', marginTop: 15 }}>
+                    <Text style={[styles.rangeLabel, { color: theme.subText }]}>BAŞLANGIÇ - BİTİŞ</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <TextInput style={[styles.rangeHalfInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]} keyboardType="numeric" maxLength={10} placeholder="Başlangıç" placeholderTextColor={theme.subText} value={baslangic} onChangeText={(v)=>setBaslangic(formatDate(v))} />
+                      <TextInput style={[styles.rangeHalfInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]} keyboardType="numeric" maxLength={10} placeholder="Bitiş" placeholderTextColor={theme.subText} value={bitis} onChangeText={(v)=>setBitis(formatDate(v))} />
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
 
-          <View style={styles.rangeBtnRow}>
-            <TouchableOpacity style={[styles.rangeBtn, { backgroundColor: '#FF3B30' }]} onPress={onClose}>
-              <Text style={styles.rangeBtnText}>İPTAL</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.rangeBtn, { backgroundColor: theme.btnBg }]} onPress={handleSorgula}>
-              <Text style={styles.rangeBtnText}>SORGULA</Text>
-            </TouchableOpacity>
-          </View>
+            {aktifSekme === 'gelir' && (
+              <View style={styles.filterOptionsGrid}>
+                {['Tümü', 'Satış', 'Tamir', 'Nakit'].map(opt => (
+                  <TouchableOpacity key={opt} style={[styles.filterOptBtn, { borderColor: theme.border }, gelirTipi === opt && { backgroundColor: theme.activeBg, borderColor: theme.activeBg }]} onPress={() => setGelirTipi(opt)}>
+                    <Text style={[styles.filterOptText, { color: gelirTipi === opt ? '#fff' : theme.text }]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+
+                {gelirTipi === 'Tamir' && (
+                  <View style={{ width: '100%', marginTop: 20 }}>
+                    <Text style={[styles.rangeLabel, { color: theme.subText }]}>HANGİ USTANIN GELİRİ?</Text>
+                    <View style={styles.filterOptionsGrid}>
+                      {['Tümü', 'Usta 1', 'Usta 2', 'Usta 3'].map(usta => (
+                        <TouchableOpacity key={usta} style={[styles.filterOptBtn, { borderColor: theme.border, paddingVertical: 10 }, seciliUsta === usta && { backgroundColor: theme.activeBg, borderColor: theme.activeBg }]} onPress={() => setSeciliUsta(usta)}>
+                          <Text style={[styles.filterOptText, { color: seciliUsta === usta ? '#fff' : theme.text }]}>{usta}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {aktifSekme === 'gider' && (
+              <View style={styles.filterOptionsGrid}>
+                {['Tümü', 'Stok Alımı', 'Genel Gider', 'Diğer Giderler'].map(opt => (
+                  <TouchableOpacity key={opt} style={[styles.filterOptBtn, { borderColor: theme.border }, seciliAyar === opt && { backgroundColor: theme.activeBg, borderColor: theme.activeBg }]} onPress={() => setSeciliAyar(opt)}>
+                    <Text style={[styles.filterOptText, { color: seciliAyar === opt ? '#fff' : theme.text }]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+
+          <TouchableOpacity style={[styles.applyBtn, { backgroundColor: '#FF3B30' }]} onPress={handleUygula}>
+            <Text style={styles.applyBtnText}>FİLTREYİ UYGULA</Text>
+          </TouchableOpacity>
+          
         </View>
       </TouchableOpacity>
     </Modal>
   );
 };
 
-// MÜDÜR: YENİ GRUP/KATEGORİ FİLTRE ASANSÖRÜ
-const KategoriSelectModal = ({ visible, onClose, onSelect, isDarkMode }: any) => {
-  const kategoriler = ['Tümü', 'Tamir', 'Satış', 'Stok Alımı', 'Nakit', 'Genel Gider'];
-  
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.rangeContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
-          <Text style={[styles.rangeTitle, { color: isDarkMode ? '#fff' : '#1A1A1A' }]}>KATEGORİ SEÇ</Text>
-          {kategoriler.map((kat) => (
-            <TouchableOpacity 
-              key={kat} 
-              style={{ paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: isDarkMode ? '#2c2c2c' : '#eee', alignItems: 'center' }} 
-              onPress={() => onSelect(kat)}
-            >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: isDarkMode ? '#ddd' : '#333' }}>{kat}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-};
-
-// GEÇİCİ MOTOR VERİSİ (Kategoriye göre süzmek için grup bilgisi eklendi)
 const MOCK_HAREKETLER = [
   { id: 1, tip: 'giris', grup: 'Tamir', baslik: 'Cep Telefonu Tamiri (Usta 1)', tarih: '06.03.2026', tutar: '1.500,00' },
   { id: 2, tip: 'cikis', grup: 'Stok Alımı', baslik: 'Stok Alımı - Anakart', tarih: '05.03.2026', tutar: '800,00' },
@@ -118,30 +191,22 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
   const [entryVisible, setEntryVisible] = useState(false);
   const [exitVisible, setExitVisible] = useState(false); 
   
-  // FİLTRE MOTORU
-  const [aktifFiltre, setAktifFiltre] = useState('son5');
-  const [dateModalVisible, setDateModalVisible] = useState(false);
-  const [secilenTarihAraligi, setSecilenTarihAraligi] = useState('');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [ciktiModalVisible, setCiktiModalVisible] = useState(false);
   
-  // MÜDÜR: KATEGORİ MOTORU
-  const [kategoriModalVisible, setKategoriModalVisible] = useState(false);
-  const [secilenKategori, setSecilenKategori] = useState('Tümü');
+  // Arka planda filtre çalışmaya devam edecek ama ekranda yazısı görünmeyecek
+  const [aktifFiltreMetni, setAktifFiltreMetni] = useState('Son 5 Hareket');
 
-  const handleTarihSorgula = (bas: string, bit: string) => {
-    setSecilenTarihAraligi(`${bas} - ${bit}`);
-    setAktifFiltre('tarih');
-    setDateModalVisible(false);
+  const handleFiltreUygula = (ozetMetni: string) => {
+    setAktifFiltreMetni(ozetMetni);
+    setFilterModalVisible(false);
   };
 
-  const handleKategoriSec = (kat: string) => {
-    setSecilenKategori(kat);
-    setKategoriModalVisible(false);
+  const handlePdfOnayla = () => {
+    setCiktiModalVisible(false);
+    // DB Bağlanınca buraya PDF indirme motoru eklenecek
+    console.log("PDF Çıktısı Hazırlanıyor...");
   };
-
-  // MÜDÜR: KATEGORİYE GÖRE LİSTEYİ SÜZEN MOTOR
-  const filtrelenmisHareketler = secilenKategori === 'Tümü' 
-    ? MOCK_HAREKETLER 
-    : MOCK_HAREKETLER.filter(h => h.grup === secilenKategori);
 
   const theme = {
     bg: isDarkMode ? '#121212' : '#fdfdfd',
@@ -150,8 +215,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
     textColor: isDarkMode ? '#fff' : '#1A1A1A',
     subText: isDarkMode ? '#aaa' : '#666',
     btnBg: isDarkMode ? '#2c2c2c' : '#f2f2f2',
-    activeFilterBg: isDarkMode ? '#fff' : '#1A1A1A',
-    activeFilterText: isDarkMode ? '#1A1A1A' : '#fff',
     girisBtnBg: isDarkMode ? '#333' : '#1A1A1A',
     cikisBtnBg: '#FF3B30'
   };
@@ -204,71 +267,48 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.sectionTitle, { color: theme.textColor }]}>HAREKET SORGULAMA</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-              
-              {/* MÜDÜR: YENİ KATEGORİ/GRUP FİLTRESİ BURADA */}
-              <TouchableOpacity 
-                style={[styles.filterPill, secilenKategori !== 'Tümü' ? { backgroundColor: theme.activeFilterBg } : { backgroundColor: theme.btnBg }, { flexDirection: 'row', alignItems: 'center', borderColor: theme.borderColor, borderWidth: 1 }]} 
-                onPress={() => setKategoriModalVisible(true)}
-              >
-                <Ionicons name="filter" size={16} color={secilenKategori !== 'Tümü' ? theme.activeFilterText : theme.subText} style={{ marginRight: 5 }} />
-                <Text style={[styles.filterText, secilenKategori !== 'Tümü' ? { color: theme.activeFilterText } : { color: theme.subText }]}>
-                  Grup: {secilenKategori}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.filterPill, aktifFiltre === 'son5' ? { backgroundColor: theme.activeFilterBg } : { backgroundColor: theme.btnBg }]} onPress={() => setAktifFiltre('son5')}>
-                <Text style={[styles.filterText, aktifFiltre === 'son5' ? { color: theme.activeFilterText } : { color: theme.subText }]}>Son 5</Text>
+            {/* MÜDÜR: İSTEDİĞİN GİBİ DÜZENLENEN BAŞLIK KISMI */}
+            <View style={styles.listHeaderRow}>
+              {/* SOL: HUNİ (FİLTRE) */}
+              <TouchableOpacity style={[styles.iconActionBtn, { backgroundColor: theme.btnBg }]} onPress={() => setFilterModalVisible(true)}>
+                <Ionicons name="funnel" size={20} color={theme.textColor} />
               </TouchableOpacity>
               
-              <TouchableOpacity style={[styles.filterPill, aktifFiltre === '7gun' ? { backgroundColor: theme.activeFilterBg } : { backgroundColor: theme.btnBg }]} onPress={() => setAktifFiltre('7gun')}>
-                <Text style={[styles.filterText, aktifFiltre === '7gun' ? { color: theme.activeFilterText } : { color: theme.subText }]}>7 Günlük</Text>
-              </TouchableOpacity>
+              {/* ORTA: YAZI (Altındaki açıklama silindi, tam ortalandı) */}
+              <Text style={[styles.sectionTitleCentered, { color: theme.textColor }]}>NAKİT HAREKETLERİ</Text>
               
-              <TouchableOpacity 
-                style={[styles.filterPill, aktifFiltre === 'tarih' ? { backgroundColor: theme.activeFilterBg } : { backgroundColor: theme.btnBg }, { flexDirection: 'row', alignItems: 'center' }]} 
-                onPress={() => setDateModalVisible(true)}
-              >
-                <Ionicons name="calendar-outline" size={16} color={aktifFiltre === 'tarih' ? theme.activeFilterText : theme.subText} style={{ marginRight: 5 }} />
-                <Text style={[styles.filterText, aktifFiltre === 'tarih' ? { color: theme.activeFilterText } : { color: theme.subText }]}>
-                  {aktifFiltre === 'tarih' ? secilenTarihAraligi : 'Tarih Seç'}
-                </Text>
+              {/* SAĞ: YAZICI (ÇIKTI) */}
+              <TouchableOpacity style={[styles.iconActionBtn, { backgroundColor: theme.btnBg }]} onPress={() => setCiktiModalVisible(true)}>
+                <Ionicons name="print" size={22} color={theme.textColor} />
               </TouchableOpacity>
-            </ScrollView>
+            </View>
 
             <View style={[styles.listContainer, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-              {/* MÜDÜR: LİSTE ARTIK SEÇİLEN GRUBA GÖRE SÜZÜLÜYOR */}
-              {filtrelenmisHareketler.length === 0 ? (
-                <Text style={{ textAlign: 'center', padding: 20, color: theme.subText, fontWeight: 'bold' }}>Bu gruba ait hareket bulunamadı.</Text>
-              ) : (
-                filtrelenmisHareketler.map((islem, index) => (
-                  <View key={islem.id} style={[styles.listItem, index !== filtrelenmisHareketler.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.borderColor }]}>
-                    <View style={styles.listLeft}>
-                      <View style={[styles.listIconBox, { backgroundColor: islem.tip === 'giris' ? theme.btnBg : '#FFEBEE' }]}>
-                        <Ionicons name={islem.tip === 'giris' ? "add" : "remove"} size={20} color={islem.tip === 'giris' ? theme.textColor : '#FF3B30'} />
-                      </View>
-                      <View style={{ flex: 1, paddingRight: 15 }}>
-                        <Text style={[styles.listTitle, { color: theme.textColor }]} numberOfLines={1}>{islem.baslik}</Text>
-                        <Text style={[styles.listDate, { color: theme.subText }]}>{islem.tarih} • {islem.grup}</Text>
-                      </View>
+              {MOCK_HAREKETLER.map((islem, index) => (
+                <View key={islem.id} style={[styles.listItem, index !== MOCK_HAREKETLER.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.borderColor }]}>
+                  <View style={styles.listLeft}>
+                    <View style={[styles.listIconBox, { backgroundColor: islem.tip === 'giris' ? theme.btnBg : '#FFEBEE' }]}>
+                      <Ionicons name={islem.tip === 'giris' ? "add" : "remove"} size={20} color={islem.tip === 'giris' ? theme.textColor : '#FF3B30'} />
                     </View>
-                    <Text style={[styles.listAmount, { color: islem.tip === 'giris' ? theme.textColor : '#FF3B30' }]}>
-                      {islem.tip === 'giris' ? '+' : '-'} {islem.tutar} ₺
-                    </Text>
+                    <View style={{ flex: 1, paddingRight: 15 }}>
+                      <Text style={[styles.listTitle, { color: theme.textColor }]} numberOfLines={1}>{islem.baslik}</Text>
+                      <Text style={[styles.listDate, { color: theme.subText }]}>{islem.tarih}</Text>
+                    </View>
                   </View>
-                ))
-              )}
+                  <Text style={[styles.listAmount, { color: islem.tip === 'giris' ? theme.textColor : '#FF3B30' }]}>
+                    {islem.tip === 'giris' ? '+' : '-'} {islem.tutar} ₺
+                  </Text>
+                </View>
+              ))}
             </View>
 
           </ScrollView>
 
-          {/* GİZLİ ASANSÖRLER */}
           <ParaGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} isDarkMode={isDarkMode} />
           <ParaCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} />
           
-          <DateRangeModal visible={dateModalVisible} onClose={() => setDateModalVisible(false)} onApply={handleTarihSorgula} isDarkMode={isDarkMode} />
-          <KategoriSelectModal visible={kategoriModalVisible} onClose={() => setKategoriModalVisible(false)} onSelect={handleKategoriSec} isDarkMode={isDarkMode} />
+          <GelismisFiltreModal visible={filterModalVisible} onClose={() => setFilterModalVisible(false)} onApply={handleFiltreUygula} isDarkMode={isDarkMode} />
+          <CiktiAlModal visible={ciktiModalVisible} onClose={() => setCiktiModalVisible(false)} onConfirm={handlePdfOnayla} isDarkMode={isDarkMode} />
           
         </SafeAreaView>
       </View>
@@ -297,10 +337,9 @@ const styles = StyleSheet.create({
   iconCircleSolid: { width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   actionBtnTextSolid: { fontSize: 15, fontWeight: '900', color: '#fff' },
 
-  sectionTitle: { fontSize: 14, fontWeight: '900', marginBottom: 15, marginLeft: 5 },
-  filterScroll: { marginBottom: 20, paddingLeft: 5 },
-  filterPill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 8, justifyContent: 'center' },
-  filterText: { fontSize: 13, fontWeight: 'bold' },
+  listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  iconActionBtn: { width: 44, height: 44, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  sectionTitleCentered: { flex: 1, fontSize: 16, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 },
 
   listContainer: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 15, elevation: 2 },
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15 },
@@ -311,12 +350,26 @@ const styles = StyleSheet.create({
   listAmount: { fontSize: 16, fontWeight: '900' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  rangeContent: { width: '85%', borderRadius: 25, padding: 25, elevation: 20 },
-  rangeTitle: { fontSize: 17, fontWeight: '900', textAlign: 'center', marginBottom: 20, borderBottomWidth: 1.5, borderBottomColor: '#f0f0f0', paddingBottom: 15 },
+  
+  // FİLTRE PANELİ STİLLERİ
+  filterPanelContent: { width: '90%', borderRadius: 25, padding: 25, elevation: 20 },
+  filterTabsRow: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, marginBottom: 15 },
+  filterTab: { flex: 1, alignItems: 'center', paddingVertical: 15, borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  filterTabText: { fontSize: 13, fontWeight: '900' },
+  filterOptionsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  filterOptBtn: { width: '48%', borderWidth: 1, borderRadius: 15, paddingVertical: 15, alignItems: 'center', marginBottom: 10 },
+  filterOptText: { fontSize: 14, fontWeight: 'bold' },
   rangeLabel: { fontSize: 11, fontWeight: 'bold', marginBottom: 5 },
-  rangeInputBox: { borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 },
-  rangeInput: { flex: 1, fontSize: 16, fontWeight: '500' },
-  rangeBtnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 },
-  rangeBtn: { width: '48%', height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  rangeBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' }
+  rangeHalfInput: { width: '48%', borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: '500', textAlign: 'center' },
+  applyBtn: { width: '100%', paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: 10 },
+  applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+
+  // ÇIKTI AL MODALI STİLLERİ
+  ciktiModalContent: { width: '85%', borderRadius: 25, padding: 25, alignItems: 'center', elevation: 20 },
+  ciktiIconBox: { width: 70, height: 70, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  ciktiTitle: { fontSize: 18, fontWeight: '900', marginBottom: 10 },
+  ciktiDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 25 },
+  ciktiBtnRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
+  ciktiBtn: { width: '48%', height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  ciktiBtnText: { fontSize: 15, fontWeight: 'bold' }
 });
