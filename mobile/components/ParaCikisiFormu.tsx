@@ -42,7 +42,6 @@ const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => 
   </Modal>
 );
 
-// MÜDÜR: PARA FORMATLAMA MOTORU
 const formatMoney = (val: string) => {
   if (!val) return '';
   let clean = val.toString().replace(/\./g, '').replace(',', '.');
@@ -59,7 +58,6 @@ const parseMoney = (val: string) => {
   return parseFloat(clean) || 0;
 };
 
-// MÜDÜR: AKILLI TARİH MOTORU (GG.AA.YYYY)
 const formatDate = (val: string) => {
   if (!val) return '';
   let clean = val.replace(/\D/g, ''); 
@@ -71,7 +69,6 @@ const formatDate = (val: string) => {
   return val;
 };
 
-// BUGÜNÜN TARİHİNİ VEREN KÜÇÜK MOTOR (TAKVİM İKONU İÇİN)
 const getTodayString = () => {
   const d = new Date();
   return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
@@ -160,7 +157,7 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={40} style={{flex: 1}}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
           <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
             
             <View style={styles.header}>
@@ -170,7 +167,8 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
               <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color={theme.textColor} /></TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={{paddingBottom: 150}}>
+            {/* MÜDÜR: İŞTE O TAMPON BURADA (paddingBottom: 350) KLAVYEYİ EZER GEÇER */}
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom: 350}}>
               
               <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKIŞ TÜRÜ (*)</Text>
               <TouchableOpacity 
@@ -203,7 +201,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                     </View>
                     <View style={{flex: 1}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ NO</Text>
-                      {/* MÜDÜR: SİPARİŞ NO -> TARİHE GEÇİŞİ ZAMANLAYICI İLE DÜZELTTİK */}
                       <TextInput 
                         ref={rSiparisNo} 
                         style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'siparisNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
@@ -224,7 +221,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                     <View style={{flex: 1, marginRight: 10}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ TARİHİ</Text>
                       <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'siparisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
-                        {/* MÜDÜR: SİPARİŞ TARİHİ -> GELİŞ TARİHİNE GEÇİŞİ ZAMANLAYICI İLE DÜZELTTİK */}
                         <TextInput 
                           ref={rSiparisTarihi} 
                           style={[styles.flexInput, { color: theme.textColor }]} 
@@ -250,7 +246,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                     <View style={{flex: 1}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>GELİŞ TARİHİ</Text>
                       <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'gelisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
-                        {/* MÜDÜR: GELİŞ TARİHİ -> UZMAN MODALI AÇILIŞI ZAMANLAYICI İLE DÜZELTİLDİ */}
                         <TextInput 
                           ref={rGelisTarihi} 
                           style={[styles.flexInput, { color: theme.textColor }]} 
@@ -315,7 +310,7 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                     onSubmitEditing={()=>rAciklama.current?.focus()} 
                   />
 
-                  <Text style={[styles.label, { color: theme.labelColor }]}>AÇIKLAMA / NOT (Örn: Fatura, Tedarikçi vb.)</Text>
+                  <Text style={[styles.label, { color: theme.labelColor }]}>AÇIKLAMA / NOT</Text>
                   <TextInput 
                     ref={rAciklama} 
                     style={[styles.input, { height: 80, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, marginBottom: 30 }, focus === 'aciklama' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
@@ -343,7 +338,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
 
             </ScrollView>
 
-            {/* --- SEÇİM MODALLARI --- */}
             <CustomSelect 
               visible={modalState === 'tur'} title="ÇIKIŞ TÜRÜ" data={['Genel Gider', 'Stok Alımı', 'Diğer Giderler']} isDarkMode={isDarkMode} 
               onSelect={(v: string) => { 
