@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 // --- ÖZEL SEÇİM PENCERESİ ---
 const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => {
-  if (!visible) return null; // KORUMA: Görünmezse motoru yorma, tamamen yok et!
+  if (!visible) return null;
   return (
     <Modal visible={true} transparent animationType="fade">
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
@@ -26,7 +26,7 @@ const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: a
 
 // --- DURUM PENCERESİ ---
 const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => {
-  if (!visible) return null; // KORUMA
+  if (!visible) return null;
   return (
     <Modal visible={true} transparent animationType="fade">
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onConfirm}>
@@ -48,9 +48,9 @@ const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => 
   );
 };
 
-// --- YENİ CİHAZ ONAY PENCERESİ ---
+// --- YENİ CİHAZ ONAY PENCERESİ (ZIRHLI) ---
 const DeviceConfirmModal = ({ visible, device, onApprove, onReject, isDarkMode }: any) => {
-  if (!visible || !device) return null; // KORUMA
+  if (!visible || !device) return null;
   return (
     <Modal visible={true} transparent animationType="fade">
       <View style={styles.modalOverlay}>
@@ -59,23 +59,24 @@ const DeviceConfirmModal = ({ visible, device, onApprove, onReject, isDarkMode }
           
           <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
             <Text style={styles.deviceInfoLabel}>Tür:</Text>
-            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.cihazTuru}</Text>
+            {/* MÜDÜR: İŞTE ZIRH BURADA (?.) EĞER CİHAZ YOKSA ÇÖKMEZ, BOŞ KALIR */}
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device?.cihazTuru || '-'}</Text>
           </View>
           <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
             <Text style={styles.deviceInfoLabel}>Marka / Model:</Text>
-            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.marka} {device.model}</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device?.marka || '-'} {device?.model || '-'}</Text>
           </View>
           <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
             <Text style={styles.deviceInfoLabel}>Seri No:</Text>
-            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.seriNo}</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device?.seriNo || '-'}</Text>
           </View>
           <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
             <Text style={styles.deviceInfoLabel}>İlgilenen Usta:</Text>
-            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.usta}</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device?.usta || '-'}</Text>
           </View>
           <View style={[styles.deviceInfoRow, { borderBottomColor: 'transparent' }]}>
             <Text style={styles.deviceInfoLabel}>Verilen Fiyat Teklifi:</Text>
-            <Text style={[styles.deviceInfoValue, { color: '#FF3B30', fontSize: 18 }]}>{device.fiyatTeklifi}</Text>
+            <Text style={[styles.deviceInfoValue, { color: '#FF3B30', fontSize: 18 }]}>{device?.fiyatTeklifi || '0,00 ₺'}</Text>
           </View>
 
           <View style={styles.confirmBtnRow}>
@@ -109,7 +110,7 @@ const parseMoney = (val: string) => {
   return parseFloat(clean) || 0;
 };
 
-// VERİTABANI SİMÜLASYONU (RADAR MOTORU)
+// VERİTABANI SİMÜLASYONU
 const mockDatabaseSearch = (kayitNo: string) => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -175,7 +176,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
   };
 
   const handleSearchRecord = async () => {
-    if (!f.kayitNo || f.kayitNo.length < 3) {
+    if (!f?.kayitNo || f.kayitNo.length < 3) {
       setStatus({ visible: true, type: 'error', msg: 'Lütfen geçerli bir Kayıt No girin! (Örn: 1001)', errorTarget: '' });
       return;
     }
@@ -186,7 +187,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
     const sonuc: any = await mockDatabaseSearch(f.kayitNo);
     setIsSearching(false);
 
-    if (sonuc.durum === 'bulundu') {
+    if (sonuc?.durum === 'bulundu') {
       setTempDeviceData(sonuc);
       setConfirmModalVisible(true);
     } else {
@@ -199,12 +200,12 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
   const handleApproveDevice = () => {
     setF({
       ...f,
-      cihazTuru: tempDeviceData.cihazTuru,
-      marka: tempDeviceData.marka,
-      model: tempDeviceData.model,
-      seriNo: tempDeviceData.seriNo,
-      usta: tempDeviceData.usta,
-      fiyatTeklifi: tempDeviceData.fiyatTeklifi
+      cihazTuru: tempDeviceData?.cihazTuru || '',
+      marka: tempDeviceData?.marka || '',
+      model: tempDeviceData?.model || '',
+      seriNo: tempDeviceData?.seriNo || '',
+      usta: tempDeviceData?.usta || '',
+      fiyatTeklifi: tempDeviceData?.fiyatTeklifi || ''
     });
     setIsRecordFound(true);
     setConfirmModalVisible(false);
@@ -227,17 +228,17 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
   };
 
   const handleSaveAttempt = () => {
-    if (f.tur === 'Seçiniz...') { setStatus({ visible: true, type: 'error', msg: 'Lütfen işlem türünü seçiniz! (*)', errorTarget: 'tur' }); return; }
+    if (f?.tur === 'Seçiniz...') { setStatus({ visible: true, type: 'error', msg: 'Lütfen işlem türünü seçiniz! (*)', errorTarget: 'tur' }); return; }
     
-    if (f.tur === 'Satıştan Giriş' && (!f.urunAdi || f.urunAdi.length < 2)) {
+    if (f?.tur === 'Satıştan Giriş' && (!f.urunAdi || f.urunAdi.length < 2)) {
       setStatus({ visible: true, type: 'error', msg: 'Satılan ürün adını giriniz! (*)', errorTarget: 'urunAdi' }); return;
     }
 
-    if (f.tur === 'Tamirden Giriş' && !isRecordFound) {
+    if (f?.tur === 'Tamirden Giriş' && !isRecordFound) {
       setStatus({ visible: true, type: 'error', msg: 'Lütfen geçerli bir Kayıt No bulup cihazı onaylayın!', errorTarget: '' }); return;
     }
 
-    const rawTutar = parseMoney(f.tutar);
+    const rawTutar = parseMoney(f?.tutar || '0');
     if (rawTutar <= 0) { setStatus({ visible: true, type: 'error', msg: 'Lütfen geçerli bir tutar giriniz! (*)', errorTarget: 'tutar' }); return; }
 
     Keyboard.dismiss();
@@ -259,7 +260,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
     readOnlyBg: isDarkMode ? '#222' : '#e9ecef', 
   };
 
-  // KORUMA: Ana modalı da yorma
+  // KORUMA: Ana modalı gereksiz yere yorma
   if (!visible) return null;
 
   return (
@@ -280,22 +281,22 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                 style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'tur' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
                 onPress={() => { setModalState('tur'); setFocus('tur'); Keyboard.dismiss(); }}
               >
-                <Text style={{color: f.tur !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.tur}</Text>
+                <Text style={{color: f?.tur !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f?.tur || 'Seçiniz...'}</Text>
               </TouchableOpacity>
 
-              {f.tur === 'Satıştan Giriş' && (
+              {f?.tur === 'Satıştan Giriş' && (
                 <View>
                   <Text style={[styles.label, { color: theme.labelColor }]}>SATILAN ÜRÜN ADI (*)</Text>
-                  <TextInput ref={rUrunAdi} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'urunAdi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('urunAdi')} value={f.urunAdi} onChangeText={(v)=>setF({...f, urunAdi:v})} returnKeyType="next" onSubmitEditing={()=>rMarka.current?.focus()} blurOnSubmit={false} />
+                  <TextInput ref={rUrunAdi} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'urunAdi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('urunAdi')} value={f?.urunAdi || ''} onChangeText={(v)=>setF({...f, urunAdi:v})} returnKeyType="next" onSubmitEditing={()=>rMarka.current?.focus()} blurOnSubmit={false} />
 
                   <View style={styles.rowLayout}>
                     <View style={{flex: 1, marginRight: 10}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>MARKASI</Text>
-                      <TextInput ref={rMarka} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'marka' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('marka')} value={f.marka} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" onSubmitEditing={()=>rNumara.current?.focus()} blurOnSubmit={false} />
+                      <TextInput ref={rMarka} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'marka' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('marka')} value={f?.marka || ''} onChangeText={(v)=>setF({...f, marka:v})} returnKeyType="next" onSubmitEditing={()=>rNumara.current?.focus()} blurOnSubmit={false} />
                     </View>
                     <View style={{flex: 1}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>NUMARASI</Text>
-                      <TextInput ref={rNumara} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'numara' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('numara')} value={f.numara} onChangeText={(v)=>setF({...f, numara:v})} returnKeyType="next" onSubmitEditing={()=>rTutar.current?.focus()} blurOnSubmit={false} />
+                      <TextInput ref={rNumara} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'numara' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('numara')} value={f?.numara || ''} onChangeText={(v)=>setF({...f, numara:v})} returnKeyType="next" onSubmitEditing={()=>rTutar.current?.focus()} blurOnSubmit={false} />
                     </View>
                   </View>
 
@@ -316,7 +317,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                 </View>
               )}
 
-              {f.tur === 'Tamirden Giriş' && (
+              {f?.tur === 'Tamirden Giriş' && (
                 <View style={[styles.radarBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
                   <Text style={[styles.label, { color: theme.labelColor, marginTop: 0 }]}>KAYIT NO (ARANACAK FİŞ NO) (*)</Text>
                   
@@ -328,7 +329,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                       keyboardType="numeric"
                       placeholder="Örn: 1001" 
                       placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
-                      value={f.kayitNo} 
+                      value={f?.kayitNo || ''} 
                       onChangeText={(v)=>{
                         setF({...f, kayitNo:v});
                         if (isRecordFound) setIsRecordFound(false);
@@ -348,13 +349,13 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                         <View style={{flex: 1, marginRight: 10}}>
                           <Text style={[styles.label, { color: theme.labelColor }]}>CİHAZ TÜRÜ</Text>
                           <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
-                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.cihazTuru}</Text>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f?.cihazTuru || '-'}</Text>
                           </View>
                         </View>
                         <View style={{flex: 1}}>
                           <Text style={[styles.label, { color: theme.labelColor }]}>MARKASI</Text>
                           <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
-                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.marka}</Text>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f?.marka || '-'}</Text>
                           </View>
                         </View>
                       </View>
@@ -363,32 +364,32 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                         <View style={{flex: 1, marginRight: 10}}>
                           <Text style={[styles.label, { color: theme.labelColor }]}>MODEL</Text>
                           <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
-                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.model}</Text>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f?.model || '-'}</Text>
                           </View>
                         </View>
                         <View style={{flex: 1}}>
                           <Text style={[styles.label, { color: theme.labelColor }]}>SERİ NO / IMEI</Text>
                           <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
-                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.seriNo}</Text>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f?.seriNo || '-'}</Text>
                           </View>
                         </View>
                       </View>
 
                       <Text style={[styles.label, { color: theme.labelColor }]}>İLGİLENEN USTA</Text>
                       <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
-                        <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.usta}</Text>
+                        <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f?.usta || '-'}</Text>
                       </View>
 
                       <Text style={[styles.label, { color: theme.labelColor }]}>MÜŞTERİYE VERİLEN FİYAT TEKLİFİ</Text>
                       <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
-                        <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>{f.fiyatTeklifi}</Text>
+                        <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>{f?.fiyatTeklifi || '-'}</Text>
                       </View>
                     </View>
                   )}
                 </View>
               )}
 
-              {f.tur !== 'Seçiniz...' && (
+              {f?.tur !== 'Seçiniz...' && (
                 <View>
                   <Text style={[styles.label, { color: theme.labelColor }]}>İŞLEM TUTARI (₺) (*)</Text>
                   <TextInput 
@@ -397,7 +398,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                     onFocus={()=>setFocus('tutar')} 
                     onBlur={() => setF({...f, tutar: formatMoney(f.tutar)})}
                     keyboardType="decimal-pad" 
-                    value={f.tutar} 
+                    value={f?.tutar || ''} 
                     onChangeText={(v)=>setF({...f, tutar:v})} 
                     returnKeyType="next" 
                     blurOnSubmit={false} 
@@ -412,7 +413,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                     multiline={true} 
                     blurOnSubmit={true} 
                     returnKeyType="done"
-                    value={f.aciklama} 
+                    value={f?.aciklama || ''} 
                     onChangeText={(v)=>setF({...f, aciklama:v})} 
                     onSubmitEditing={() => Keyboard.dismiss()} 
                   />
@@ -420,7 +421,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                   <View style={[styles.dbPriceBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
                     <Text style={[styles.dbPriceLabel, { color: theme.labelColor }]}>BU İŞLEMDE KASAYA GİREN (GENEL TOPLAM)</Text>
                     <Text style={[styles.dbPriceValue, { color: theme.textColor }]}>
-                      {f.tutar ? `+ ${formatMoney(f.tutar)} ₺` : '0,00 ₺'}
+                      {f?.tutar ? `+ ${formatMoney(f.tutar)} ₺` : '0,00 ₺'}
                     </Text>
                   </View>
 
