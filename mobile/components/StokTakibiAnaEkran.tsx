@@ -1,20 +1,42 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  ScrollView, SafeAreaView, Platform, TextInput, Modal, ActivityIndicator 
+  ScrollView, SafeAreaView, Platform, TextInput, Modal, ActivityIndicator,
+  KeyboardAvoidingView, Keyboard 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera'; 
 
-// --- DEPOYA SON GİREN 5 ÜRÜNÜN SİMÜLASYONU ---
-const sonGelenler = [
-  { id: '1', isim: 'iPhone 13 Ekran', marka: 'Apple (Orijinal)', miktar: '10 Adet', tarih: 'Bugün 10:45', usta: 'Ahmet Usta' },
-  { id: '2', isim: 'Samsung S22 Batarya', marka: 'Samsung', miktar: '25 Adet', tarih: 'Dün 16:20', usta: 'Mehmet Usta' },
-  { id: '3', isim: 'Type-C Şarj Soketi', marka: 'Muadil', miktar: '100 Adet', tarih: '05.03.2026', usta: 'Stok' },
-  { id: '4', isim: 'Termal Macun 5g', marka: 'Arctic', miktar: '5 Adet', tarih: '04.03.2026', usta: 'Ali Usta' },
-  { id: '5', isim: 'ThinkPad Klavye', marka: 'Lenovo', miktar: '2 Adet', tarih: '02.03.2026', usta: 'Ahmet Usta' },
-];
+// --- İTHALAT MÜHÜRLERİ (SENİN FORMLARIN) ---
+import StokGirisiFormu from './StokGirisiFormu'; 
+import StokCikisiFormu from './StokCikisiFormu';
 
-// --- FİLTRE (HUNİ) ASANSÖRÜ ---
+// --- 1. YAKIŞIKLI ALERT (ONAY/HATA) KUTUSU ---
+const HandsomeAlert = ({ visible, title, message, onClose, type, isDarkMode }: any) => {
+  if (!visible) return null;
+  return (
+    <Modal visible={true} transparent animationType="fade"> 
+      <View style={styles.modalOverlay}>
+        <View style={[styles.alertContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
+          <View style={styles.alertIconWrapper}> 
+            <Ionicons 
+              name={type === 'error' ? "close-circle" : "checkmark-circle"} 
+              size={60} 
+              color={type === 'error' ? "#FF3B30" : "#34C759"} 
+            />
+          </View>
+          <Text style={[styles.alertTitle, { color: isDarkMode ? '#fff' : '#1A1A1A' }]}>{title}</Text>
+          <Text style={[styles.alertMessage, { color: isDarkMode ? '#aaa' : '#666' }]}>{message}</Text>
+          <TouchableOpacity style={[styles.alertBtn, { backgroundColor: type === 'error' ? '#FF3B30' : '#1A1A1A' }]} onPress={onClose}>
+            <Text style={styles.alertBtnText}>TAMAM</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+// --- 2. FİLTRE (HUNİ) ASANSÖRÜ ---
 const FilterModal = ({ visible, onClose, isDarkMode }: any) => {
   if (!visible) return null;
   const secenekler = [
@@ -25,12 +47,11 @@ const FilterModal = ({ visible, onClose, isDarkMode }: any) => {
     { icon: 'list', text: 'Tüm Envanter Listesi' },
     { icon: 'print', text: 'Listeyi Yazdır / Raporla' },
   ];
-
   return (
     <Modal visible={true} transparent animationType="slide">
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
         <View style={[styles.filterContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
-          <Text style={[styles.filterTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>DETAYLI ARAMA / LİSTELEME</Text>
+          <Text style={[styles.filterTitleHeader, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>DETAYLI ARAMA / LİSTELEME</Text>
           {secenekler.map((item, index) => (
             <TouchableOpacity key={index} style={[styles.filterItem, { borderBottomColor: isDarkMode ? '#2c2c2c' : '#f9f9f9' }]} onPress={onClose}>
               <Ionicons name={item.icon as any} size={20} color="#FF3B30" style={{ marginRight: 15 }} />
@@ -44,253 +65,200 @@ const FilterModal = ({ visible, onClose, isDarkMode }: any) => {
   );
 };
 
-// --- BARKOD İŞLEM SEÇİMİ ASANSÖRÜ ---
-const BarcodeActionModal = ({ visible, onClose, onSelectAction, isDarkMode }: any) => {
-  if (!visible) return null;
-  return (
-    <Modal visible={true} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={[styles.confirmContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
-          <Text style={[styles.confirmTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#eee' }]}>BARKOD İŞLEMİ</Text>
-          <Text style={{ textAlign: 'center', marginBottom: 20, color: isDarkMode ? '#aaa' : '#666', fontWeight: '600' }}>
-            Okutacağınız barkod ile ne yapmak istiyorsunuz?
-          </Text>
-          <View style={styles.confirmBtnRow}>
-            <TouchableOpacity style={styles.rejectBtn} onPress={() => onSelectAction('cikis')}>
-              <Text style={styles.rejectBtnText}>STOK ÇIKIŞI</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.approveBtn} onPress={() => onSelectAction('giris')}>
-              <Text style={styles.approveBtnText}>STOK GİRİŞİ</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity onPress={onClose} style={{ marginTop: 20, alignItems: 'center' }}>
-            <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>İptal</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// --- BARKOD SONUÇ VE ONAY ASANSÖRÜ ---
-const BarcodeResultModal = ({ visible, isScanning, onApprove, onReject, isDarkMode }: any) => {
-  if (!visible) return null;
-  return (
-    <Modal visible={true} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={[styles.confirmContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
-          {isScanning ? (
-            <View style={{ alignItems: 'center', padding: 20 }}>
-              <ActivityIndicator size="large" color="#FF3B30" />
-              <Text style={{ marginTop: 15, fontWeight: 'bold', color: isDarkMode ? '#fff' : '#333' }}>Kamera Açılıyor & Barkod Aranıyor...</Text>
-            </View>
-          ) : (
-            <>
-              <Text style={[styles.confirmTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#eee' }]}>CİHAZ BULUNDU</Text>
-              
-              <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
-                <Text style={styles.deviceInfoLabel}>Parça / Cihaz:</Text>
-                <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>iPhone 13 Orijinal Ekran</Text>
-              </View>
-              <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
-                <Text style={styles.deviceInfoLabel}>Parça No:</Text>
-                <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>APL-SCR-13PRO</Text>
-              </View>
-              <View style={[styles.deviceInfoRow, { borderBottomColor: 'transparent' }]}>
-                <Text style={styles.deviceInfoLabel}>Mevcut Stok:</Text>
-                <Text style={[styles.deviceInfoValue, { color: '#FF3B30', fontSize: 18 }]}>14 Adet</Text>
-              </View>
-
-              <View style={styles.confirmBtnRow}>
-                <TouchableOpacity style={styles.rejectBtn} onPress={onReject}>
-                  <Text style={styles.rejectBtnText}>YANLIŞ ÜRÜN</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.approveBtn} onPress={onApprove}>
-                  <Text style={styles.approveBtnText}>DOĞRU, İŞLE</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
+// --- ANA BİLEŞEN ---
 export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = false }: any) {
   const [aramaMetni, setAramaMetni] = useState('');
   
   // Asansör Kilitleri
+  const [stokGirisVisible, setStokGirisVisible] = useState(false);
+  const [stokCikisVisible, setStokCikisVisible] = useState(false);
   const [filterVisible, setFilterVisible] = useState(false);
   const [barcodeActionVisible, setBarcodeActionVisible] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
   const [barcodeResultVisible, setBarcodeResultVisible] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'success' });
 
-  // Elle Kayıt Odaklanması İçin Ref
-  const rAramaMotoru = useRef<TextInput>(null);
+  // Kamera ve Barkod Verileri
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scannedData, setScannedData] = useState<any>(null);
 
-  // TEMA MOTORU (Sadece Kırmızı, Antrasit ve Açık Renkler)
   const theme = {
     bg: isDarkMode ? '#121212' : '#f4f6f8',
     cardBg: isDarkMode ? '#1e1e1e' : '#fff',
     borderColor: isDarkMode ? '#333' : '#e0e0e0',
     textColor: isDarkMode ? '#fff' : '#1A1A1A',
     subText: isDarkMode ? '#aaa' : '#666',
-    primary: '#FF3B30', // MÜDÜR: Mavi gitti, her yer Kırmızı!
+    primary: '#FF3B30', 
     barcodeBg: isDarkMode ? '#2c2c2c' : '#1A1A1A', 
   };
 
+  // --- DB SİMÜLASYONU (BARKOD RADARI) ---
+  const checkDatabaseForBarcode = (code: string) => {
+    const mockDB: any = {
+      "8691234567890": { isim: "iPhone 13 Orijinal Ekran", marka: "Apple", stok: 14 },
+      "8690000123456": { isim: "Samsung Batarya G998", marka: "Samsung", stok: 5 }
+    };
+    return mockDB[code] || null;
+  };
+
+  const sonGelenler = [
+    { id: '1', isim: 'iPhone 13 Ekran', marka: 'Apple', miktar: '10 Adet', tarih: 'Bugün 10:45', usta: 'Ahmet' },
+    { id: '2', isim: 'Samsung S22 Pil', marka: 'Samsung', miktar: '25 Adet', tarih: 'Dün 16:20', usta: 'Mehmet' },
+    { id: '3', isim: 'Type-C Soket', marka: 'Muadil', miktar: '100 Adet', tarih: '05.03.2026', usta: 'Stok' },
+    { id: '4', isim: 'Termal Macun', marka: 'Arctic', miktar: '5 Adet', tarih: '04.03.2026', usta: 'Ali' },
+    { id: '5', isim: 'Klavye T14', marka: 'Lenovo', miktar: '2 Adet', tarih: '02.03.2026', usta: 'Ahmet' },
+  ];
+
   if (!visible) return null;
 
-  // BARKOD MOTORU SİMÜLASYONU
-  const handleBarcodeSelectAction = (action: string) => {
+  // --- KAMERA MOTORLARI ---
+  const handleBarcodeOpen = async () => {
+    setScannedData(null); 
     setBarcodeActionVisible(false);
-    setBarcodeResultVisible(true);
-    setIsScanning(true);
+    if (!permission?.granted) { await requestPermission(); }
+    setCameraVisible(true);
+  };
+
+  const handleBarCodeScanned = ({ data }: any) => {
+    if (scannedData) return;
+    const result = checkDatabaseForBarcode(data);
     
-    // Kameranın açılıp okuma süresi simülasyonu
-    setTimeout(() => {
-      setIsScanning(false);
-    }, 1500);
-  };
-
-  const handleBarcodeReject = () => {
-    setBarcodeResultVisible(false);
-    // Yanlış denilirse asansörü kapat ve arama/manuel giriş kutusuna odaklan
-    setTimeout(() => {
-      rAramaMotoru.current?.focus();
-    }, 400);
-  };
-
-  const handleBarcodeApprove = () => {
-    setBarcodeResultVisible(false);
-    // Burada stok giriş/çıkış formuna yönlendirilecek (Şimdilik asansör kapanıyor)
-    alert("Kayıt Ekranına Aktarılıyor...");
+    if (result) {
+      setScannedData({ code: data, ...result });
+      setCameraVisible(false);
+      setBarcodeResultVisible(true);
+    } else {
+      setCameraVisible(false);
+      setAlertConfig({ 
+        visible: true, 
+        title: 'KAYIT BULUNAMADI', 
+        message: `Barkod: ${data}\n\nBu ürün sistemde kayıtlı değil. Lütfen Stok Girişi bölümünden yeni kayıt oluşturun.`,
+        type: 'error'
+      });
+    }
   };
 
   return (
     <Modal visible={true} animationType="slide" transparent={true} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
-          
-          {/* BAŞLIK VE KAPATMA (X) / YAZICI İKONU (Mali bölümdeki renkler) */}
-          <View style={styles.header}>
-            <View>
-              <Text style={[styles.headerTitle, { color: theme.textColor }]}>STOK & DEPO</Text>
-              <Text style={[styles.headerSub, { color: theme.subText }]}>Envanter Yönetim Merkezi</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity style={[styles.printerBtn, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-                <Ionicons name="print" size={24} color={theme.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={onClose} style={{ marginLeft: 15 }}>
-                <Ionicons name="close-circle" size={42} color={theme.primary} />
+        
+        {cameraVisible && (
+          <View style={StyleSheet.absoluteFillObject}>
+            <CameraView style={StyleSheet.absoluteFillObject} facing="back" onBarcodeScanned={handleBarCodeScanned} />
+            <View style={styles.cameraOverlay}>
+              <View style={styles.cameraFrame} />
+              <TouchableOpacity style={styles.cameraCancelBtn} onPress={() => setCameraVisible(false)}>
+                <Text style={styles.cameraCancelText}>İptal</Text>
               </TouchableOpacity>
             </View>
           </View>
+        )}
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        {!cameraVisible && (
+          <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
             
-            {/* BARKOD RADARI (KAMERA BUTONU) */}
-            <TouchableOpacity 
-              style={[styles.barcodeBox, { backgroundColor: theme.barcodeBg, borderColor: theme.primary, borderWidth: 1.5 }]} 
-              activeOpacity={0.8}
-              onPress={() => setBarcodeActionVisible(true)}
-            >
-              <View style={styles.barcodeIconWrapper}>
-                <Ionicons name="barcode-outline" size={40} color="#fff" />
-                <View style={[styles.cameraBadge, { backgroundColor: theme.primary }]}>
-                  <Ionicons name="camera" size={12} color="#fff" />
-                </View>
+            <View style={styles.header}>
+              <View>
+                <Text style={[styles.headerTitle, { color: theme.textColor }]}>STOK & DEPO</Text>
+                <Text style={[styles.headerSub, { color: theme.subText }]}>Kurumsal Envanter Yönetimi</Text>
               </View>
-              <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={styles.barcodeTitle}>KAMERA İLE BARKOD OKUT</Text>
-                <Text style={styles.barcodeSub}>Otomatik Giriş / Çıkış / Düzenleme</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity style={[styles.printerBtn, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+                  <Ionicons name="print" size={24} color={theme.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onClose} style={{ marginLeft: 15 }}>
+                  <Ionicons name="close-circle" size={42} color={theme.primary} />
+                </TouchableOpacity>
               </View>
-              <Ionicons name="scan" size={28} color={theme.primary} />
-            </TouchableOpacity>
+            </View>
 
-            {/* MÜDÜR: YAN YANA GİRİŞ/ÇIKIŞ KUTULARI (Mali formdaki dbPriceBox tarzı) */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={[styles.actionBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-                <Ionicons name="add-circle" size={28} color="#34C759" style={{ marginBottom: 5 }} />
-                <Text style={[styles.actionBoxText, { color: theme.textColor }]}>STOK GİRİŞİ</Text>
-                <Text style={styles.actionBoxSub}>Manuel Kayıt</Text>
-              </TouchableOpacity>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
               
-              <TouchableOpacity style={[styles.actionBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-                <Ionicons name="remove-circle" size={28} color={theme.primary} style={{ marginBottom: 5 }} />
-                <Text style={[styles.actionBoxText, { color: theme.textColor }]}>STOK ÇIKIŞI</Text>
-                <Text style={styles.actionBoxSub}>Usta Talepleri</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* PARÇA VE CİHAZ ARAMA BÖLÜMÜ */}
-            <Text style={[styles.sectionTitle, { color: theme.subText, marginTop: 15 }]}>PARÇA VE CİHAZ ARAMA / LİSTELEME</Text>
-            <View style={[styles.searchContainer, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-              <Ionicons name="search" size={22} color={theme.subText} style={{ marginRight: 10 }} />
-              <TextInput 
-                ref={rAramaMotoru}
-                style={[styles.searchInput, { color: theme.textColor }]}
-                placeholder="Manuel Barkod veya Parça No girin..."
-                placeholderTextColor={theme.subText}
-                value={aramaMetni}
-                onChangeText={setAramaMetni}
-                returnKeyType="search"
-              />
+              {/* BARKOD RADARI */}
               <TouchableOpacity 
-                style={[styles.searchFilterBtn, { backgroundColor: theme.primary }]}
-                onPress={() => setFilterVisible(true)}
+                style={[styles.barcodeBox, { backgroundColor: theme.barcodeBg, borderColor: theme.primary, borderWidth: 1.5 }]} 
+                onPress={() => setBarcodeActionVisible(true)}
               >
-                <Ionicons name="funnel" size={18} color="#fff" />
+                <Ionicons name="barcode-outline" size={40} color="#fff" />
+                <Text style={styles.barcodeTitle}>KAMERA İLE BARKOD RADARI</Text>
+                <Ionicons name="scan" size={28} color={theme.primary} />
               </TouchableOpacity>
-            </View>
 
-            {/* SON GELENLER LİSTESİ */}
-            <View style={styles.listHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: theme.subText, marginTop: 0 }]}>SON İŞLEM GÖREN 5 MALZEME</Text>
-            </View>
+              {/* FOTODAKİ GİBİ GİRİŞ/ÇIKIŞ KUTULARI */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity style={[styles.mainActionBox, { backgroundColor: '#1A1A1A' }]} onPress={() => setStokGirisVisible(true)}>
+                  <View style={styles.iconCircle}><Ionicons name="arrow-down" size={24} color="#fff" /></View>
+                  <Text style={styles.actionMainText}>STOK GİRİŞİ</Text>
+                </TouchableOpacity>
 
-            {sonGelenler.map((item) => (
-              <View key={item.id} style={[styles.listItem, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-                <View style={[styles.listIconBox, { backgroundColor: isDarkMode ? '#222' : '#f0f0f0' }]}>
-                  <Ionicons name="cube" size={24} color={theme.subText} />
-                </View>
-                <View style={styles.listContent}>
-                  <Text style={[styles.listTitle, { color: theme.textColor }]}>{item.isim}</Text>
-                  <Text style={[styles.listBrand, { color: theme.subText }]}>{item.marka}</Text>
-                  <View style={styles.listSubRow}>
-                    <Ionicons name="time-outline" size={14} color={theme.subText} />
-                    <Text style={[styles.listDate, { color: theme.subText }]}>{item.tarih} - {item.usta}</Text>
+                <TouchableOpacity style={[styles.mainActionBox, { backgroundColor: theme.primary }]} onPress={() => setStokCikisVisible(true)}>
+                  <View style={styles.iconCircle}><Ionicons name="arrow-up" size={24} color="#fff" /></View>
+                  <Text style={styles.actionMainText}>STOK ÇIKIŞI</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.sectionTitle, { color: theme.subText }]}>PARÇA VE CİHAZ ARAMA / LİSTELEME</Text>
+              <View style={[styles.searchContainer, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+                <TextInput style={[styles.searchInput, { color: theme.textColor }]} placeholder="Barkod veya Parça No girin..." placeholderTextColor={theme.subText} value={aramaMetni} onChangeText={setAramaMetni} />
+                <TouchableOpacity onPress={() => setFilterVisible(true)} style={styles.huniBtn}>
+                  <Ionicons name="funnel" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.sectionTitle, { color: theme.subText }]}>SON İŞLEM GÖREN 5 MALZEME</Text>
+              {sonGelenler.map((item) => (
+                <View key={item.id} style={[styles.listItem, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+                  <View style={styles.listIconBox}><Ionicons name="cube" size={24} color={theme.subText} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.listTitle, { color: theme.textColor }]}>{item.isim}</Text>
+                    <Text style={[styles.listBrand, { color: theme.subText }]}>{item.marka} - {item.usta}</Text>
+                    <Text style={[styles.listDate, { color: theme.subText }]}>{item.tarih}</Text>
+                  </View>
+                  <View style={[styles.listBadge, { backgroundColor: theme.barcodeBg }]}>
+                    <Text style={styles.listBadgeText}>{item.miktar}</Text>
                   </View>
                 </View>
-                <View style={[styles.listBadge, { backgroundColor: theme.barcodeBg }]}>
-                  <Text style={styles.listBadgeText}>{item.miktar}</Text>
+              ))}
+            </ScrollView>
+
+            {/* ASANSÖR MODALLAR */}
+            <Modal visible={barcodeActionVisible} transparent animationType="fade">
+              <View style={styles.modalOverlay}>
+                <View style={[styles.confirmContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
+                  <View style={styles.modalHeaderRow}>
+                    <Text style={[styles.modalTitleText, { color: isDarkMode ? '#fff' : '#1A1A1A' }]}>BARKOD İŞLEMİ</Text>
+                    <TouchableOpacity onPress={() => setBarcodeActionVisible(false)}><Ionicons name="close" size={28} color="#FF3B30" /></TouchableOpacity>
+                  </View>
+                  <View style={styles.confirmBtnRow}>
+                    <TouchableOpacity style={styles.standardBtnOutline} onPress={handleBarcodeOpen}><Text style={styles.standardBtnText}>STOK ÇIKIŞI</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.standardBtnOutline} onPress={handleBarcodeOpen}><Text style={styles.standardBtnText}>STOK GİRİŞİ</Text></TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            ))}
+            </Modal>
 
-          </ScrollView>
+            <Modal visible={barcodeResultVisible} transparent animationType="fade">
+              <View style={styles.modalOverlay}>
+                <View style={[styles.confirmContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
+                  <Text style={[styles.modalTitleText, { color: theme.primary }]}>ÜRÜN BİLGİSİ (RADAR)</Text>
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Ürün:</Text><Text style={[styles.infoVal, { color: theme.textColor }]}>{scannedData?.isim}</Text></View>
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Marka:</Text><Text style={[styles.infoVal, { color: theme.textColor }]}>{scannedData?.marka}</Text></View>
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Mevcut Stok:</Text><Text style={[styles.infoVal, { color: theme.primary, fontSize: 18 }]}>{scannedData?.stok} Adet</Text></View>
+                  <View style={styles.confirmBtnRow}>
+                    <TouchableOpacity style={styles.standardBtnOutline} onPress={() => setBarcodeResultVisible(false)}><Text style={styles.standardBtnText}>KAPAT</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.standardBtnOutline, { backgroundColor: theme.primary, borderColor: theme.primary }]} onPress={() => { setBarcodeResultVisible(false); setStokGirisVisible(true); }}><Text style={[styles.standardBtnText, { color: '#fff' }]}>DOĞRU, İŞLE</Text></TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
 
-          {/* ASANSÖRLER */}
-          <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} isDarkMode={isDarkMode} />
-          
-          <BarcodeActionModal 
-            visible={barcodeActionVisible} 
-            onClose={() => setBarcodeActionVisible(false)} 
-            onSelectAction={handleBarcodeSelectAction} 
-            isDarkMode={isDarkMode} 
-          />
-          
-          <BarcodeResultModal 
-            visible={barcodeResultVisible}
-            isScanning={isScanning}
-            onApprove={handleBarcodeApprove}
-            onReject={handleBarcodeReject}
-            isDarkMode={isDarkMode}
-          />
+            <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} isDarkMode={isDarkMode} />
+            <StokGirisiFormu visible={stokGirisVisible} onClose={() => setStokGirisVisible(false)} isDarkMode={isDarkMode} />
+            <StokCikisiFormu visible={stokCikisVisible} onClose={() => setStokCikisVisible(false)} isDarkMode={isDarkMode} />
+            <HandsomeAlert visible={alertConfig.visible} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, visible: false })} isDarkMode={isDarkMode} />
 
-        </SafeAreaView>
+          </SafeAreaView>
+        )}
       </View>
     </Modal>
   );
@@ -298,55 +266,59 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
 
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingHorizontal: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 50 : 20, marginBottom: 25 },
-  headerTitle: { fontSize: 26, fontWeight: '900', letterSpacing: 0.5 },
-  headerSub: { fontSize: 13, fontWeight: '600', marginTop: 3 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 50, marginBottom: 25 },
+  headerTitle: { fontSize: 26, fontWeight: '900' },
+  headerSub: { fontSize: 13, fontWeight: '600' },
   printerBtn: { padding: 12, borderRadius: 12, borderWidth: 1.5 },
+  barcodeBox: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 20, marginBottom: 20, justifyContent: 'space-between' },
+  barcodeTitle: { color: '#fff', fontSize: 15, fontWeight: '900' },
   
-  barcodeBox: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 20, marginBottom: 20, elevation: 10, shadowColor: '#FF3B30', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 5 }, shadowRadius: 10 },
-  barcodeIconWrapper: { position: 'relative' },
-  cameraBadge: { position: 'absolute', bottom: -5, right: -5, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A' },
-  barcodeTitle: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
-  barcodeSub: { color: '#aaa', fontSize: 12, fontWeight: '500', marginTop: 3 },
-
+  // FOTODAKİ TASARIM: YAN YANA DEV KUTULAR
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  actionBox: { flex: 1, padding: 15, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', marginHorizontal: 5 },
-  actionBoxText: { fontSize: 13, fontWeight: '900', marginTop: 5 },
-  actionBoxSub: { fontSize: 11, color: '#888', fontWeight: '600', marginTop: 2 },
+  mainActionBox: { flex: 1, height: 110, borderRadius: 25, padding: 20, marginHorizontal: 5, justifyContent: 'center', alignItems: 'center', elevation: 8 },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  actionMainText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 
-  sectionTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 1, marginBottom: 12 },
-  
-  searchContainer: { flexDirection: 'row', alignItems: 'center', paddingLeft: 15, paddingRight: 5, paddingVertical: 5, borderRadius: 16, borderWidth: 1.5, marginBottom: 30 },
-  searchInput: { flex: 1, height: 45, fontSize: 14, fontWeight: '600' },
-  searchFilterBtn: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  sectionTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 1, marginBottom: 12, marginTop: 15 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, borderRadius: 16, borderWidth: 1.5, height: 60, marginBottom: 30 },
+  searchInput: { flex: 1, fontSize: 14, fontWeight: '600' },
+  huniBtn: { backgroundColor: '#1A1A1A', width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
 
-  listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  
   listItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 16, borderWidth: 1.5, marginBottom: 12 },
-  listIconBox: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  listContent: { flex: 1 },
-  listTitle: { fontSize: 15, fontWeight: '800', marginBottom: 2 },
-  listBrand: { fontSize: 13, fontWeight: '600', marginBottom: 5 },
-  listSubRow: { flexDirection: 'row', alignItems: 'center' },
-  listDate: { fontSize: 11, fontWeight: '600', marginLeft: 4 },
+  listIconBox: { width: 45, height: 45, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  listTitle: { fontSize: 15, fontWeight: '800' },
+  listBrand: { fontSize: 12, fontWeight: '600' },
+  listDate: { fontSize: 10, fontWeight: '600' },
   listBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
   listBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
-  // ASANSÖR (MODAL) STİLLERİ
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  confirmContent: { width: '85%', borderRadius: 20, padding: 20, elevation: 20 },
-  confirmTitle: { fontSize: 18, fontWeight: '900', textAlign: 'center', marginBottom: 15, borderBottomWidth: 1, paddingBottom: 10 },
-  deviceInfoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1 },
-  deviceInfoLabel: { fontSize: 14, fontWeight: 'bold', color: '#888' },
-  deviceInfoValue: { fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'right' },
-  confirmBtnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25 },
-  rejectBtn: { flex: 1, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', padding: 12, borderRadius: 12, alignItems: 'center', marginRight: 10 },
-  rejectBtnText: { color: '#FF3B30', fontWeight: '900', fontSize: 13 },
-  approveBtn: { flex: 1, backgroundColor: '#FF3B30', padding: 12, borderRadius: 12, alignItems: 'center' },
-  approveBtnText: { color: '#fff', fontWeight: '900', fontSize: 13 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
+  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 10, width: '100%' },
+  modalTitleText: { fontSize: 18, fontWeight: '900' },
+  confirmContent: { width: '90%', borderRadius: 25, padding: 30 },
+  confirmBtnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
+  
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  infoLabel: { fontWeight: '700', color: '#888' },
+  infoVal: { fontWeight: '900' },
 
-  filterContent: { width: '100%', position: 'absolute', bottom: 0, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: 50, elevation: 20 },
-  filterTitle: { fontSize: 15, fontWeight: '900', marginBottom: 20, borderBottomWidth: 1, paddingBottom: 15, textAlign: 'center' },
-  filterItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 1 },
+  standardBtnOutline: { flex: 1, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#eee', padding: 15, borderRadius: 12, alignItems: 'center', marginHorizontal: 5 },
+  standardBtnText: { color: '#1A1A1A', fontWeight: '900', fontSize: 13 },
+
+  alertContent: { width: '85%', borderRadius: 30, padding: 35, alignItems: 'center' },
+  alertIconWrapper: { marginBottom: 15 }, 
+  alertTitle: { fontSize: 22, fontWeight: '900', marginTop: 10 },
+  alertMessage: { fontSize: 15, textAlign: 'center', marginVertical: 15, lineHeight: 22 },
+  alertBtn: { width: '100%', height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  alertBtnText: { color: '#fff', fontWeight: '900' },
+
+  filterContent: { width: '100%', position: 'absolute', bottom: 0, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: 50 },
+  filterTitleHeader: { fontSize: 15, fontWeight: '900', marginBottom: 20, textAlign: 'center', borderBottomWidth: 1, paddingBottom: 15 },
+  filterItem: { flexDirection: 'row', paddingVertical: 18, borderBottomWidth: 1, alignItems: 'center' },
   filterItemText: { fontSize: 15, fontWeight: '700' },
+
+  cameraOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  cameraFrame: { width: 250, height: 200, borderWidth: 3, borderColor: '#FF3B30', borderRadius: 20 },
+  cameraCancelBtn: { position: 'absolute', bottom: 50, backgroundColor: '#FF3B30', padding: 15, borderRadius: 15 },
+  cameraCancelText: { color: '#fff', fontWeight: 'bold' }
 });
