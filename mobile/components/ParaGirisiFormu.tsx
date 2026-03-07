@@ -1,80 +1,148 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard 
+  Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard, ActivityIndicator 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// --- ÖZEL SEÇİM PENCERESİ (TÜR VE USTA SEÇİMİ İÇİN) ---
-const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => (
-  <Modal visible={visible} transparent animationType="fade">
-    <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-      <View style={[styles.selectContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
-        <Text style={[styles.selectTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>{title}</Text>
-        {data.map((item: string) => (
-          <TouchableOpacity key={item} style={[styles.selectItem, { borderBottomColor: isDarkMode ? '#2c2c2c' : '#f9f9f9' }]} onPress={() => onSelect(item)}>
-            <Text style={[styles.selectItemText, { color: isDarkMode ? '#ddd' : '#333' }]}>{item}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </TouchableOpacity>
-  </Modal>
-);
+// --- ÖZEL SEÇİM PENCERESİ ---
+const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => {
+  if (!visible) return null; // KORUMA: Görünmezse motoru yorma, tamamen yok et!
+  return (
+    <Modal visible={true} transparent animationType="fade">
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.selectContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
+          <Text style={[styles.selectTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>{title}</Text>
+          {data.map((item: string) => (
+            <TouchableOpacity key={item} style={[styles.selectItem, { borderBottomColor: isDarkMode ? '#2c2c2c' : '#f9f9f9' }]} onPress={() => onSelect(item)}>
+              <Text style={[styles.selectItemText, { color: isDarkMode ? '#ddd' : '#333' }]}>{item}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
 
 // --- DURUM PENCERESİ ---
-const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => (
-  <Modal visible={visible} transparent animationType="fade">
-    <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onConfirm}>
-      <View style={[styles.miniStatusContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, type === 'error' && { borderColor: '#FF3B30', borderWidth: 1.5 }]}>
-        <View style={styles.statusRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.statusMainText, { color: isDarkMode ? '#fff' : '#1A1A1A' }, type === 'error' && { color: '#FF3B30' }]}>
-              {type === 'success' ? 'KASA GÜNCELLENDİ' : 'EKSİK BİLGİ'}
-            </Text>
-            <Text style={[styles.statusSubText, { color: isDarkMode ? '#aaa' : '#666' }]}>{message}</Text>
+const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => {
+  if (!visible) return null; // KORUMA
+  return (
+    <Modal visible={true} transparent animationType="fade">
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onConfirm}>
+        <View style={[styles.miniStatusContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, type === 'error' && { borderColor: '#FF3B30', borderWidth: 1.5 }]}>
+          <View style={styles.statusRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.statusMainText, { color: isDarkMode ? '#fff' : '#1A1A1A' }, type === 'error' && { color: '#FF3B30' }]}>
+                {type === 'success' ? 'KASA GÜNCELLENDİ' : 'EKSİK BİLGİ'}
+              </Text>
+              <Text style={[styles.statusSubText, { color: isDarkMode ? '#aaa' : '#666' }]}>{message}</Text>
+            </View>
+            <TouchableOpacity style={[styles.miniConfirmBtn, { backgroundColor: isDarkMode ? '#333' : '#1A1A1A' }, type === 'error' && { backgroundColor: '#FF3B30' }]} onPress={onConfirm}>
+              <Ionicons name={type === 'success' ? "arrow-forward" : "close"} size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={[styles.miniConfirmBtn, { backgroundColor: isDarkMode ? '#333' : '#1A1A1A' }, type === 'error' && { backgroundColor: '#FF3B30' }]} onPress={onConfirm}>
-            <Ionicons name={type === 'success' ? "arrow-forward" : "close"} size={24} color="#fff" />
-          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// --- YENİ CİHAZ ONAY PENCERESİ ---
+const DeviceConfirmModal = ({ visible, device, onApprove, onReject, isDarkMode }: any) => {
+  if (!visible || !device) return null; // KORUMA
+  return (
+    <Modal visible={true} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={[styles.confirmContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
+          <Text style={[styles.confirmTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderColor: isDarkMode ? '#333' : '#eee' }]}>CİHAZ DOĞRULAMA</Text>
+          
+          <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+            <Text style={styles.deviceInfoLabel}>Tür:</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.cihazTuru}</Text>
+          </View>
+          <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+            <Text style={styles.deviceInfoLabel}>Marka / Model:</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.marka} {device.model}</Text>
+          </View>
+          <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+            <Text style={styles.deviceInfoLabel}>Seri No:</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.seriNo}</Text>
+          </View>
+          <View style={[styles.deviceInfoRow, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+            <Text style={styles.deviceInfoLabel}>İlgilenen Usta:</Text>
+            <Text style={[styles.deviceInfoValue, { color: isDarkMode ? '#ddd' : '#333' }]}>{device.usta}</Text>
+          </View>
+          <View style={[styles.deviceInfoRow, { borderBottomColor: 'transparent' }]}>
+            <Text style={styles.deviceInfoLabel}>Verilen Fiyat Teklifi:</Text>
+            <Text style={[styles.deviceInfoValue, { color: '#FF3B30', fontSize: 18 }]}>{device.fiyatTeklifi}</Text>
+          </View>
+
+          <View style={styles.confirmBtnRow}>
+            <TouchableOpacity style={styles.rejectBtn} onPress={onReject}>
+              <Text style={styles.rejectBtnText}>YANLIŞ CİHAZ</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.approveBtn} onPress={onApprove}>
+              <Text style={styles.approveBtnText}>ONAYLA & GEÇ</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </TouchableOpacity>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
-// MÜDÜR: PARA FORMATLAMA MOTORU (Örn: 1.234,56)
+// PARA FORMATLAMA MOTORU
 const formatMoney = (val: string) => {
   if (!val) return '';
-  // Kullanıcının girdiği noktalı virgüllü yapıyı önce düz sayıya çeviriyoruz
   let clean = val.toString().replace(/\./g, '').replace(',', '.');
   let num = parseFloat(clean);
   if (isNaN(num)) return '';
-  
-  // Türkiye standartı: Binlikler nokta, kuruşlar virgül
   let parts = num.toFixed(2).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return parts.join(',');
 };
 
-// MÜDÜR: SAYISAL DEĞERİ KONTROL ETMEK İÇİN (Kaydetme aşamasında kullanılır)
 const parseMoney = (val: string) => {
   if (!val) return 0;
   let clean = val.toString().replace(/\./g, '').replace(',', '.');
   return parseFloat(clean) || 0;
 };
 
+// VERİTABANI SİMÜLASYONU (RADAR MOTORU)
+const mockDatabaseSearch = (kayitNo: string) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (kayitNo === '1001') {
+        resolve({ durum: 'bulundu', cihazTuru: 'Cep Telefonu', marka: 'Apple', model: 'iPhone 13 Pro', seriNo: 'IMEI-847593028', usta: 'Ahmet Usta', fiyatTeklifi: '1.500,00 ₺' });
+      } else if (kayitNo === '1002') {
+        resolve({ durum: 'bulundu', cihazTuru: 'Laptop', marka: 'Lenovo', model: 'ThinkPad T14', seriNo: 'SN-9948XQ', usta: 'Mehmet Usta', fiyatTeklifi: '3.200,00 ₺' });
+      } else {
+        resolve({ durum: 'bulunamadi' });
+      }
+    }, 800); 
+  });
+};
+
 export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
   const initialState = { 
     tur: 'Seçiniz...', tutar: '', aciklama: '',
     urunAdi: '', marka: '', numara: '', 
-    usta: 'Seçiniz...'
+    usta: 'Seçiniz...',
+    kayitNo: '', cihazTuru: '', model: '', seriNo: '', fiyatTeklifi: ''
   };
   
   const [f, setF] = useState(initialState);
   const [focus, setFocus] = useState('');
   const [modalState, setModalState] = useState<'tur' | 'usta' | null>(null);
   const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', errorTarget: '' });
+  
+  const [isSearching, setIsSearching] = useState(false);
+  const [isRecordFound, setIsRecordFound] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [tempDeviceData, setTempDeviceData] = useState<any>(null);
 
+  const rKayitNo = useRef<TextInput>(null);
   const rUrunAdi = useRef<TextInput>(null);
   const rMarka = useRef<TextInput>(null);
   const rNumara = useRef<TextInput>(null);
@@ -85,6 +153,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
     if (visible) {
       setF(initialState);
       setFocus('tur');
+      setIsRecordFound(false);
     }
   }, [visible]);
 
@@ -105,6 +174,58 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
     }
   };
 
+  const handleSearchRecord = async () => {
+    if (!f.kayitNo || f.kayitNo.length < 3) {
+      setStatus({ visible: true, type: 'error', msg: 'Lütfen geçerli bir Kayıt No girin! (Örn: 1001)', errorTarget: '' });
+      return;
+    }
+    Keyboard.dismiss();
+    setIsSearching(true);
+    setFocus('');
+
+    const sonuc: any = await mockDatabaseSearch(f.kayitNo);
+    setIsSearching(false);
+
+    if (sonuc.durum === 'bulundu') {
+      setTempDeviceData(sonuc);
+      setConfirmModalVisible(true);
+    } else {
+      setIsRecordFound(false);
+      setStatus({ visible: true, type: 'error', msg: 'Bu numaraya ait bir servis kaydı bulunamadı!', errorTarget: '' });
+      setTimeout(() => rKayitNo.current?.focus(), 500);
+    }
+  };
+
+  const handleApproveDevice = () => {
+    setF({
+      ...f,
+      cihazTuru: tempDeviceData.cihazTuru,
+      marka: tempDeviceData.marka,
+      model: tempDeviceData.model,
+      seriNo: tempDeviceData.seriNo,
+      usta: tempDeviceData.usta,
+      fiyatTeklifi: tempDeviceData.fiyatTeklifi
+    });
+    setIsRecordFound(true);
+    setConfirmModalVisible(false);
+    
+    setTimeout(() => {
+      setFocus('tutar');
+      rTutar.current?.focus();
+    }, 400);
+  };
+
+  const handleRejectDevice = () => {
+    setConfirmModalVisible(false);
+    setIsRecordFound(false);
+    setF({ ...f, kayitNo: '' });
+    
+    setTimeout(() => {
+      setFocus('kayitNo');
+      rKayitNo.current?.focus();
+    }, 400);
+  };
+
   const handleSaveAttempt = () => {
     if (f.tur === 'Seçiniz...') { setStatus({ visible: true, type: 'error', msg: 'Lütfen işlem türünü seçiniz! (*)', errorTarget: 'tur' }); return; }
     
@@ -112,8 +233,8 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
       setStatus({ visible: true, type: 'error', msg: 'Satılan ürün adını giriniz! (*)', errorTarget: 'urunAdi' }); return;
     }
 
-    if (f.tur === 'Tamirden Giriş' && f.usta === 'Seçiniz...') {
-      setStatus({ visible: true, type: 'error', msg: 'Lütfen usta seçiniz! (*)', errorTarget: 'usta' }); return;
+    if (f.tur === 'Tamirden Giriş' && !isRecordFound) {
+      setStatus({ visible: true, type: 'error', msg: 'Lütfen geçerli bir Kayıt No bulup cihazı onaylayın!', errorTarget: '' }); return;
     }
 
     const rawTutar = parseMoney(f.tutar);
@@ -135,10 +256,14 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
     dbBoxBorder: isDarkMode ? '#444' : '#ddd',
     dbLabelColor: isDarkMode ? '#888' : '#777',
     dbValueColor: isDarkMode ? '#aaa' : '#999',
+    readOnlyBg: isDarkMode ? '#222' : '#e9ecef', 
   };
 
+  // KORUMA: Ana modalı da yorma
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
+    <Modal visible={true} animationType="slide" transparent={true} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={40} style={{flex: 1}}>
           <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
@@ -159,7 +284,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
               </TouchableOpacity>
 
               {f.tur === 'Satıştan Giriş' && (
-                <>
+                <View>
                   <Text style={[styles.label, { color: theme.labelColor }]}>SATILAN ÜRÜN ADI (*)</Text>
                   <TextInput ref={rUrunAdi} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focus === 'urunAdi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} onFocus={()=>setFocus('urunAdi')} value={f.urunAdi} onChangeText={(v)=>setF({...f, urunAdi:v})} returnKeyType="next" onSubmitEditing={()=>rMarka.current?.focus()} blurOnSubmit={false} />
 
@@ -188,34 +313,83 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                       </View>
                     </View>
                   </View>
-                </>
+                </View>
               )}
 
-              {/* MÜDÜR: İŞTE BURASI. TAMİRDEN GİRİŞ SEÇİLDİĞİNDE FİYAT TEKLİFİ AÇILIR */}
               {f.tur === 'Tamirden Giriş' && (
-                <>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>KAYIT NO</Text>
-                  <View style={[styles.input, { backgroundColor: theme.dbBoxBg, borderColor: theme.dbBoxBorder, borderStyle: 'dashed' }]}>
-                    <Text style={{color: theme.dbLabelColor, fontWeight: '500'}}>Cihaz kayıt esnasında verilen numara</Text>
+                <View style={[styles.radarBox, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+                  <Text style={[styles.label, { color: theme.labelColor, marginTop: 0 }]}>KAYIT NO (ARANACAK FİŞ NO) (*)</Text>
+                  
+                  <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'kayitNo' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
+                    <TextInput 
+                      ref={rKayitNo} 
+                      style={[styles.flexInput, { color: theme.textColor }]} 
+                      onFocus={()=>setFocus('kayitNo')} 
+                      keyboardType="numeric"
+                      placeholder="Örn: 1001" 
+                      placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
+                      value={f.kayitNo} 
+                      onChangeText={(v)=>{
+                        setF({...f, kayitNo:v});
+                        if (isRecordFound) setIsRecordFound(false);
+                      }} 
+                      returnKeyType="search" 
+                      blurOnSubmit={true}
+                      onSubmitEditing={handleSearchRecord} 
+                    />
+                    <TouchableOpacity onPress={handleSearchRecord} disabled={isSearching} style={styles.searchBtn}>
+                      {isSearching ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="search" size={20} color="#fff" />}
+                    </TouchableOpacity>
                   </View>
 
-                  <Text style={[styles.label, { color: theme.labelColor }]}>MÜŞTERİYE VERİLEN FİYAT TEKLİFİ</Text>
-                  <View style={[styles.input, { backgroundColor: theme.dbBoxBg, borderColor: theme.dbBoxBorder }]}>
-                    <Text style={{color: theme.dbValueColor, fontStyle: 'italic'}}>DB'den Alınacak...</Text>
-                  </View>
+                  {isRecordFound && (
+                    <View style={styles.lockedDataContainer}>
+                      <View style={styles.rowLayout}>
+                        <View style={{flex: 1, marginRight: 10}}>
+                          <Text style={[styles.label, { color: theme.labelColor }]}>CİHAZ TÜRÜ</Text>
+                          <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.cihazTuru}</Text>
+                          </View>
+                        </View>
+                        <View style={{flex: 1}}>
+                          <Text style={[styles.label, { color: theme.labelColor }]}>MARKASI</Text>
+                          <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.marka}</Text>
+                          </View>
+                        </View>
+                      </View>
 
-                  <Text style={[styles.label, { color: theme.labelColor }]}>HANGİ USTA (*)</Text>
-                  <TouchableOpacity 
-                    style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'usta' && [styles.redBorder, { backgroundColor: theme.cardBg }]]} 
-                    onPress={() => { setModalState('usta'); setFocus('usta'); Keyboard.dismiss(); }}
-                  >
-                    <Text style={{color: f.usta !== 'Seçiniz...' ? theme.textColor : '#aaa', fontWeight: '500'}}>{f.usta}</Text>
-                  </TouchableOpacity>
-                </>
+                      <View style={styles.rowLayout}>
+                        <View style={{flex: 1, marginRight: 10}}>
+                          <Text style={[styles.label, { color: theme.labelColor }]}>MODEL</Text>
+                          <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.model}</Text>
+                          </View>
+                        </View>
+                        <View style={{flex: 1}}>
+                          <Text style={[styles.label, { color: theme.labelColor }]}>SERİ NO / IMEI</Text>
+                          <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
+                            <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.seriNo}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <Text style={[styles.label, { color: theme.labelColor }]}>İLGİLENEN USTA</Text>
+                      <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
+                        <Text style={{ color: theme.labelColor, fontWeight: '500' }}>{f.usta}</Text>
+                      </View>
+
+                      <Text style={[styles.label, { color: theme.labelColor }]}>MÜŞTERİYE VERİLEN FİYAT TEKLİFİ</Text>
+                      <View style={[styles.input, { backgroundColor: theme.readOnlyBg, borderColor: theme.borderColor }]}>
+                        <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>{f.fiyatTeklifi}</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
               )}
 
               {f.tur !== 'Seçiniz...' && (
-                <>
+                <View>
                   <Text style={[styles.label, { color: theme.labelColor }]}>İŞLEM TUTARI (₺) (*)</Text>
                   <TextInput 
                     ref={rTutar} 
@@ -253,7 +427,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
                   <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}>
                     <Text style={styles.saveBtnText}>KASAYA İŞLE</Text>
                   </TouchableOpacity>
-                </>
+                </View>
               )}
 
             </ScrollView>
@@ -263,7 +437,7 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
               onSelect={(v: string) => { 
                 setF({...f, tur: v}); setModalState(null); 
                 if(v === 'Satıştan Giriş') { setFocus('urunAdi'); setTimeout(() => rUrunAdi.current?.focus(), 450); }
-                else if(v === 'Tamirden Giriş') { setFocus('usta'); setTimeout(() => setModalState('usta'), 450); }
+                else if(v === 'Tamirden Giriş') { setFocus('kayitNo'); setTimeout(() => rKayitNo.current?.focus(), 450); }
                 else { setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }
               }} 
               onClose={() => setModalState(null)} 
@@ -273,6 +447,14 @@ export default function ParaGirisiFormu({ visible, onClose, isDarkMode }: any) {
               visible={modalState === 'usta'} title="USTA SEÇİMİ" data={['Usta 1', 'Usta 2', 'Usta 3']} isDarkMode={isDarkMode} 
               onSelect={(v: string) => { setF({...f, usta: v}); setModalState(null); setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }} 
               onClose={() => setModalState(null)} 
+            />
+
+            <DeviceConfirmModal 
+              visible={confirmModalVisible} 
+              device={tempDeviceData} 
+              onApprove={handleApproveDevice} 
+              onReject={handleRejectDevice} 
+              isDarkMode={isDarkMode} 
             />
 
             <StatusModal visible={status.visible} type={status.type} message={status.msg} onConfirm={handleConfirmAction} isDarkMode={isDarkMode} />
@@ -290,6 +472,24 @@ const styles = StyleSheet.create({
   bt: { color: '#fff', fontWeight: '900', fontSize: 13 },
   label: { fontSize: 11, fontWeight: '900', marginTop: 15, marginBottom: 5 },
   input: { borderRadius: 12, padding: 15, borderWidth: 1.5, fontSize: 16, fontWeight: '500' },
+  
+  inputWithIcon: { borderRadius: 12, paddingLeft: 15, paddingRight: 5, paddingVertical: 5, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  flexInput: { flex: 1, fontSize: 16, fontWeight: '500', height: 40 },
+  radarBox: { padding: 15, borderRadius: 15, borderWidth: 1.5, marginBottom: 10, marginTop: 25 },
+  searchBtn: { backgroundColor: '#FF3B30', padding: 10, borderRadius: 10, width: 45, alignItems: 'center', justifyContent: 'center' },
+  lockedDataContainer: { marginTop: 15, paddingTop: 5, borderTopWidth: 1, borderTopColor: '#ddd' },
+  
+  confirmContent: { width: '85%', borderRadius: 20, padding: 20, elevation: 20 },
+  confirmTitle: { fontSize: 18, fontWeight: '900', textAlign: 'center', marginBottom: 15, borderBottomWidth: 1, paddingBottom: 10 },
+  deviceInfoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1 },
+  deviceInfoLabel: { fontSize: 14, fontWeight: 'bold', color: '#888' },
+  deviceInfoValue: { fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'right' },
+  confirmBtnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25 },
+  rejectBtn: { flex: 1, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', padding: 12, borderRadius: 12, alignItems: 'center', marginRight: 10 },
+  rejectBtnText: { color: '#FF3B30', fontWeight: '900', fontSize: 13 },
+  approveBtn: { flex: 1, backgroundColor: '#34C759', padding: 12, borderRadius: 12, alignItems: 'center' },
+  approveBtnText: { color: '#fff', fontWeight: '900', fontSize: 13 },
+
   redBorder: { borderColor: '#FF3B30' },
   rowLayout: { flexDirection: 'row', justifyContent: 'space-between' },
   dbPriceBox: { padding: 20, borderRadius: 15, marginTop: 10, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1.5 },
