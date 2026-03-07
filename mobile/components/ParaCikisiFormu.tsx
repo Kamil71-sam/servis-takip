@@ -4,7 +4,9 @@ import {
   Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
+// --- ÖZEL SEÇİM PENCERESİ ---
 const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
@@ -20,6 +22,7 @@ const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: a
   </Modal>
 );
 
+// --- DURUM PENCERESİ ---
 const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onConfirm}>
@@ -56,20 +59,9 @@ const parseMoney = (val: string) => {
   return parseFloat(clean) || 0;
 };
 
-const formatDate = (val: string) => {
-  if (!val) return '';
-  let clean = val.replace(/\D/g, ''); 
-  if (clean.length > 8) clean = clean.slice(0, 8);
-  let match = clean.match(/^(\d{0,2})(\d{0,2})(\d{0,4})$/);
-  if (match) {
-    return !match[2] ? match[1] : `${match[1]}.${match[2]}${match[3] ? `.${match[3]}` : ''}`;
-  }
-  return val;
-};
-
-const getTodayString = () => {
-  const d = new Date();
-  return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
+// TAKVİMDEN GELEN BİLGİYİ (DD.MM.YYYY) FORMATINA ÇEVİREN MOTOR
+const formatSelectedDate = (date: Date) => {
+  return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
 };
 
 export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
@@ -85,6 +77,11 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
   const [modalState, setModalState] = useState<'tur' | 'talepTuru' | 'usta' | null>(null);
   const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', errorTarget: '' });
 
+  // YENİ TAKVİM DEVRELERİ
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [datePickerTarget, setDatePickerTarget] = useState<'siparis' | 'gelis' | null>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+
   const rTutar = useRef<TextInput>(null);
   const rAciklama = useRef<TextInput>(null);
   const rMalzeme = useRef<TextInput>(null);
@@ -92,8 +89,6 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
   const rModel = useRef<TextInput>(null);
   const rParcaNo = useRef<TextInput>(null);
   const rSiparisNo = useRef<TextInput>(null);
-  const rSiparisTarihi = useRef<TextInput>(null);
-  const rGelisTarihi = useRef<TextInput>(null);
 
   useEffect(() => {
     if (visible) {
@@ -140,6 +135,38 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
 
     Keyboard.dismiss();
     setStatus({ visible: true, type: 'success', msg: 'Tutar kasadan düşüldü.', errorTarget: '' });
+  };
+
+  // MÜDÜR: TAKVİMDEN SEÇİM YAPILINCA SADECE FOCUS ATAR, OTOMATİK DİĞERİNİ AÇMAZ
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setDatePickerVisible(false); // Android'de seçince takvimi kapat
+    }
+
+    // Kullanıcı takvimi iptal ederse
+    if (event.type === 'dismissed') {
+      return; 
+    }
+    
+    if (selectedDate) {
+      setCurrentDate(selectedDate);
+      const formatted = formatSelectedDate(selectedDate);
+      
+      if (datePickerTarget === 'siparis') {
+        setF({...f, siparisTarihi: formatted});
+        setFocus('gelisTarihi'); // Sadece bir sonrakini aktif (kırmızı) göster, açma!
+      } else if (datePickerTarget === 'gelis') {
+        setF({...f, gelisTarihi: formatted});
+        setFocus('talepTuru'); // Sadece bir sonrakini aktif (kırmızı) göster
+      }
+    }
+  };
+
+  const openDatePicker = (target: 'siparis' | 'gelis') => {
+    Keyboard.dismiss(); // Önce varsa klavyeyi kapat
+    setDatePickerTarget(target);
+    setFocus(target === 'siparis' ? 'siparisTarihi' : 'gelisTarihi');
+    setDatePickerVisible(true);
   };
 
   const theme = {
@@ -206,9 +233,10 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                         onChangeText={(v)=>setF({...f, siparisNo:v})} 
                         returnKeyType="next" 
                         blurOnSubmit={false} 
+                        // MÜDÜR: İLERİ TUŞU ARTIK TAKVİMİ AÇMIYOR. SADECE KLAVYEYİ KAPATIP KUTUYU İŞARETLİYOR.
                         onSubmitEditing={() => { 
+                          Keyboard.dismiss();
                           setFocus('siparisTarihi'); 
-                          setTimeout(() => rSiparisTarihi.current?.focus(), 150); 
                         }} 
                       />
                     </View>
@@ -217,54 +245,28 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
                   <View style={styles.rowLayout}>
                     <View style={{flex: 1, marginRight: 10}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>SİPARİŞ TARİHİ</Text>
-                      <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'siparisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
-                        <TextInput 
-                          ref={rSiparisTarihi} 
-                          style={[styles.flexInput, { color: theme.textColor }]} 
-                          onFocus={()=>setFocus('siparisTarihi')} 
-                          keyboardType="numeric" 
-                          maxLength={10} 
-                          placeholder="GG.AA.YYYY" 
-                          placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
-                          value={f.siparisTarihi} 
-                          onChangeText={(v)=>setF({...f, siparisTarihi: formatDate(v)})} 
-                          returnKeyType="next" 
-                          blurOnSubmit={false}
-                          onSubmitEditing={() => { 
-                            setFocus('gelisTarihi'); 
-                            setTimeout(() => rGelisTarihi.current?.focus(), 150); 
-                          }} 
-                        />
-                        <TouchableOpacity onPress={() => setF({...f, siparisTarihi: getTodayString()})}>
-                          <Ionicons name="calendar" size={24} color={theme.labelColor} />
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity 
+                        style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'siparisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}
+                        onPress={() => openDatePicker('siparis')}
+                      >
+                        <Text style={[styles.flexInput, { color: f.siparisTarihi ? theme.textColor : (isDarkMode ? '#666' : '#aaa') }]}>
+                          {f.siparisTarihi || "Seçiniz"}
+                        </Text>
+                        <Ionicons name="calendar" size={24} color={theme.labelColor} />
+                      </TouchableOpacity>
                     </View>
+                    
                     <View style={{flex: 1}}>
                       <Text style={[styles.label, { color: theme.labelColor }]}>GELİŞ TARİHİ</Text>
-                      <View style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'gelisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}>
-                        <TextInput 
-                          ref={rGelisTarihi} 
-                          style={[styles.flexInput, { color: theme.textColor }]} 
-                          onFocus={()=>setFocus('gelisTarihi')} 
-                          keyboardType="numeric" 
-                          maxLength={10} 
-                          placeholder="GG.AA.YYYY" 
-                          placeholderTextColor={isDarkMode ? '#666' : '#aaa'} 
-                          value={f.gelisTarihi} 
-                          onChangeText={(v)=>setF({...f, gelisTarihi: formatDate(v)})} 
-                          returnKeyType="done" 
-                          blurOnSubmit={true}
-                          onSubmitEditing={() => { 
-                            Keyboard.dismiss(); 
-                            setFocus('talepTuru'); 
-                            setTimeout(() => setModalState('talepTuru'), 150); 
-                          }} 
-                        />
-                        <TouchableOpacity onPress={() => setF({...f, gelisTarihi: getTodayString()})}>
-                          <Ionicons name="calendar" size={24} color={theme.labelColor} />
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity 
+                        style={[styles.inputWithIcon, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focus === 'gelisTarihi' && [styles.redBorder, { backgroundColor: theme.cardBg }]]}
+                        onPress={() => openDatePicker('gelis')}
+                      >
+                        <Text style={[styles.flexInput, { color: f.gelisTarihi ? theme.textColor : (isDarkMode ? '#666' : '#aaa') }]}>
+                          {f.gelisTarihi || "Seçiniz"}
+                        </Text>
+                        <Ionicons name="calendar" size={24} color={theme.labelColor} />
+                      </TouchableOpacity>
                     </View>
                   </View>
 
@@ -359,6 +361,17 @@ export default function ParaCikisiFormu({ visible, onClose, isDarkMode }: any) {
               onSelect={(v: string) => { setF({...f, usta: v}); setModalState(null); setFocus('tutar'); setTimeout(() => rTutar.current?.focus(), 450); }} 
               onClose={() => setModalState(null)} 
             />
+
+            {/* MÜDÜR: TAKVİM MOTORU FİYAKALI 'SPINNER' MODUNA ALINDI VE GECE MODU EKLENDİ */}
+            {datePickerVisible && (
+              <DateTimePicker
+                value={currentDate}
+                mode="date"
+                display="spinner" 
+                themeVariant={isDarkMode ? "dark" : "light"}
+                onChange={onDateChange}
+              />
+            )}
 
             <StatusModal visible={status.visible} type={status.type} message={status.msg} onConfirm={handleConfirmAction} isDarkMode={isDarkMode} />
           </SafeAreaView>
