@@ -6,6 +6,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { createCustomer } from '../services/api';
+
 // --- P2 DURUM PENCERESİ (GECE MODU DESTEKLİ) ---
 const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
@@ -48,6 +50,58 @@ export default function YeniMusteriFormu({ visible, onClose, isDarkMode }: any) 
     }
   }, [visible]);
 
+
+
+const handleSaveAttempt = async () => {
+
+  if (!customer.adSoyad || !customer.tel || !customer.email) {
+    setStatus({ visible: true, type: 'error', msg: 'Zorunlu alanları (* ) doldurunuz.' });
+    return;
+  }
+
+  try {
+
+
+
+
+    const data = await createCustomer(
+  customer.adSoyad,
+  customer.tel,
+  customer.faks,
+  customer.email,
+  customer.adres
+   );
+    
+
+
+    if (data?.error) {
+      setStatus({ visible: true, type: 'error', msg: data.error });
+      return;
+    }
+
+    Keyboard.dismiss();
+
+    setStatus({
+      visible: true,
+      type: 'success',
+      msg: 'Müşteri veritabanına kaydedildi.'
+    });
+
+  } catch (error) {
+
+    setStatus({
+      visible: true,
+      type: 'error',
+      msg: 'Server bağlantısı kurulamadı.'
+    });
+
+  }
+};
+
+
+
+  /*
+
   const handleSaveAttempt = () => {
     if (!customer.adSoyad || !customer.tel || !customer.email) {
       setStatus({ visible: true, type: 'error', msg: 'Zorunlu alanları (* ) doldurunuz.' });
@@ -56,6 +110,9 @@ export default function YeniMusteriFormu({ visible, onClose, isDarkMode }: any) 
     Keyboard.dismiss();
     setStatus({ visible: true, type: 'success', msg: 'Müşteri başarıyla kaydedildi.' });
   };
+
+
+*/
 
   // DİNAMİK STİLLER (Şaltere Bağlı)
   const theme = {
