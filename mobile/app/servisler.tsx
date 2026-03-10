@@ -29,18 +29,12 @@ export default function ServisListesi() {
   const fetchServisler = async () => {
     setLoading(true);
     try {
-      // MÜDÜR: Eğer server'da çakışma varsa '/services/all' yerine direkt '/services' deneyebilirsin.
-      // Ama şimdilik senin tarayıcıda denediğin yolu mühürledim.
       const response = await fetch('http://192.168.1.44:3000/services/all');
-      
       if (!response.ok) throw new Error(`Hata: ${response.status}`);
-      
       const data = await response.json();
       setServisler(data);
     } catch (e: any) { 
       console.log("Bağlantı hatası:", e.message);
-      // Hata mesajını daha açıklayıcı yaptık ki dükkanda ne oluyor bilelim.
-      Alert.alert("Bağlantı Sorunu", "Server'dan veri çekilemedi. SQL Rotalarını kontrol et müdürüm!");
     } finally { 
       setLoading(false); 
     }
@@ -48,49 +42,49 @@ export default function ServisListesi() {
 
   useEffect(() => { fetchServisler(); }, []);
 
-  // --- AKILLI SÜZGEÇ (Müşteri, Cihaz veya Durum) ---
   const filtered = servisler.filter((s: any) => {
     const val = search.toLowerCase().trim();
     if (!val) return true;
-
-    const musterisi = (s.musteri_adi || s.name || "").toLowerCase();
-    const cihazi = (s.cihaz_model || s.cihaz || "").toLowerCase();
-    const durumu = (s.durum || "").toLowerCase();
-
-    return musterisi.includes(val) || cihazi.includes(val) || durumu.includes(val);
+    const musterisi = (s.customer_name || "").toLowerCase();
+    const cihazi = `${s.brand || ""} ${s.model || ""}`.toLowerCase();
+    return musterisi.includes(val) || cihazi.includes(val);
   });
 
   const renderItem = ({ item }: any) => (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={styles.cardHeader}>
-        <Text style={[styles.name, { color: theme.text }]}>
-          {(item.musteri_adi || item.name || "İSİMSİZ").toUpperCase()}
-        </Text>
+        <View style={{flex: 1}}>
+          <Text style={[styles.name, { color: theme.text }]}>
+            {(item.customer_name || "İSİMSİZ").toUpperCase()}
+          </Text>
+          <Text style={{color: theme.sub, fontSize: 11, marginTop: 2}}>
+            Plaka: {item.servis_no || '-'}
+          </Text>
+        </View>
         <View style={styles.statusBadge}>
-          <Text style={{ color: theme.primary, fontSize: 11, fontWeight: '800' }}>
-            {item.durum?.toUpperCase() || 'İŞLEMDE'}
+          <Text style={{ color: theme.primary, fontSize: 10, fontWeight: '800' }}>
+            {(item.status || 'İŞLEMDE').toUpperCase()}
           </Text>
         </View>
       </View>
 
       <View style={styles.infoRow}>
         <Ionicons name="hardware-chip-outline" size={16} color={theme.sub} style={styles.icon} />
-        <Text style={[styles.text, { color: theme.text }]}>
-          {item.cihaz_model || item.cihaz || 'Cihaz bilgisi yok'}
-        </Text>
+        <Text style={[styles.text, { color: theme.text }]}>{item.brand} {item.model}</Text>
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.footerRow}>
-        <TouchableOpacity 
-          style={{flexDirection: 'row', alignItems: 'center'}}
-          onPress={() => (item.telefon || item.phone) && Linking.openURL(`tel:${item.telefon || item.phone}`)}
-        >
-          <Ionicons name="call-outline" size={16} color={theme.primary} style={{marginRight: 8}} />
-          <Text style={[styles.text, { color: theme.text }]}>{item.telefon || item.phone || '-'}</Text>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <Ionicons name="calendar-outline" size={14} color={theme.sub} />
+          <Text style={{color: theme.sub, fontSize: 12, marginLeft: 5}}>
+            {item.created_at ? new Date(item.created_at).toLocaleDateString('tr-TR') : '-'}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.detailBtn}>
+           <Text style={{color: theme.primary, fontWeight: 'bold', fontSize: 12}}>DETAY</Text>
         </TouchableOpacity>
-        <Text style={{color: theme.sub, fontSize: 12}}>{item.kayit_tarihi || ''}</Text>
       </View>
     </View>
   );
@@ -124,14 +118,9 @@ export default function ServisListesi() {
         <FlatList 
           data={filtered}
           renderItem={renderItem}
-          keyExtractor={(item: any) => item.id?.toString() || Math.random().toString()}
+          keyExtractor={(item: any) => item.id?.toString()}
           contentContainerStyle={{ paddingBottom: 50 }}
-          ListEmptyComponent={
-            <View style={{alignItems: 'center', marginTop: 50}}>
-              <Ionicons name="cloud-offline-outline" size={50} color={theme.sub} />
-              <Text style={{ marginTop: 10, color: theme.sub }}>SQL'de servis kaydı bulunamadı.</Text>
-            </View>
-          }
+          showsVerticalScrollIndicator={false}
         />
       )}
     </SafeAreaView>
@@ -144,13 +133,14 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '600' },
   searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 45, borderRadius: 10, marginBottom: 15, borderWidth: 1 },
   input: { flex: 1, marginLeft: 8, fontSize: 15 },
-  card: { borderRadius: 12, padding: 15, marginBottom: 12, borderWidth: 1 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  name: { fontSize: 16, fontWeight: '600', flex: 1 },
+  card: { borderRadius: 12, padding: 15, marginBottom: 12, borderWidth: 1, elevation: 1 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  name: { fontSize: 16, fontWeight: '700' },
   statusBadge: { backgroundColor: 'rgba(255,59,48,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   icon: { marginRight: 10, width: 18 },
   text: { fontSize: 14, fontWeight: '400' },
   divider: { height: 1, backgroundColor: 'rgba(150,150,150,0.1)', marginVertical: 10 },
-  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailBtn: { padding: 5 }
 });
