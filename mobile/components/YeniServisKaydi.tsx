@@ -2,45 +2,44 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   Modal, ScrollView, KeyboardAvoidingView, Platform, Keyboard,
-  SafeAreaView 
+  SafeAreaView, ActivityIndicator, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getCustomers, createServiceRecord, getCustomerDevices, createDevice } from '../services/api';
 
-// --- P2 ÖZEL SEÇİM PENCERESİ (GECE MODU) ---
 const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.selectOverlay} activeOpacity={1} onPress={onClose}>
       <View style={[styles.selectContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
         <Text style={[styles.selectTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>{title}</Text>
-        {data.map((item: string) => (
-          <TouchableOpacity key={item} style={[styles.selectItem, { borderBottomColor: isDarkMode ? '#2c2c2c' : '#f9f9f9' }]} onPress={() => onSelect(item)}>
-            <Text style={[styles.selectItemText, { color: isDarkMode ? '#ddd' : '#333' }]}>{item}</Text>
-          </TouchableOpacity>
-        ))}
+        <ScrollView style={{maxHeight: 280}} showsVerticalScrollIndicator={true}>
+          {data.map((item: any, index: number) => (
+            <TouchableOpacity key={item.id || index} style={styles.selectItem} onPress={() => onSelect(item)}>
+              <Text style={[styles.selectItemText, { color: isDarkMode ? '#ddd' : '#333' }]}>
+                {item.name || (item.brand ? `${item.brand} ${item.model}` : item)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     </TouchableOpacity>
   </Modal>
 );
 
-// --- P2 DURUM PENCERESİ (GECE MODU) ---
 const StatusModal = ({ visible, type, message, recordNo, onConfirm, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
     <View style={styles.selectOverlay}>
-      <View style={[styles.miniStatusContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, type === 'error' && { borderColor: '#FF3B30', borderWidth: 1.5 }]}>
+      <View style={[styles.miniStatusContent, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
         <View style={styles.statusRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.statusMainText, { color: isDarkMode ? '#fff' : '#1A1A1A' }, type === 'error' && { color: '#FF3B30' }]}>
-              {type === 'success' ? 'KAYIT TAMAMLANDI' : 'EKSİK BİLGİ'}
-            </Text>
+            <Text style={[styles.statusMainText, { color: isDarkMode ? '#fff' : '#1A1A1A' }]}>{type === 'success' ? 'İŞLEM TAMAM' : 'HATA'}</Text>
             {type === 'success' && recordNo && (
-              <View style={[styles.recordNoBadge, { backgroundColor: isDarkMode ? '#333' : '#1A1A1A' }]}>
-                <Text style={styles.recordNoText}>NO: {recordNo}</Text>
-              </View>
+              <View style={styles.recordNoBadge}><Text style={styles.recordNoText}>KAYIT NO: {recordNo}</Text></View>
             )}
             <Text style={[styles.statusSubText, { color: isDarkMode ? '#aaa' : '#666' }]}>{message}</Text>
           </View>
-          <TouchableOpacity style={[styles.miniConfirmBtn, { backgroundColor: isDarkMode ? '#333' : '#1A1A1A' }, type === 'error' && { backgroundColor: '#FF3B30' }]} onPress={onConfirm}>
-            <Ionicons name={type === 'success' ? "arrow-forward" : "close"} size={24} color="#fff" />
+          <TouchableOpacity style={[styles.miniConfirmBtn, { backgroundColor: '#333' }]} onPress={onConfirm}>
+            <Ionicons name="checkmark" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -50,165 +49,213 @@ const StatusModal = ({ visible, type, message, recordNo, onConfirm, isDarkMode }
 
 export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
   const initialState = {
-    cihaz_sahibi: '', cihaz_turu: 'Seçiniz...', marka: '', model: '',
-    seri_no: '', garanti: 'Yok', muster_notu: '', aksesuar: '', ariza_notu: '', usta: 'Seçilmedi'
+    customer_id: null as number | null, cihaz_sahibi: '', device_id: null as number | null, cihaz_bilgisi: 'Seçiniz...',
+    cihaz_turu: 'Seçiniz...', marka: '', model: '', seri_no: '', garanti: 'Yok',
+    muster_notu: '', ariza_notu: '', usta: 'Seçilmedi'
   };
 
   const [servis, setServis] = useState(initialState);
-  const [focusField, setFocusField] = useState<string>('sahibi');
-  const [modalType, setModalType] = useState<'tür' | 'garanti' | 'usta' | null>(null);
-  const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', recordNo: '', errorTarget: '' });
+  const [modalType, setModalType] = useState<'tür' | 'musteri' | 'cihaz' | 'garanti' | 'usta' | null>(null);
+  const [status, setStatus] = useState({ visible: false, type: 'success' as 'success'|'error', msg: '', recordNo: '' });
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [showNewDeviceForm, setShowNewDeviceForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [focusField, setFocusField] = useState<string>('');
 
-  const r1=useRef<TextInput>(null); const r2=useRef<TextInput>(null);
-  const r3=useRef<TextInput>(null); const r4=useRef<TextInput>(null);
-  const r5=useRef<TextInput>(null); const r6=useRef<TextInput>(null);
-  const r7=useRef<TextInput>(null);
+  const rMarka = useRef<TextInput>(null);
+  const rModel = useRef<TextInput>(null);
+  const rSeri = useRef<TextInput>(null);
+  const rMNot = useRef<TextInput>(null);
+  const rAriza = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
+  // MÜDÜR: Form her açıldığında her şeyi "SÜPÜRÜYORUZ"
+  useEffect(() => { 
     if (visible) {
-      setTimeout(() => r1.current?.focus(), 600);
-      setFocusField('sahibi');
+      setServis(initialState);
+      setShowNewDeviceForm(false);
+      setFocusField('');
+      loadCustomers(); 
     }
   }, [visible]);
 
-  const generateRecordNo = () => {
-    const d = new Date();
-    const yy = d.getFullYear().toString().slice(-2);
-    const mm = (d.getMonth() + 1).toString().padStart(2, '0');
-    const dd = d.getDate().toString().padStart(2, '0');
-    return `${yy}${mm}${dd}01`;
+  const loadCustomers = async () => {
+    try { const data = await getCustomers(); setCustomers(data); } catch (e) { console.log("Hata"); }
   };
 
-  const handleSaveAttempt = () => {
-    if (!servis.cihaz_sahibi || servis.cihaz_sahibi.trim().length < 2) {
-      setStatus({ visible: true, type: 'error', msg: 'Müşteri ismi mecburidir.', recordNo: '', errorTarget: 'sahibi' });
-      return;
-    }
-    if (servis.cihaz_turu === 'Seçiniz...') {
-      setStatus({ visible: true, type: 'error', msg: 'Cihaz türünü seçiniz.', recordNo: '', errorTarget: 'tür' });
-      return;
-    }
-    if (!servis.marka || servis.marka.trim().length < 1) {
-      setStatus({ visible: true, type: 'error', msg: 'Cihaz markası mecburidir.', recordNo: '', errorTarget: 'marka' });
-      return;
-    }
-    if (!servis.ariza_notu || servis.ariza_notu.trim().length < 3) {
-      setStatus({ visible: true, type: 'error', msg: 'Arıza notu mecburidir.', recordNo: '', errorTarget: 'ariza' });
-      return;
-    }
-    Keyboard.dismiss();
-    setStatus({ visible: true, type: 'success', msg: 'Cihaz başarıyla işlendi.', recordNo: generateRecordNo(), errorTarget: '' });
+  const handleCustomerSelect = async (customer: any) => {
+    setServis({
+      ...initialState, 
+      customer_id: Number(customer.id), 
+      cihaz_sahibi: customer.name, 
+      cihaz_bilgisi: 'Cihaz Seçiniz...'
+    });
+    setModalType(null);
+    setFocusField('cihaz_sec');
+    setShowNewDeviceForm(false);
+    
+    try {
+      const customerDevices = await getCustomerDevices(customer.id);
+      // MÜDÜR: Listenin en başına "Temizle" seçeneği eklendi
+      setDevices([{ id: null, brand: '--- SEÇİMİ TEMİZLE ---', model: '' }, ...customerDevices]);
+    } catch (e) { console.log("Cihaz listesi çekilemedi"); }
   };
 
-  const handleErrorConfirm = () => {
-    setStatus({ ...status, visible: false });
-    setTimeout(() => {
-      if (status.errorTarget === 'sahibi') r1.current?.focus();
-      else if (status.errorTarget === 'tür') { setFocusField('tür'); setModalType('tür'); }
-      else if (status.errorTarget === 'marka') r2.current?.focus();
-      else if (status.errorTarget === 'ariza') r7.current?.focus();
-    }, 150); 
+  const handleExistingDeviceSelect = (device: any) => {
+    if (device.id === null) {
+      // Temizle seçildiyse sıfırla
+      setServis({ ...servis, device_id: null, cihaz_bilgisi: 'Seçiniz...', marka: '', model: '', cihaz_turu: 'Seçiniz...' });
+    } else {
+      setServis({
+        ...servis,
+        device_id: device.id,
+        cihaz_bilgisi: `${device.brand} ${device.model}`,
+        marka: device.brand,
+        model: device.model,
+        cihaz_turu: device.cihaz_turu || 'Belirtilmemiş'
+      });
+      setFocusField('usta');
+      setTimeout(() => {
+          scrollRef.current?.scrollTo({ y: 180, animated: true }); 
+      }, 100);
+    }
+    setModalType(null);
+    setShowNewDeviceForm(false);
   };
 
-  const resetFormAndClose = () => {
-    setServis(initialState);
-    setStatus({ ...status, visible: false });
-    onClose();
+  const handleCreateNewDevice = async () => {
+    if (!servis.customer_id) return;
+    setLoading(true);
+    try {
+      const newDev = await createDevice({
+        customer_id: Number(servis.customer_id),
+        brand: servis.marka,
+        model: servis.model,
+        serial_no: servis.seri_no || 'N/A',
+        cihaz_turu: servis.cihaz_turu,
+        garanti_durumu: servis.garanti,
+        muster_notu: servis.muster_notu
+      });
+      setServis({...servis, device_id: Number(newDev.id), cihaz_bilgisi: `${servis.marka} ${servis.model}`});
+      setShowNewDeviceForm(false);
+      
+      Alert.alert(
+        "Başarılı", 
+        "Yeni cihaz tanımlandı.",
+        [{ 
+          text: "OK", 
+          onPress: () => {
+            setFocusField('usta');
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: 180, animated: true }); 
+            }, 100);
+          }
+        }]
+      );
+    } catch (e) { Alert.alert("Hata", "Cihaz kaydedilemedi."); } finally { setLoading(false); }
   };
 
-  // DİNAMİK STİLLER
+  const handleSaveAttempt = async () => {
+    if (!servis.device_id) return Alert.alert("Hata", "Cihaz seçilmedi!");
+    setLoading(true);
+    try {
+      const result = await createServiceRecord({
+        device_id: Number(servis.device_id),
+        issue_text: servis.ariza_notu,
+        atanan_usta: servis.usta 
+      });
+      
+      // MÜDÜR: Ekrana ID değil, SQL'den gelen 26031001 PLAKASINI basıyoruz!
+      setStatus({ 
+        visible: true, 
+        type: 'success', 
+        msg: 'Servis Kaydı Tamamlandı.', 
+        recordNo: result.servis_no // <-- BURASI DEĞİŞTİ!
+      });
+
+    } catch (error) {
+      setStatus({ visible: true, type: 'error', msg: 'Kayıt hatası!', recordNo: '' });
+    } finally { setLoading(false); }
+  };
+
   const theme = {
     bg: isDarkMode ? '#121212' : '#fff',
-    cardBg: isDarkMode ? '#1e1e1e' : '#f9f9f9',
-    inputBg: isDarkMode ? '#2c2c2c' : '#f2f2f2',
-    borderColor: isDarkMode ? '#444' : '#eee',
+    inputBg: isDarkMode ? '#1e1e1e' : '#f5f5f5',
+    borderColor: isDarkMode ? '#333' : '#ddd',
     textColor: isDarkMode ? '#fff' : '#000',
-    labelColor: isDarkMode ? '#aaa' : '#333',
-    badgeBtnBg: isDarkMode ? '#333' : '#1A1A1A'
+    formBg: isDarkMode ? '#1A1A1A' : '#fcfcfc'
   };
 
   return (
-    // MÜDÜR: ŞEFFAF MODAL MÜHÜRÜ (Işık sızıntısı yok)
-    <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
-      
-      {/* DIŞ KAPLAMA: BEYAZLIĞI KESTİ */}
+    <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        
-        {/* ANDROID OFFSET GERİ GETİRİLDİ */}
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "android" ? 40 : 0} style={{flex: 1}}>
-          <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
-            
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={40} style={{flex: 1}}>
+          <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
-              <View style={[styles.titleBadge, { backgroundColor: theme.badgeBtnBg }]}><Text style={styles.title}>CİHAZ BİLGİLERİ</Text></View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-                <Ionicons name="close-circle" size={42} color="#FF3B30" />
-              </TouchableOpacity>
+              <Text style={[styles.headerTitle, { color: theme.textColor }]}>YENİ SERVİS KAYDI</Text>
+              <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={38} color="#FF3B30" /></TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="always" contentContainerStyle={{ paddingBottom: 150 }}>
-              
-              <Text style={[styles.label, { color: theme.labelColor }]}>MÜŞTERİ ARA (*) </Text>
+            <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={{ paddingBottom: 200 }}>
+              <Text style={styles.label}>MÜŞTERİ SEÇİMİ (*)</Text>
               <View style={styles.row}>
-                <TextInput ref={r1} style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'sahibi' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} placeholder="İsim veya Tel..." placeholderTextColor={isDarkMode ? '#666' : '#999'} onFocus={() => setFocusField('sahibi')} value={servis.cihaz_sahibi} onChangeText={(v)=>setServis({...servis, cihaz_sahibi: v})} returnKeyType="next" onSubmitEditing={() => { Keyboard.dismiss(); setModalType('tür'); }} />
-                <TouchableOpacity style={[styles.searchBtn, { backgroundColor: theme.badgeBtnBg }]}><Ionicons name="search" size={24} color="#fff" /></TouchableOpacity>
+                <TouchableOpacity style={[styles.mainInput, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focusField === 'musteri' && styles.focusedBorder]} onPress={() => {setFocusField('musteri'); setModalType('musteri');}}><Text style={{color: theme.textColor}}>{servis.cihaz_sahibi || "Müşteri Seçin..."}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.sideIconBtn} onPress={() => setModalType('musteri')}><Ionicons name="person-add" size={24} color="#fff" /></TouchableOpacity>
               </View>
 
-              <Text style={[styles.label, { color: theme.labelColor }]}>CİHAZ TÜRÜ (*) </Text>
-              <TouchableOpacity style={[styles.p2SelectBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focusField === 'tür' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onPress={() => { setFocusField('tür'); Keyboard.dismiss(); setModalType('tür'); }}>
-                <Text style={[styles.p2SelectText, { color: theme.textColor }]}>{servis.cihaz_turu}</Text>
-                <Ionicons name="chevron-down" size={20} color={theme.textColor} />
-              </TouchableOpacity>
-
-              <View style={styles.rowLayout}>
-                <View style={{flex: 1, marginRight: 10}}>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>MARKA (*) </Text>
-                  <TextInput ref={r2} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'marka' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onFocus={() => setFocusField('marka')} value={servis.marka} onChangeText={(v)=>setServis({...servis, marka: v})} returnKeyType="next" onSubmitEditing={()=>r3.current?.focus()} blurOnSubmit={false} />
-                </View>
-                <View style={{flex: 1}}>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>MODEL</Text>
-                  <TextInput ref={r3} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'model' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onFocus={() => setFocusField('model')} value={servis.model} onChangeText={(v)=>setServis({...servis, model: v})} returnKeyType="next" onSubmitEditing={()=>r4.current?.focus()} blurOnSubmit={false} />
-                </View>
+              <Text style={styles.label}>CİHAZ SEÇİMİ (Eski Cihazı Seç veya + ile Yeni Ekle)</Text>
+              <View style={styles.row}>
+                <TouchableOpacity style={[styles.mainInput, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focusField === 'cihaz_sec' && styles.focusedBorder]} onPress={() => {if(!servis.customer_id) return Alert.alert("Hata","Önce Müşteri Seç!"); setFocusField('cihaz_sec'); setModalType('cihaz');}}><Text style={{color: theme.textColor}}>{servis.cihaz_bilgisi}</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.sideIconBtn, { backgroundColor: showNewDeviceForm ? '#FF3B30' : '#333' }]} onPress={() => {
+                    if(!servis.customer_id) return Alert.alert("Hata","Önce Müşteri Seç!"); 
+                    if(!showNewDeviceForm) {
+                        setServis({...servis, device_id: null, cihaz_bilgisi: 'Yeni Cihaz Girişi...', marka: '', model: '', seri_no: '', muster_notu: ''});
+                    }
+                    setShowNewDeviceForm(!showNewDeviceForm); 
+                    setFocusField('yeni_cihaz');
+                }}>
+                  <Ionicons name={showNewDeviceForm ? "close" : "add"} size={28} color="#fff" />
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.rowLayout}>
-                <View style={{flex: 1, marginRight: 10}}>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>SERİ NUMARASI</Text>
-                  <TextInput ref={r4} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'seri' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onFocus={() => setFocusField('seri')} value={servis.seri_no} onChangeText={(v)=>setServis({...servis, seri_no: v})} returnKeyType="next" onSubmitEditing={() => { Keyboard.dismiss(); setModalType('garanti'); }} blurOnSubmit={false} />
+              {showNewDeviceForm && (
+                <View style={[styles.newDeviceForm, { backgroundColor: theme.formBg }]}>
+                   <Text style={[styles.label, {color: theme.textColor}]}>CİHAZ TÜRÜ</Text>
+                   <TouchableOpacity style={[styles.innerSelect, {backgroundColor: theme.inputBg}]} onPress={() => {setFocusField('tur'); setModalType('tür');}}><Text style={{color: theme.textColor}}>{servis.cihaz_turu}</Text><Ionicons name="chevron-down" size={20} color={theme.textColor} /></TouchableOpacity>
+                   <View style={[styles.row, { marginTop: 15 }]}>
+                      <TextInput maxLength={30} ref={rMarka} style={[styles.innerInput, {backgroundColor: theme.inputBg, color: theme.textColor}, focusField === 'marka' && styles.focusedBorder]} placeholder="Marka" placeholderTextColor="#888" onFocus={() => setFocusField('marka')} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => rModel.current?.focus()} onChangeText={(v)=>setServis({...servis, marka: v})} />
+                      <TextInput maxLength={30} ref={rModel} style={[styles.innerInput, {backgroundColor: theme.inputBg, color: theme.textColor, marginLeft: 10}, focusField === 'model' && styles.focusedBorder]} placeholder="Model" placeholderTextColor="#888" onFocus={() => setFocusField('model')} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => rSeri.current?.focus()} onChangeText={(v)=>setServis({...servis, model: v})} />
+                   </View>
+                   <TextInput maxLength={50} ref={rSeri} style={[styles.innerInput, {backgroundColor: theme.inputBg, color: theme.textColor, width: '100%', marginTop: 10}, focusField === 'seri' && styles.focusedBorder]} placeholder="Seri Numarası" placeholderTextColor="#888" onFocus={() => setFocusField('seri')} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => {Keyboard.dismiss(); setFocusField('garanti'); setModalType('garanti');}} onChangeText={(v)=>setServis({...servis, seri_no: v})} />
+                   <Text style={[styles.label, { marginTop: 15, color: theme.textColor }]}>GARANTİ DURUMU</Text>
+                   <TouchableOpacity style={[styles.innerSelect, {backgroundColor: theme.inputBg}, focusField === 'garanti' && styles.focusedBorder]} onPress={() => {setFocusField('garanti'); setModalType('garanti');}}><Text style={{color: theme.textColor}}>{servis.garanti}</Text><Ionicons name="shield-half" size={20} color={theme.textColor} /></TouchableOpacity>
+                   <Text style={[styles.label, { marginTop: 15, color: theme.textColor }]}>MÜŞTERİ NOTU / AKSESUAR (Max 100)</Text>
+                   <TextInput maxLength={100} ref={rMNot} style={[styles.innerInput, {backgroundColor: theme.inputBg, color: theme.textColor, width: '100%'}, focusField === 'not' && styles.focusedBorder]} placeholder="Notlar..." placeholderTextColor="#888" onFocus={() => setFocusField('not')} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => {Keyboard.dismiss(); setFocusField('tanimla');}} onChangeText={(v)=>setServis({...servis, muster_notu: v})} />
+                   <TouchableOpacity style={[styles.addBtn, focusField === 'tanimla' && styles.focusedBorder]} onPress={handleCreateNewDevice}><Text style={styles.addBtnText}>CİHAZI MÜŞTERİYE TANIMLA</Text></TouchableOpacity>
                 </View>
-                <View style={{flex: 1}}>
-                  <Text style={[styles.label, { color: theme.labelColor }]}>GARANTİ</Text>
-                  <TouchableOpacity style={[styles.p2SelectBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focusField === 'garanti' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onPress={() => { setFocusField('garanti'); Keyboard.dismiss(); setModalType('garanti'); }}>
-                    <Text style={[styles.p2SelectText, { color: theme.textColor }]}>{servis.garanti}</Text>
-                    <Ionicons name="shield-checkmark" size={18} color={theme.textColor} />
-                  </TouchableOpacity>
-                </View>
+              )}
+
+              <View style={{ height: 25 }} /> 
+
+              <Text style={styles.label}>ATANAN USTA</Text>
+              <TouchableOpacity style={[styles.mainInput, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }, focusField === 'usta' && styles.focusedBorder]} onPress={() => {setFocusField('usta'); setModalType('usta');}}><Text style={{color: theme.textColor}}>{servis.usta}</Text><Ionicons name="construct-outline" size={20} color={theme.textColor} /></TouchableOpacity>
+
+              <Text style={styles.label}>ARIZA / ŞİKAYET DETAYI (* - Max 250)</Text>
+              <TextInput maxLength={250} ref={rAriza} style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'ariza' && styles.focusedBorder]} onFocus={() => setFocusField('ariza')} multiline returnKeyType="done" blurOnSubmit={true} onSubmitEditing={() => {Keyboard.dismiss(); setFocusField('kaydet');}} onChangeText={(v)=>setServis({...servis, ariza_notu: v})} placeholder="Cihazın şikayeti nedir?" />
+
+              <View style={[styles.row, { marginTop: 30, marginBottom: 50 }]}>
+                <TouchableOpacity style={[styles.saveBtn]} onPress={handleSaveAttempt}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>KAYDET</Text>}</TouchableOpacity>
+                <TouchableOpacity style={styles.printBtn}><Ionicons name="print" size={24} color="#fff" /></TouchableOpacity>
               </View>
-
-              <Text style={[styles.label, { color: theme.labelColor }]}>MÜŞTERİ NOTU</Text>
-              <TextInput ref={r5} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'not' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onFocus={() => setFocusField('not')} value={servis.muster_notu} onChangeText={(v)=>setServis({...servis, muster_notu: v})} returnKeyType="next" onSubmitEditing={()=>r6.current?.focus()} blurOnSubmit={false} />
-
-              <Text style={[styles.label, { color: theme.labelColor }]}>AKSESUAR DURUMU</Text>
-              <TextInput ref={r6} style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'aksesuar' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onFocus={() => setFocusField('aksesuar')} value={servis.aksesuar} onChangeText={(v)=>setServis({...servis, aksesuar: v})} returnKeyType="next" onSubmitEditing={()=>r7.current?.focus()} blurOnSubmit={false} />
-
-              <Text style={[styles.label, { color: theme.labelColor }]}>ARIZA / ŞİKAYET BİLGİSİ (*) </Text>
-              <TextInput ref={r7} style={[styles.input, { height: 60, backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor }, focusField === 'ariza' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onFocus={() => setFocusField('ariza')} value={servis.ariza_notu} onChangeText={(v)=>setServis({...servis, ariza_notu: v})} returnKeyType="next" onSubmitEditing={() => { Keyboard.dismiss(); setModalType('usta'); }} blurOnSubmit={false} />
-
-              <Text style={[styles.label, { color: theme.labelColor }]}>ATANAN USTA</Text>
-              {/* MÜDÜR: SON KUTUYA 30px MARJİN (BOŞLUK) MÜHÜRLEDİM */}
-              <TouchableOpacity style={[styles.p2SelectBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, marginBottom: 30 }, focusField === 'usta' && [styles.focusedBorder, { backgroundColor: theme.cardBg }]]} onPress={() => { setFocusField('usta'); Keyboard.dismiss(); setModalType('usta'); }}>
-                <Text style={[styles.p2SelectText, { color: theme.textColor }]}>{servis.usta}</Text>
-                <Ionicons name="people" size={20} color={theme.textColor} />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.saveButton, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}><Text style={styles.saveButtonText}>KAYDI TAMAMLA</Text></TouchableOpacity>
             </ScrollView>
 
-            <CustomSelect visible={modalType === 'tür'} title="CİHAZ TÜRÜ" data={['Cep Telefonu', 'Masaüstü Bilgisayar', 'Notebook', 'Yazıcı', 'TV', 'Tablet']} isDarkMode={isDarkMode} onSelect={(v: string) => { setServis({...servis, cihaz_turu: v}); setModalType(null); setFocusField('marka'); setTimeout(() => r2.current?.focus(), 450); }} onClose={() => setModalType(null)} />
-            <CustomSelect visible={modalType === 'garanti'} title="GARANTİ" data={['Yok', 'Var (Resmi)', 'Var (Dükkan)']} isDarkMode={isDarkMode} onSelect={(v: string) => { setServis({...servis, garanti: v}); setModalType(null); setFocusField('not'); setTimeout(() => r5.current?.focus(), 450); }} onClose={() => setModalType(null)} />
-            <CustomSelect visible={modalType === 'usta'} title="USTA ATAMA" data={['Seçilmedi', 'Usta 1', 'Usta 2', 'Usta 3', 'Usta 4', 'Usta 5']} isDarkMode={isDarkMode} onSelect={(v: string) => { setServis({...servis, usta: v}); setModalType(null); setFocusField('usta'); }} onClose={() => setModalType(null)} />
-            
-            <StatusModal visible={status.visible} type={status.type} message={status.msg} recordNo={status.recordNo} isDarkMode={isDarkMode}
-              onConfirm={() => { if (status.type === 'success') resetFormAndClose(); else handleErrorConfirm(); }} />
+            <CustomSelect visible={modalType === 'musteri'} title="MÜŞTERİ" data={customers} isDarkMode={isDarkMode} onSelect={handleCustomerSelect} onClose={() => setModalType(null)} />
+            <CustomSelect visible={modalType === 'cihaz'} title="KAYITLI CİHAZLAR" data={devices} isDarkMode={isDarkMode} onSelect={handleExistingDeviceSelect} onClose={() => setModalType(null)} />
+            <CustomSelect visible={modalType === 'tür'} title="TÜR" data={['Cep Telefonu', 'Notebook', 'Masaüstü Bilgisayar', 'Yazıcı', 'Tablet']} isDarkMode={isDarkMode} onSelect={(v: string) => { setServis({...servis, cihaz_turu: v}); setModalType(null); setTimeout(() => rMarka.current?.focus(), 400); }} onClose={() => setModalType(null)} />
+            <CustomSelect visible={modalType === 'garanti'} title="GARANTİ" data={['Yok', 'Var (Resmi)', 'Var (Dükkan)']} isDarkMode={isDarkMode} onSelect={(v: string) => { setServis({...servis, garanti: v}); setModalType(null); setTimeout(() => rMNot.current?.focus(), 400); }} onClose={() => setModalType(null)} />
+            <CustomSelect visible={modalType === 'usta'} title="USTA" data={['Usta 1', 'Usta 2', 'Usta 3']} isDarkMode={isDarkMode} onSelect={(v: string) => { setServis({...servis, usta: v}); setModalType(null); setTimeout(() => rAriza.current?.focus(), 400); }} onClose={() => setModalType(null)} />
+            <StatusModal visible={status.visible} type={status.type} message={status.msg} recordNo={status.recordNo} isDarkMode={isDarkMode} onConfirm={() => { if (status.type === 'success') { onClose(); setServis(initialState); } setStatus({...status, visible: false}); }} />
           </SafeAreaView>
         </KeyboardAvoidingView>
       </View>
@@ -218,30 +265,32 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, paddingHorizontal: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 52 : 32, marginBottom: 20 },
-  titleBadge: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
-  title: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  closeBtn: { padding: 8, marginRight: -8 },
-  label: { fontSize: 12, fontWeight: 'bold', marginTop: 15, marginBottom: 5 },
-  input: { borderWidth: 1.5, borderRadius: 12, padding: 12, fontSize: 15, marginBottom: 15 },
-  focusedBorder: { borderColor: '#FF3B30' },
-  p2SelectBox: { borderRadius: 12, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1.5, marginBottom: 15 },
-  p2SelectText: { fontSize: 15, fontWeight: '500' },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-  rowLayout: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  searchBtn: { width: 52, height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 10, marginBottom: 15 },
-  saveButton: { height: 65, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 35, marginBottom: 40, elevation: 5 },
-  saveButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  selectOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  selectContent: { width: '85%', borderRadius: 25, padding: 20, elevation: 20 },
-  selectTitle: { fontSize: 17, fontWeight: '900', textAlign: 'center', marginBottom: 15, borderBottomWidth: 1.5, paddingBottom: 15 },
-  selectItem: { paddingVertical: 15, borderBottomWidth: 1, alignItems: 'center' },
-  selectItemText: { fontSize: 16, fontWeight: '700' },
-  miniStatusContent: { width: '90%', borderRadius: 15, padding: 20, elevation: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 40, marginBottom: 20 },
+  headerTitle: { fontSize: 18, fontWeight: '900' },
+  label: { fontSize: 11, fontWeight: 'bold', marginBottom: 8, color: '#888' },
+  row: { flexDirection: 'row', gap: 12, marginBottom: 15, alignItems: 'center' },
+  mainInput: { flex: 1, height: 52, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 15, justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' },
+  sideIconBtn: { width: 52, height: 52, backgroundColor: '#1A1A1A', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  focusedBorder: { borderColor: '#FF3B30', borderWidth: 2.5 },
+  newDeviceForm: { padding: 20, borderRadius: 15, marginBottom: 20, borderWidth: 1.5, borderColor: '#ddd' },
+  innerSelect: { height: 48, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15 },
+  innerInput: { flex: 1, height: 48, borderRadius: 10, paddingHorizontal: 15, fontSize: 14 },
+  addBtn: { backgroundColor: '#333', height: 50, borderRadius: 12, marginTop: 25, justifyContent: 'center', alignItems: 'center' },
+  addBtnText: { color: '#fff', fontWeight: '900', fontSize: 12 },
+  textArea: { height: 100, borderWidth: 1.5, borderRadius: 12, padding: 15, textAlignVertical: 'top' },
+  saveBtn: { flex: 1, height: 60, backgroundColor: '#1A1A1A', borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  printBtn: { width: 60, height: 60, backgroundColor: '#333', borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  selectOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  selectContent: { width: '85%', borderRadius: 20, padding: 20, elevation: 10 },
+  selectTitle: { fontSize: 16, fontWeight: '900', textAlign: 'center', marginBottom: 20, borderBottomWidth: 1, paddingBottom: 10 },
+  selectItem: { paddingVertical: 15, borderBottomWidth: 0.5, borderColor: '#eee', alignItems: 'center' },
+  selectItemText: { fontSize: 15, fontWeight: '600' },
+  miniStatusContent: { width: '80%', borderRadius: 15, padding: 20 },
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statusMainText: { fontSize: 18, fontWeight: '900' },
-  statusSubText: { fontSize: 14, marginTop: 2 },
-  miniConfirmBtn: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  recordNoBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginVertical: 8, alignSelf: 'flex-start' },
-  recordNoText: { color: '#fff', fontWeight: '900', fontSize: 14 }
+  statusMainText: { fontSize: 16, fontWeight: '900' },
+  statusSubText: { fontSize: 13 },
+  miniConfirmBtn: { width: 45, height: 45, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  recordNoBadge: { backgroundColor: '#FF3B30', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginVertical: 10, alignSelf: 'flex-start' },
+  recordNoText: { color: '#fff', fontWeight: 'bold', fontSize: 12 }
 });

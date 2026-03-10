@@ -48,12 +48,11 @@ export async function getCustomers() {
 }
 
 
-// --- YENİ EKLENEN CİHAZ VE SERVİS KABLOLARI ---
+// --- YENİ EKLENEN CİHAZ VE SERVİS KABLOLARI (GÜNCELLENDİ) ---
 
 // 1. Seçilen müşterinin cihazlarını getirir
 export const getCustomerDevices = async (customerId: number) => {
   try {
-    // API_URL kısmını kendi dosyanın en üstündeki değişkene göre uyarla
     const response = await fetch(`${API_URL}/devices/customer/${customerId}`);
     return await response.json();
   } catch (error) {
@@ -62,8 +61,16 @@ export const getCustomerDevices = async (customerId: number) => {
   }
 };
 
-// 2. Yeni cihaz ekler
-export const createDevice = async (deviceData: { customer_id: number; brand: string; model: string; serial_no: string }) => {
+// 2. Yeni cihaz ekler (MÜDÜR: Buraya yeni kolonları ekledik!)
+export const createDevice = async (deviceData: { 
+    customer_id: number; 
+    brand: string; 
+    model: string; 
+    serial_no: string;
+    cihaz_turu?: string;       // YENİ
+    garanti_durumu?: string;   // YENİ
+    muster_notu?: string;      // YENİ
+}) => {
   try {
     const response = await fetch(`${API_URL}/devices`, {
       method: 'POST',
@@ -77,8 +84,12 @@ export const createDevice = async (deviceData: { customer_id: number; brand: str
   }
 };
 
-// 3. Yeni servis kaydı açar
-export const createServiceRecord = async (serviceData: { device_id: number; issue_text: string }) => {
+// 3. Yeni servis kaydı açar (MÜDÜR: Usta artık ayrı gidiyor!)
+export const createServiceRecord = async (serviceData: { 
+    device_id: number; 
+    issue_text: string;
+    atanan_usta?: string;      // YENİ
+}) => {
   try {
     const response = await fetch(`${API_URL}/services`, {
       method: 'POST',

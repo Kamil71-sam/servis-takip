@@ -11,20 +11,23 @@ import {
   StatusBar,
   Alert,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { login } from '../services/api';
 
+
 export default function LoginScreen() {
   const router = useRouter();
 
   const [role, setRole] = useState<'user' | 'expert'>('user');
-  const [email, setEmail] = useState('user@kalandar.com');
-  const [password, setPassword] = useState('user123');
+  const [email, setEmail] = useState('admin@test.com'); // MÜDÜR: Burayı senin yeni mailine çektim
+  const [password, setPassword] = useState('123456'); // MÜDÜR: Şifreyi de güncelledim
   const [captchaInput, setCaptchaInput] = useState('');
   const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, result: 0 });
+  const [loading, setLoading] = useState(false); // Giriş yaparken bekletme ikonu için
 
   const passwordRef = useRef<TextInput>(null);
   const captchaRef = useRef<TextInput>(null);
@@ -40,7 +43,11 @@ export default function LoginScreen() {
     generateCaptcha();
   }, []);
 
+  // MÜDÜR: Bu kısım her seçimde maili sıfırlıyordu, 
+  // admin girişini kolaylaştırmak için burayı devre dışı bıraktık veya admin@test.com'a sabitledik.
   useEffect(() => {
+    if (email === 'admin@test.com') return; // Eğer admin yazılıysa dokunma
+
     if (role === 'user') {
       setEmail('user@kalandar.com');
       setPassword('user123');
@@ -55,40 +62,35 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    // 1. Captcha Kontrolü
     if (parseInt(captchaInput) !== captcha.result) {
       Alert.alert('Hatalı İşlem', 'Matematik mühürü tutmadı müdür!');
       generateCaptcha();
       return;
     }
 
-    if (role === 'user' && email !== 'user@kalandar.com') {
-      Alert.alert('Hata', 'Kullanıcı seçiliyken sadece kullanıcı maili ile girebilirsin.');
-      generateCaptcha();
-      return;
-    }
-
-    if (role === 'expert' && !email.startsWith('expert')) {
-      Alert.alert('Hata', 'Uzman seçiliyken uzman maili girmelisin.');
-      generateCaptcha();
-      return;
-    }
-
+    // MÜDÜR: O katı "Sadece şu mail girebilir" kısıtlamalarını kaldırdım. 
+    // Artık veritabanında kim varsa o girebilir.
+    
+    setLoading(true);
     try {
       const data = await login(email, password);
 
       if (data?.error) {
-        Alert.alert('Hata', data.error);
+        Alert.alert('Giriş Başarısız', data.error);
         generateCaptcha();
         return;
       }
 
+      // Giriş başarılıysa yönlendir
       setTimeout(() => {
         router.replace('/dashboard');
       }, 100);
 
-      setTimeout(() => generateCaptcha(), 500);
     } catch (error) {
-      Alert.alert('Sunucu hatası', 'Server’a bağlanamadı');
+      Alert.alert('Bağlantı Hatası', 'Server’a ulaşılamıyor. IP adresini ve Serverın açık olduğunu kontrol et müdür!');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -98,12 +100,10 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'android' ? 30 : 0}
         >
           <ScrollView
-            scrollEnabled={false}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="always"
             bounces={false}
@@ -147,7 +147,6 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   placeholder="E-posta"
                   autoCapitalize="none"
-                  blurOnSubmit={false}
                   onSubmitEditing={() => passwordRef.current?.focus()}
                 />
               </View>
@@ -166,7 +165,6 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   placeholder="Şifre"
                   secureTextEntry
-                  blurOnSubmit={false}
                   onSubmitEditing={() => captchaRef.current?.focus()}
                 />
               </View>
@@ -195,11 +193,12 @@ export default function LoginScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.button}
+                style={[styles.button, loading && { opacity: 0.7 }]}
                 activeOpacity={0.8}
                 onPress={handleLogin}
+                disabled={loading}
               >
-                <Text style={styles.buttonText}>SİSTEME GİRİŞ YAP</Text>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>SİSTEME GİRİŞ YAP</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -211,7 +210,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { flex: 1, paddingHorizontal: 25, justifyContent: 'center', alignItems: 'center' },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 25, justifyContent: 'center', alignItems: 'center' },
   headerContainer: { alignItems: 'center', marginBottom: 20, width: '100%' },
   logoSquare: {
     width: 65,
@@ -262,4 +261,4 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-});
+}); 
