@@ -33,9 +33,9 @@ export default function DashboardScreen() {
   const [isListeSubMenuOpen, setIsListeSubMenuOpen] = useState(false); 
 
   // MÜDÜR: Dinamik Renk Mühürü (Sistemin ezmesini engeller)
-  const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; // İkon ve Metin Rengi
+  const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; 
 
-  // MÜDÜR: AKILLI MENÜ KONTROLÜ (Biri açılınca diğeri kapanır)
+  // MÜDÜR: AKILLI MENÜ KONTROLÜ
   const toggleMusteriMenu = () => {
     const nextState = !isMusteriSubMenuOpen;
     setIsMusteriSubMenuOpen(nextState);
@@ -194,7 +194,12 @@ export default function DashboardScreen() {
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Kayıt Oluşturma</Text>
                     </TouchableOpacity>
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
-                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); Alert.alert("Kurumsal", "Servis listesi hazırlanıyor."); }}>
+                    
+                    {/* MÜDÜR: Burası artık 'servisler' sayfasına gider, maval okumaz! */}
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
+                        setIsMenuOpen(false); 
+                        router.push({ pathname: '/servisler', params: { theme: isDarkMode ? 'dark' : 'light' } }); 
+                    }}>
                       <Ionicons name="list-circle" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Kayıt Listeleme</Text>
                     </TouchableOpacity>
