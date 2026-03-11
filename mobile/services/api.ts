@@ -47,8 +47,18 @@ export async function getCustomers() {
   return response.json();
 }
 
+// FİRMALARI LİSTELE (MÜDÜR: BURAYI EKLEDİK!)
+export const getFirms = async () => {
+  try {
+    const response = await fetch(`${API_URL}/api/firm/all`);
+    return await response.json();
+  } catch (error) {
+    console.error("Firmalar çekilirken hata:", error);
+    return [];
+  }
+};
 
-// --- YENİ EKLENEN CİHAZ VE SERVİS KABLOLARI (GÜNCELLENDİ) ---
+// --- YENİ EKLENEN CİHAZ VE SERVİS KABLOLARI ---
 
 // 1. Seçilen müşterinin cihazlarını getirir
 export const getCustomerDevices = async (customerId: number) => {
@@ -61,15 +71,15 @@ export const getCustomerDevices = async (customerId: number) => {
   }
 };
 
-// 2. Yeni cihaz ekler (MÜDÜR: Buraya yeni kolonları ekledik!)
+// 2. Yeni cihaz ekler
 export const createDevice = async (deviceData: { 
     customer_id: number; 
     brand: string; 
     model: string; 
     serial_no: string;
-    cihaz_turu?: string;       // YENİ
-    garanti_durumu?: string;   // YENİ
-    muster_notu?: string;      // YENİ
+    cihaz_turu?: string;
+    garanti_durumu?: string;
+    muster_notu?: string;
 }) => {
   try {
     const response = await fetch(`${API_URL}/devices`, {
@@ -84,11 +94,11 @@ export const createDevice = async (deviceData: {
   }
 };
 
-// 3. Yeni servis kaydı açar (MÜDÜR: Usta artık ayrı gidiyor!)
+// 3. Yeni servis kaydı açar
 export const createServiceRecord = async (serviceData: { 
     device_id: number; 
     issue_text: string;
-    atanan_usta?: string;      // YENİ
+    atanan_usta?: string;
 }) => {
   try {
     const response = await fetch(`${API_URL}/services`, {

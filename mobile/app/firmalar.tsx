@@ -32,7 +32,15 @@ export default function FirmalarSayfasi() {
     try {
       const response = await fetch('http://192.168.1.44:3000/api/firm/all');
       const data = await response.json();
-      setFirmalar(data);
+      
+      // --- ALFABETİK SIRALAMA EKLEMESİ ---
+      const siraliData = data.sort((a: any, b: any) => {
+        const nameA = (a.firma_adi || "").toLocaleLowerCase('tr');
+        const nameB = (b.firma_adi || "").toLocaleLowerCase('tr');
+        return nameA.localeCompare(nameB, 'tr');
+      });
+      
+      setFirmalar(siraliData);
     } catch (e) { 
       console.log("Bağlantı hatası:", e); 
     } finally { 

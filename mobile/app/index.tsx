@@ -18,16 +18,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { login } from '../services/api';
 
-
 export default function LoginScreen() {
   const router = useRouter();
 
   const [role, setRole] = useState<'user' | 'expert'>('user');
-  const [email, setEmail] = useState('admin@test.com'); // MÜDÜR: Burayı senin yeni mailine çektim
-  const [password, setPassword] = useState('123456'); // MÜDÜR: Şifreyi de güncelledim
+  const [email, setEmail] = useState('admin@test.com'); 
+  const [password, setPassword] = useState('123456'); 
   const [captchaInput, setCaptchaInput] = useState('');
   const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, result: 0 });
-  const [loading, setLoading] = useState(false); // Giriş yaparken bekletme ikonu için
+  const [loading, setLoading] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
   const captchaRef = useRef<TextInput>(null);
@@ -43,52 +42,48 @@ export default function LoginScreen() {
     generateCaptcha();
   }, []);
 
-  // MÜDÜR: Bu kısım her seçimde maili sıfırlıyordu, 
-  // admin girişini kolaylaştırmak için burayı devre dışı bıraktık veya admin@test.com'a sabitledik.
   useEffect(() => {
-    if (email === 'admin@test.com') return; // Eğer admin yazılıysa dokunma
-
     if (role === 'user') {
-      setEmail('user@kalandar.com');
-      setPassword('user123');
+      setEmail('admin@test.com');
+      setPassword('123456');
     } else {
-      setEmail('expert1@kalandar.com');
-      setPassword('expert123');
+      setEmail('usta@test.com'); 
+      setPassword('123456');
     }
   }, [role]);
 
-  const handleDone = () => {
-    Keyboard.dismiss();
-  };
-
   const handleLogin = async () => {
-    // 1. Captcha Kontrolü
     if (parseInt(captchaInput) !== captcha.result) {
       Alert.alert('Hatalı İşlem', 'Matematik mühürü tutmadı müdür!');
       generateCaptcha();
       return;
     }
 
-    // MÜDÜR: O katı "Sadece şu mail girebilir" kısıtlamalarını kaldırdım. 
-    // Artık veritabanında kim varsa o girebilir.
-    
     setLoading(true);
     try {
       const data = await login(email, password);
 
-      if (data?.error) {
-        Alert.alert('Giriş Başarısız', data.error);
+      if (!data.success) {
+        Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
         generateCaptcha();
         return;
       }
 
-      // Giriş başarılıysa yönlendir
+      // --- TRAFİK POLİSİ ---
+      const userRole = data.user.role;
+
       setTimeout(() => {
-        router.replace('/dashboard');
+        if (userRole === 'usta') {
+          // Uzman girdiğinde gideceği yer (Yeni sayfa yapacağız)
+          router.replace('/dashboard_uzman'); 
+        } else {
+          // Admin girdiğinde gideceği senin o meşhur ana butonların olduğu yer
+          router.replace('/dashboard'); 
+        }
       }, 100);
 
     } catch (error) {
-      Alert.alert('Bağlantı Hatası', 'Server’a ulaşılamıyor. IP adresini ve Serverın açık olduğunu kontrol et müdür!');
+      Alert.alert('Bağlantı Hatası', 'Server’a ulaşılamıyor. IP adresini kontrol et!');
     } finally {
       setLoading(false);
     }
@@ -152,12 +147,7 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.inputWrapper}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={18}
-                  color="#666"
-                  style={{ marginRight: 10 }}
-                />
+                <Ionicons name="lock-closed-outline" size={18} color="#666" style={{ marginRight: 10 }} />
                 <TextInput
                   ref={passwordRef}
                   style={styles.input}
@@ -174,12 +164,7 @@ export default function LoginScreen() {
               </Text>
 
               <View style={styles.inputWrapper}>
-                <Ionicons
-                  name="calculator-outline"
-                  size={18}
-                  color="#666"
-                  style={{ marginRight: 10 }}
-                />
+                <Ionicons name="calculator-outline" size={18} color="#666" style={{ marginRight: 10 }} />
                 <TextInput
                   ref={captchaRef}
                   style={styles.input}
@@ -188,7 +173,7 @@ export default function LoginScreen() {
                   placeholder="Sonuç"
                   keyboardType="numeric"
                   returnKeyType="done"
-                  onSubmitEditing={handleDone}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>
 
@@ -211,7 +196,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scrollContent: { flexGrow: 1, paddingHorizontal: 25, justifyContent: 'center', alignItems: 'center' },
-  headerContainer: { alignItems: 'center', marginBottom: 20, width: '100%' },
+  headerContainer: { alignItems: 'center', marginBottom: 30, width: '100%' },
   logoSquare: {
     width: 65,
     height: 65,
@@ -220,6 +205,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    elevation: 4,
   },
   brandName: { fontSize: 22, fontWeight: '900', color: '#333' },
   appTitle: { fontSize: 13, color: '#666', fontWeight: '900' },
@@ -254,11 +240,11 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     height: 50,
-    backgroundColor: '#333',
+    backgroundColor: '#FF3B30', 
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 15,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-}); 
+});

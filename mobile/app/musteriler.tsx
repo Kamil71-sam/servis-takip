@@ -37,7 +37,21 @@ export default function MusterilerScreen() {
   const loadCustomers = async () => {
     try {
       const data = await getCustomers();
-      setCustomers(data);
+      
+      // 1. ADIM: KURUMSAL FİLTRESİ VE ALFABETİK SIRALAMA
+      const bireyselMusteriler = data
+        .filter((c: any) => 
+          c.musteri_turu !== 'kurumsal' && 
+          !(c.name || "").includes('(KURUMSAL)')
+        )
+        // A'dan Z'ye sıralama (Türkçe karakter duyarlı)
+        .sort((a: any, b: any) => {
+          const nameA = (a.ad ? `${a.ad} ${a.soyad}` : a.name || "").toLocaleLowerCase('tr');
+          const nameB = (b.ad ? `${b.ad} ${b.soyad}` : b.name || "").toLocaleLowerCase('tr');
+          return nameA.localeCompare(nameB, 'tr');
+        });
+
+      setCustomers(bireyselMusteriler);
     } catch (error) {
       console.log('Müşteriler alınamadı');
     } finally {
