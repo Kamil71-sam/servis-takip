@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+
+// MÜDÜR: Ana şaltere zaten bağlıyız, IP burada değil api.ts içinde yönetiliyor.
 import { getCustomers } from '../services/api';
 
 export default function MusterilerScreen() {
@@ -36,15 +38,15 @@ export default function MusterilerScreen() {
 
   const loadCustomers = async () => {
     try {
+      setLoading(true);
       const data = await getCustomers();
       
-      // 1. ADIM: KURUMSAL FİLTRESİ VE ALFABETİK SIRALAMA
-      const bireyselMusteriler = data
+      // MÜDÜR: Filtreleme ve Alfabetik sıralama (Türkçe karakter duyarlı)
+      const bireyselMusteriler = (data || [])
         .filter((c: any) => 
           c.musteri_turu !== 'kurumsal' && 
           !(c.name || "").includes('(KURUMSAL)')
         )
-        // A'dan Z'ye sıralama (Türkçe karakter duyarlı)
         .sort((a: any, b: any) => {
           const nameA = (a.ad ? `${a.ad} ${a.soyad}` : a.name || "").toLocaleLowerCase('tr');
           const nameB = (b.ad ? `${b.ad} ${b.soyad}` : b.name || "").toLocaleLowerCase('tr');
@@ -53,7 +55,7 @@ export default function MusterilerScreen() {
 
       setCustomers(bireyselMusteriler);
     } catch (error) {
-      console.log('Müşteriler alınamadı');
+      console.log('Müşteriler yüklenirken hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -66,10 +68,12 @@ export default function MusterilerScreen() {
   const filtered = customers.filter((item: any) => {
     const s = search.toLowerCase().trim();
     if (!s) return true;
+    
     const name = (item.name || "").toLowerCase();
     const ad = (item.ad || "").toLowerCase();
     const soyad = (item.soyad || "").toLowerCase();
     const phone = (item.phone || item.telefon || "").replace(/\s/g, "");
+    
     const searchWords = s.split(" ");
     return searchWords.every(word => 
       name.includes(word) || ad.includes(word) || soyad.includes(word) || phone.includes(word)
@@ -103,7 +107,8 @@ export default function MusterilerScreen() {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => item.id.toString()}
+          // MÜDÜR: Buraya bir 'fallback' ekledim (id || index), id boş gelirse uygulama çökmez.
+          keyExtractor={(item, index) => (item.id || index).toString()}
           contentContainerStyle={{ paddingBottom: 50 }}
           renderItem={({ item }) => (
             <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
@@ -115,7 +120,7 @@ export default function MusterilerScreen() {
               
               <TouchableOpacity 
                 style={styles.infoRow} 
-                onPress={() => item.phone && Linking.openURL(`tel:${item.phone}`)}
+                onPress={() => (item.phone || item.telefon) && Linking.openURL(`tel:${item.phone || item.telefon}`)}
               >
                 <Ionicons name="call-outline" size={16} color={theme.primary} style={styles.icon} />
                 <Text style={[styles.text, { color: theme.textColor }]}>{item.phone || item.telefon || '-'}</Text>

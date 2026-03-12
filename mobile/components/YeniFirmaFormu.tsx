@@ -6,6 +6,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+// MÜDÜR: api.ts dosyasındaki o sağlam kabloyu buraya çektik
+import { createFirm } from '../services/api'; 
+
 // --- DURUM BİLDİRİM PENCERESİ (KURUMSAL) ---
 const StatusModal = ({ visible, type, message, onConfirm, isDarkMode }: any) => (
   <Modal visible={visible} transparent animationType="fade">
@@ -58,6 +61,39 @@ export default function YeniFirmaFormu({ visible, onClose, isDarkMode }: any) {
     }
   }, [visible]);
 
+
+const handleSaveAttempt = async () => {
+    if (!firma.firma_adi) {
+      setStatus({ visible: true, type: 'error', msg: 'Lütfen firma ünvanını giriniz.' });
+      return;
+    }
+
+    try {
+      // MÜDÜR: Artık 'name: firma.firma_adi' diye tek tek yazmıyoruz. 
+      // 'firma' objesinin içindeki isimler (firma_adi, vergi_no vb.) 
+      // zaten backend ile aynı olduğu için direkt gönderiyoruz.
+      const result = await createFirm(firma);
+
+      if (result.success) {
+        Keyboard.dismiss();
+        setStatus({ visible: true, type: 'success', msg: 'Firma başarıyla kaydedildi.' });
+      }
+    } catch (error: any) {
+      setStatus({ 
+        visible: true, 
+        type: 'error', 
+        msg: 'Hata: ' + error.message 
+      });
+    }
+  };
+
+
+
+
+
+
+  /*
+  // --- MÜDÜR: KAYDETME SİHİRBAZI ---
   const handleSaveAttempt = async () => {
     if (!firma.firma_adi) {
       setStatus({ visible: true, type: 'error', msg: 'Lütfen zorunlu alan olan Firma Ünvanı bilgisini giriniz.' });
@@ -65,24 +101,32 @@ export default function YeniFirmaFormu({ visible, onClose, isDarkMode }: any) {
     }
 
     try {
-      const response = await fetch('http://192.168.1.44:3000/api/firm/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(firma)
+      // MÜDÜR: Artık manuel fetch ile uğraşmıyoruz, api.ts'deki createFirm'i çağırıyoruz.
+      // Bu sayede .env'deki doğru IP neyse sistem onu kullanıyor.
+      const result = await createFirm({
+        name: firma.firma_adi, // Backend 'name' beklediği için eşleştirdik
+        phone: firma.telefon,
+        email: firma.eposta,
+        address: firma.adres
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        Keyboard.dismiss();
-        setStatus({ visible: true, type: 'success', msg: 'Firma kayıt işlemi başarıyla tamamlanmıştır.' });
-      } else {
-        setStatus({ visible: true, type: 'error', msg: 'Kayıt sırasında bir hata oluştu: ' + result.error });
-      }
+      // Eğer buraya kadar geldiyse ve hata fırlatmadıysa kayıt başarılıdır.
+      Keyboard.dismiss();
+      setStatus({ visible: true, type: 'success', msg: 'Firma kayıt işlemi başarıyla tamamlanmıştır.' });
+      
     } catch (error) {
-      setStatus({ visible: true, type: 'error', msg: 'Sunucu bağlantısı kurulamadı. Lütfen ağ ayarlarını ve servis durumunu kontrol ediniz.' });
+      console.error("Kayıt Hatası:", error);
+      setStatus({ 
+        visible: true, 
+        type: 'error', 
+        msg: 'Sunucu bağlantısı kurulamadı veya kayıt reddedildi. Lütfen ağ ayarlarını kontrol ediniz.' 
+      });
     }
   };
+
+*/
+
+
 
   const theme = {
     bg: isDarkMode ? '#121212' : '#fff',

@@ -7,6 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+// MÜDÜR: Tek satırda tüm ihtiyacımızı çağırdık, hata bitti!
+import { getFirms } from '../services/api';
+
 export default function FirmalarSayfasi() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -16,7 +19,6 @@ export default function FirmalarSayfasi() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  // BİREYSEL LİSTE İLE BİREBİR AYNI RENK VE TEMA STANDARDI
   const theme = {
     bg: isDarkMode ? '#121212' : '#FFFFFF',
     card: isDarkMode ? '#1e1e1e' : '#FDFDFD',
@@ -30,10 +32,10 @@ export default function FirmalarSayfasi() {
 
   const fetchFirmalar = async () => {
     try {
-      const response = await fetch('http://192.168.1.44:3000/api/firm/all');
-      const data = await response.json();
+      setLoading(true);
+      // MÜDÜR: Artık IP adresiyle uğraşmıyoruz, api.ts vanayı açıyor!
+      const data = await getFirms(); 
       
-      // --- ALFABETİK SIRALAMA EKLEMESİ ---
       const siraliData = data.sort((a: any, b: any) => {
         const nameA = (a.firma_adi || "").toLocaleLowerCase('tr');
         const nameB = (b.firma_adi || "").toLocaleLowerCase('tr');
@@ -48,9 +50,10 @@ export default function FirmalarSayfasi() {
     }
   };
 
-  useEffect(() => { fetchFirmalar(); }, []);
+  useEffect(() => { 
+    fetchFirmalar(); 
+  }, []);
 
-  // --- AKILLI SÜZGEÇ (Firma Adı veya Yetkiliye Göre) ---
   const filtered = firmalar.filter((f: any) => {
     const s = search.toLowerCase().trim();
     return (
@@ -116,7 +119,7 @@ export default function FirmalarSayfasi() {
         <FlatList 
           data={filtered}
           renderItem={renderItem}
-          keyExtractor={(item: any) => item.id?.toString()}
+          keyExtractor={(item: any) => item.id?.toString() || Math.random().toString()}
           contentContainerStyle={{ paddingBottom: 50 }}
           showsVerticalScrollIndicator={false}
         />

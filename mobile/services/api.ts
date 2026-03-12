@@ -1,85 +1,168 @@
-const API_URL = "http://192.168.1.44:3000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// LOGIN
+// --- LOGIN ---
 export async function login(email: string, password: string) {
-  const response = await fetch(API_URL + "/auth/login", {
+  const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      password,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
   });
-
   return response.json();
 }
 
-// MÜŞTERİ EKLE
-export async function createCustomer(
-  name: string,
-  phone: string,
-  fax: string,
-  email: string,
-  address: string
-) {
-  const response = await fetch(API_URL + "/customers", {
+// --- MÜŞTERİ İŞLEMLERİ ---
+export async function createCustomer(name: string, phone: string, fax: string, email: string, address: string) {
+  const response = await fetch(`${API_URL}/customers`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name,
-      phone,
-      fax,
-      email,
-      address,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, phone, fax, email, address }),
   });
-
   return response.json();
 }
 
-// MÜŞTERİLERİ LİSTELE
 export async function getCustomers() {
-  const response = await fetch(API_URL + "/customers");
-  return response.json();
+  try {
+    const response = await fetch(`${API_URL}/customers`);
+    if (!response.ok) throw new Error("Müşteri HTTP Hatası");
+    return await response.json();
+  } catch (error) {
+    console.error("Müşteriler çekilirken hata:", error);
+    return [];
+  }
 }
 
-// FİRMALARI LİSTELE (MÜDÜR: BURAYI EKLEDİK!)
+
+// --- FİRMA İŞLEMLERİ ---
 export const getFirms = async () => {
   try {
     const response = await fetch(`${API_URL}/api/firm/all`);
+    if (!response.ok) throw new Error("Firma listesi alınamadı");
     return await response.json();
   } catch (error) {
-    console.error("Firmalar çekilirken hata:", error);
     return [];
   }
 };
 
-// --- YENİ EKLENEN CİHAZ VE SERVİS KABLOLARI ---
-
-// 1. Seçilen müşterinin cihazlarını getirir
-export const getCustomerDevices = async (customerId: number) => {
+// MÜDÜR: İsimleri backend ile (firma_adi, telefon vb.) birebir eşitledim
+export const createFirm = async (firmData: any) => {
   try {
-    const response = await fetch(`${API_URL}/devices/customer/${customerId}`);
-    return await response.json();
-  } catch (error) {
-    console.error("Cihazlar çekilirken hata:", error);
+    const response = await fetch(`${API_URL}/api/firm/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(firmData),
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Kayıt başarısız");
+    return result;
+  } catch (error: any) {
     throw error;
   }
 };
 
-// 2. Yeni cihaz ekler
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+// --- FİRMA İŞLEMLERİ ---
+
+// 1. Firmaları Listele
+export const getFirms = async () => {
+  try {
+    const response = await fetch(`${API_URL}/api/firm/all`);
+    if (!response.ok) throw new Error("Firma HTTP Hatası");
+    return await response.json();
+  } catch (error) {
+    console.error("Firmalar çekilirken hata:", error);
+    return []; 
+  }
+};
+
+// 2. Yeni Firma Ekle (MÜDÜR: Backend'deki /add ve isimlerle tam uyumlu!)
+export const createFirm = async (firmData: { 
+  firma_adi: string; 
+  yetkili_ad_soyad?: string; 
+  telefon?: string; 
+  faks?: string; 
+  vergi_no?: string; 
+  eposta?: string; 
+  adres?: string 
+}) => {
+  try {
+    const response = await fetch(`${API_URL}/api/firm/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(firmData),
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Firma Kayıt Hatası");
+    
+    return result; 
+  } catch (error: any) {
+    console.error("Firma eklenirken hata:", error);
+    throw error;
+  }
+};
+
+*/
+
+
+
+
+// --- SERVİS KAYITLARI (MÜDÜR: TAM İSABET AYAR) ---
+export const getServices = async () => {
+  try {
+    const response = await fetch(`${API_URL}/services/all`);
+    
+    if (!response.ok) {
+        const altResponse = await fetch(`${API_URL}/services`);
+        if (!altResponse.ok) throw new Error("Servis HTTP Hatası");
+        return await altResponse.json();
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Servisler çekilirken hata:", error);
+    return []; 
+  }
+};
+
+// --- CİHAZ VE SERVİS KABLOLARI ---
+
+export const getCustomerDevices = async (customerId: number) => {
+  try {
+    const response = await fetch(`${API_URL}/devices/customer/${customerId}`);
+    if (!response.ok) throw new Error("Cihaz HTTP Hatası");
+    return await response.json();
+  } catch (error) {
+    console.error("Cihazlar çekilirken hata:", error);
+    return [];
+  }
+};
+
 export const createDevice = async (deviceData: { 
-    customer_id: number; 
-    brand: string; 
-    model: string; 
-    serial_no: string;
-    cihaz_turu?: string;
-    garanti_durumu?: string;
-    muster_notu?: string;
+    customer_id: number; brand: string; model: string; serial_no: string; cihaz_turu?: string; garanti_durumu?: string; muster_notu?: string;
 }) => {
   try {
     const response = await fetch(`${API_URL}/devices`, {
@@ -94,11 +177,8 @@ export const createDevice = async (deviceData: {
   }
 };
 
-// 3. Yeni servis kaydı açar
 export const createServiceRecord = async (serviceData: { 
-    device_id: number; 
-    issue_text: string;
-    atanan_usta?: string;
+    device_id: number; issue_text: string; atanan_usta?: string;
 }) => {
   try {
     const response = await fetch(`${API_URL}/services`, {

@@ -7,6 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+// MÜDÜR: Ana tesisatımızı buraya bağladık!
+import { getServices } from '../services/api';
+
 export default function ServisListesi() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -22,7 +25,7 @@ export default function ServisListesi() {
   const theme = {
     bg: isDarkMode ? '#121212' : '#FFFFFF',
     card: isDarkMode ? '#1e1e1e' : '#FDFDFD',
-    text: isDarkMode ? '#333333' : '#333333', 
+    text: '#333333', 
     darkText: isDarkMode ? '#FFFFFF' : '#333333',
     sub: isDarkMode ? '#AAAAAA' : '#666666',
     border: isDarkMode ? '#333333' : '#E0E0E0',
@@ -32,12 +35,11 @@ export default function ServisListesi() {
   };
 
   const fetchServisler = async () => {
-    setLoading(true);
     try {
-      const response = await fetch('http://192.168.1.44:3000/services/all');
-      if (!response.ok) throw new Error(`Hata: ${response.status}`);
-      const data = await response.json();
-      setServisler(data);
+      setLoading(true);
+      // MÜDÜR: Elle yazılan fetch silindi, merkezi sistemden (api.ts) çekiliyor.
+      const data = await getServices();
+      setServisler(data || []);
     } catch (e: any) { 
       console.log("Bağlantı hatası:", e.message);
     } finally { 
@@ -45,33 +47,32 @@ export default function ServisListesi() {
     }
   };
 
-  useEffect(() => { fetchServisler(); }, []);
+  useEffect(() => { 
+    fetchServisler(); 
+  }, []);
 
-  const filtered = servisler.filter((s: any) => {
+  const filtered = (servisler || []).filter((s: any) => {
     const val = search.toLowerCase().trim();
     if (!val) return true;
-    // İSİM DÜZELTME: customer_name -> musteri_adi
     const musterisi = (s.musteri_adi || "").toLowerCase();
     const cihazi = `${s.marka || ""} ${s.model || ""}`.toLowerCase();
-    return musterisi.includes(val) || cihazi.includes(val);
+    const plakasi = (s.plaka || "").toLowerCase();
+    return musterisi.includes(val) || cihazi.includes(val) || plakasi.includes(val);
   });
 
   const renderItem = ({ item }: any) => (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={styles.cardHeader}>
         <View style={{flex: 1}}>
-          {/* İSİM DÜZELTME: customer_name -> musteri_adi */}
           <Text style={[styles.name, { color: theme.darkText }]}>
             {(item.musteri_adi || "İSİMSİZ").toUpperCase()}
           </Text>
-          {/* İSİM DÜZELTME: servis_no -> plaka */}
           <Text style={{color: theme.sub, fontSize: 11, marginTop: 2}}>
             Plaka: {item.plaka || '-'}
           </Text>
         </View>
         <View style={styles.statusBadge}>
           <Text style={[styles.statusText, { color: theme.primary }]}>
-            {/* İSİM DÜZELTME: status -> durum */}
             {(item.durum || 'KABUL EDİLDİ').split('').join(' ').toUpperCase()}
           </Text>
         </View>
@@ -79,7 +80,6 @@ export default function ServisListesi() {
 
       <View style={styles.infoRow}>
         <Ionicons name="hardware-chip-outline" size={16} color={theme.sub} style={styles.icon} />
-        {/* İSİM DÜZELTME: brand -> marka */}
         <Text style={[styles.text, { color: theme.darkText }]}>{item.marka} {item.model}</Text>
       </View>
 
@@ -89,7 +89,6 @@ export default function ServisListesi() {
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <Ionicons name="calendar-outline" size={14} color={theme.sub} />
           <Text style={{color: theme.sub, fontSize: 12, marginLeft: 5}}>
-            {/* İSİM DÜZELTME: created_at -> tarih */}
             {item.tarih ? new Date(item.tarih).toLocaleDateString('tr-TR') : '-'}
           </Text>
         </View>
@@ -122,7 +121,7 @@ export default function ServisListesi() {
         <Ionicons name="search-outline" size={20} color={theme.sub} />
         <TextInput 
           style={[styles.input, { color: theme.darkText }]} 
-          placeholder="Ara..." 
+          placeholder="İsim, cihaz veya plaka ara..." 
           placeholderTextColor={theme.sub}
           value={search}
           onChangeText={setSearch}
@@ -135,13 +134,12 @@ export default function ServisListesi() {
         <FlatList 
           data={filtered}
           renderItem={renderItem}
-          keyExtractor={(item: any) => item.id?.toString()}
+          keyExtractor={(item: any, index: number) => (item.id || index).toString()}
           contentContainerStyle={{ paddingBottom: 50 }}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* DETAY MODALI - TÜM İSİMLER TÜRKÇEYE GÖRE GÜNCELLENDİ */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -159,26 +157,17 @@ export default function ServisListesi() {
             
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.detailSection}>
-
-
-                <DetailRow label="Servis No" value={selectedItem?.plaka} theme={theme} />
+                <DetailRow label="Servis No / Plaka" value={selectedItem?.plaka} theme={theme} />
                 <DetailRow label="Müşteri Adı Soyadı" value={selectedItem?.musteri_adi} theme={theme} />
-                
                 <DetailRow label="Cihaz Tipi" value={selectedItem?.cihaz_tipi} theme={theme} />
-
-
-                <DetailRow label="Cihaz" value={`${selectedItem?.marka} ${selectedItem?.model}`} theme={theme} />
+                <DetailRow label="Cihaz" value={`${selectedItem?.marka || ''} ${selectedItem?.model || ''}`} theme={theme} />
                 <DetailRow label="Seri No" value={selectedItem?.seri_no} theme={theme} />
                 <DetailRow label="Garanti" value={selectedItem?.garanti} theme={theme} />
                 <DetailRow label="Arıza Şikayeti" value={selectedItem?.ariza || 'Belirtilmedi'} theme={theme} />
                 <DetailRow label="Müşteri Notu" value={selectedItem?.muster_notu || '-'} theme={theme} />
-
                 <DetailRow label="Atanan Usta" value={selectedItem?.usta || 'Henüz Atanmadı'} theme={theme} />
                 <DetailRow label="Mevcut Durum" value={selectedItem?.durum} theme={theme} isStatus />
                 <DetailRow label="Kayıt Tarihi" value={selectedItem?.tarih ? new Date(selectedItem.tarih).toLocaleString('tr-TR') : '-'} theme={theme} />
-
-
-
               </View>
             </ScrollView>
 
