@@ -38,6 +38,10 @@ export default function LoginScreen() {
     setCaptchaInput('');
   };
 
+
+
+
+
   useEffect(() => {
     generateCaptcha();
   }, []);
@@ -47,10 +51,14 @@ export default function LoginScreen() {
       setEmail('admin@test.com');
       setPassword('123456');
     } else {
-      setEmail('usta@test.com'); 
+      setEmail('usta1@test.com'); 
       setPassword('123456');
     }
   }, [role]);
+
+
+
+
 
   const handleLogin = async () => {
     if (parseInt(captchaInput) !== captcha.result) {

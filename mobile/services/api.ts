@@ -1,4 +1,12 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+export const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+if (!API_URL) {
+  console.error("⚠️ HATA: .env dosyasında EXPO_PUBLIC_API_URL bulunamadı!");
+}
+
+
+
 
 // --- LOGIN ---
 export async function login(email: string, password: string) {

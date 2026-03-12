@@ -1,136 +1,224 @@
 import React, { useState, useEffect } from 'react';
-
-
 import { 
   StyleSheet, 
   Text, 
   View, 
-  FlatList, 
   TouchableOpacity, 
-  ActivityIndicator,
-  RefreshControl,
-  Alert // <-- MÜDÜR: İşte eksik olan parça bu!
+  Alert,
+  StatusBar,
+  Platform,
+  ActivityIndicator
 } from 'react-native';
-
-
-
-
-
-
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getUzmanDashboardData } from '../services/api_uzman';
 
-// MÜDÜR: Şimdilik test datası koyuyoruz, backend'i bir sonraki adımda bağlayacağız
-const MOCK_DATA = [
-  { id: '1', customer: 'Ahmet Yılmaz', device: 'iPhone 13 Pro', status: 'Beklemede', issue: 'Ekran Değişimi' },
-  { id: '2', customer: 'Mehmet Öz', device: 'Samsung S22', status: 'Parça Bekliyor', issue: 'Batarya Şişmesi' },
-];
+// TypeScript tipi - Hataları engellemek için güncellendi
+interface Task {
+  id: string;
+  status: string;
+  issue: string;
+  customer?: string; // ? işareti: gelmese de hata verme demek
+  device?: string;
+  priority?: string;
+}
 
 export default function DashboardUzman() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    // Burada ileride veritabanından güncel işleri çekeceğiz
-    setTimeout(() => setRefreshing(false), 1000);
+  const [stats, setStats] = useState({
+    atanan: 0,
+    aktif: 0,
+    parcaBekleyen: 0,
+    randevu: 0
+  });
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+
+  const ustaEmail = 'Usta_1';
+
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      const res = await getUzmanDashboardData(ustaEmail);
+      if (res && res.success) {
+        setStats({
+          atanan: res.data.atanananIslerSayisi || 0,
+          aktif: res.data.aktifIslerSayisi || 0,
+          parcaBekleyen: res.data.parcaBekleyenSayisi || 0,
+          randevu: res.data.randevuSayisi || 0
+        });
+        setRecentTasks(res.data.sonIsler || []);
+      }
+    } catch (err) {
+      console.error("Veri çekme hatası:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity style={styles.card} onPress={() => Alert.alert("Detay", "İş detayına gidilecek")}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.deviceText}>{item.device}</Text>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
-      <Text style={styles.customerText}>{item.customer}</Text>
-      <View style={styles.issueRow}>
-        <Ionicons name="alert-circle-outline" size={16} color="#666" />
-        <Text style={styles.issueText}>{item.issue}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrow} />
-    </TouchableOpacity>
-  );
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert("Çıkış", "Sistemden çıkış yapmak istiyor musunuz?", [
+      { text: "Vazgeç", style: "cancel" },
+      { text: "Çıkış", onPress: () => router.replace('/'), style: "destructive" }
+    ]);
+  };
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, isDarkMode && darkStyles.container]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      
+      <View style={[styles.header, isDarkMode && darkStyles.header]}>
         <View>
-          <Text style={styles.welcomeText}>Hoş Geldin,</Text>
-          <Text style={styles.uzmanName}>Uzman Tekniker 🛠️</Text>
+          <Text style={[styles.welcomeText, isDarkMode && darkStyles.textSub]}>Hoş Geldin,</Text>
+          <Text style={[styles.uzmanName, isDarkMode && darkStyles.textMain]}>Uzman 1</Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => router.replace('/')}>
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-        </TouchableOpacity>
-      </View>
-
-      {/* İSTATİSTİK BANTLARI */}
-      <View style={styles.statsContainer}>
-        <View style={[styles.statBox, { backgroundColor: '#F0F9FF' }]}>
-          <Text style={styles.statNumber}>5</Text>
-          <Text style={styles.statLabel}>Bekleyen</Text>
-        </View>
-        <View style={[styles.statBox, { backgroundColor: '#FDF2F2' }]}>
-          <Text style={styles.statNumber}>2</Text>
-          <Text style={styles.statLabel}>Acil</Text>
+        <View style={styles.headerRight}>
+           <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
+              <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#555"} />
+           </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.iconBtn}>
+              <Ionicons name="exit-outline" size={28} color="#FF3B30" />
+            </TouchableOpacity>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Üzerimdeki İşler</Text>
+      <View style={styles.mainContent}>
+        
+        <View style={styles.statsGrid}>
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+            <Ionicons name="briefcase-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+                {loading ? ".." : stats.atanan}
+            </Text> 
+            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Atanan İş</Text>
+          </View>
+          
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+            <Ionicons name="hardware-chip-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+                {loading ? ".." : stats.aktif}
+            </Text>
+            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Aktif İşler</Text>
+          </View>
 
-      {/* İŞ LİSTESİ */}
-      <FlatList
-        data={MOCK_DATA}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      />
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+            <Ionicons name="cube-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+                {loading ? ".." : stats.parcaBekleyen}
+            </Text>
+            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Parça Bekleyen</Text>
+          </View>
+
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+            <Ionicons name="calendar-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+                {loading ? ".." : stats.randevu}
+            </Text>
+            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Randevular</Text>
+          </View>
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity 
+            style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]} 
+            onPress={() => router.push('/isler_uzman' as any)}
+          >
+            <Text style={styles.actionBtnText}>Bana Atananlar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Malzemelerim</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Randevularım</Text></TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, isDarkMode && darkStyles.textMain]}>Öncelikli İşler</Text>
+          <Text style={[styles.sectionSubtitle, isDarkMode && darkStyles.textSub]}>Sıradaki tamirler</Text>
+        </View>
+
+        <View style={styles.cardsContainer}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#FF3B30" style={{marginTop: 20}} />
+          ) : recentTasks.length > 0 ? (
+            recentTasks.map((item) => (
+              <TouchableOpacity key={item.id} style={[styles.card, isDarkMode && darkStyles.card]} activeOpacity={0.7}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.deviceText, isDarkMode && darkStyles.textMain]}>İş No: {item.id}</Text>
+                  <View style={[styles.statusBadge, isDarkMode && darkStyles.statusBadge]}>
+                    <Text style={[styles.statusText, isDarkMode && darkStyles.statusText]}>
+                      {item.status || 'Beklemede'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.issueRow}>
+                  <Ionicons name="build-outline" size={14} color={isDarkMode ? "#AAA" : "#666"} />
+                  <Text style={[styles.issueText, isDarkMode && darkStyles.textSub]} numberOfLines={1}>{item.issue}</Text>
+                </View>
+
+                <View style={[styles.cardFooter, isDarkMode && darkStyles.cardFooter]}>
+                    <Text style={[styles.customerText, isDarkMode && darkStyles.textSub]}>
+                      Detayları görmek için dokunun
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={isDarkMode ? "#777" : "#ccc"} />
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={{textAlign:'center', color:'#888', marginTop: 20, fontSize: 13}}>Henüz atanmış aktif iş bulunmuyor.</Text>
+          )}
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: 20, 
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE'
-  },
-  welcomeText: { fontSize: 14, color: '#666' },
-  uzmanName: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  logoutBtn: { padding: 10, borderRadius: 10, backgroundColor: '#FFF5F5' },
-  statsContainer: { flexDirection: 'row', padding: 20, gap: 15 },
-  statBox: { flex: 1, padding: 15, borderRadius: 15, alignItems: 'center' },
-  statNumber: { fontSize: 22, fontWeight: 'bold', color: '#333' },
-  statLabel: { fontSize: 12, color: '#666', marginTop: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginLeft: 20, marginBottom: 10, color: '#333' },
-  listContent: { paddingHorizontal: 20, paddingBottom: 20 },
-  card: { 
-    backgroundColor: '#fff', 
-    borderRadius: 15, 
-    padding: 15, 
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    position: 'relative'
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  deviceText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  statusBadge: { backgroundColor: '#E0E0E0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusText: { fontSize: 10, fontWeight: 'bold', color: '#666' },
-  customerText: { fontSize: 14, color: '#666', marginBottom: 8 },
-  issueRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  issueText: { fontSize: 13, color: '#888' },
-  arrow: { position: 'absolute', right: 15, bottom: 40 }
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 10, paddingTop: Platform.OS === 'android' ? 35 : 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  welcomeText: { fontSize: 13, color: '#888', fontWeight: '600' },
+  uzmanName: { fontSize: 22, fontWeight: '900', color: '#1A1A1A' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBtn: { padding: 4 },
+  mainContent: { flex: 1, paddingHorizontal: 15, paddingTop: 10, paddingBottom: 15 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 12 }, 
+  statBox: { width: '48%', padding: 10, borderRadius: 14, borderWidth: 1, marginBottom: 8, alignItems: 'flex-start', elevation: 1, backgroundColor: '#EEEEEE', borderColor: '#DDDDDD' },
+  statNumber: { fontSize: 22, fontWeight: '900', color: '#FF3B30', marginVertical: 2 },
+  statLabel: { fontSize: 12, color: '#666', fontWeight: '600' },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 }, 
+  actionBtn: { flex: 1, backgroundColor: '#1A1A1A', paddingVertical: 12, paddingHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
+  actionBtnText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' },
+  sectionHeader: { marginTop: 35, marginBottom: 10 }, 
+  sectionTitle: { fontSize: 16, fontWeight: '900', color: '#1A1A1A' },
+  sectionSubtitle: { fontSize: 12, color: '#888', marginTop: 1 },
+  cardsContainer: { flex: 1 },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#eee', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  deviceText: { fontSize: 14, fontWeight: '800', color: '#1A1A1A' },
+  statusBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusText: { fontSize: 10, fontWeight: 'bold', color: '#475569' },
+  issueRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 },
+  issueText: { fontSize: 13, color: '#444', flex: 1 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f1f1f1' },
+  customerText: { fontSize: 12, color: '#888', fontWeight: '500' },
+});
+
+const darkStyles = StyleSheet.create({
+  container: { backgroundColor: '#121212' }, 
+  header: { backgroundColor: '#1A1A1A', borderBottomColor: '#2C2C2C' },
+  textMain: { color: '#F8F9FA' },
+  textSub: { color: '#9BA4B5' },
+  statBox: { backgroundColor: '#2C2C2C', borderColor: '#3A3A3A' }, 
+  actionBtn: { backgroundColor: '#2C2C2C' }, 
+  card: { backgroundColor: '#2C2C2C', borderColor: '#3A3A3A' }, 
+  cardFooter: { borderTopColor: '#3A3A3A' },
+  statusBadge: { backgroundColor: '#3A3A3A' },
+  statusText: { color: '#E2E8F0' },
 });
