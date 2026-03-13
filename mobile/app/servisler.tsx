@@ -37,7 +37,6 @@ export default function ServisListesi() {
   const fetchServisler = async () => {
     try {
       setLoading(true);
-      // MÜDÜR: Elle yazılan fetch silindi, merkezi sistemden (api.ts) çekiliyor.
       const data = await getServices();
       setServisler(data || []);
     } catch (e: any) { 
@@ -68,7 +67,7 @@ export default function ServisListesi() {
             {(item.musteri_adi || "İSİMSİZ").toUpperCase()}
           </Text>
           <Text style={{color: theme.sub, fontSize: 11, marginTop: 2}}>
-            Plaka: {item.plaka || '-'}
+            Servis No: {item.plaka || '-'}
           </Text>
         </View>
         <View style={styles.statusBadge}>
@@ -80,7 +79,8 @@ export default function ServisListesi() {
 
       <View style={styles.infoRow}>
         <Ionicons name="hardware-chip-outline" size={16} color={theme.sub} style={styles.icon} />
-        <Text style={[styles.text, { color: theme.darkText }]}>{item.marka} {item.model}</Text>
+        {/* MÜDÜR: 'item.marka_model' kullanarak cihaz bilgisini dolu getirdik */}
+        <Text style={[styles.text, { color: theme.darkText }]}>{item.marka_model || `${item.marka || ''} ${item.model || ''}`}</Text>
       </View>
 
       <View style={styles.divider} />
@@ -88,8 +88,9 @@ export default function ServisListesi() {
       <View style={styles.footerRow}>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <Ionicons name="calendar-outline" size={14} color={theme.sub} />
+          {/* MÜDÜR: 'Invalid Date' hatasını bitirdik! Eğer tarih metin olarak geliyorsa direkt basıyoruz */}
           <Text style={{color: theme.sub, fontSize: 12, marginLeft: 5}}>
-            {item.tarih ? new Date(item.tarih).toLocaleDateString('tr-TR') : '-'}
+            {item.tarih || '-'}
           </Text>
         </View>
         <TouchableOpacity 
@@ -160,14 +161,15 @@ export default function ServisListesi() {
                 <DetailRow label="Servis No / Plaka" value={selectedItem?.plaka} theme={theme} />
                 <DetailRow label="Müşteri Adı Soyadı" value={selectedItem?.musteri_adi} theme={theme} />
                 <DetailRow label="Cihaz Tipi" value={selectedItem?.cihaz_tipi} theme={theme} />
-                <DetailRow label="Cihaz" value={`${selectedItem?.marka || ''} ${selectedItem?.model || ''}`} theme={theme} />
+                <DetailRow label="Marka / Model" value={selectedItem?.marka_model} theme={theme} />
                 <DetailRow label="Seri No" value={selectedItem?.seri_no} theme={theme} />
                 <DetailRow label="Garanti" value={selectedItem?.garanti} theme={theme} />
                 <DetailRow label="Arıza Şikayeti" value={selectedItem?.ariza || 'Belirtilmedi'} theme={theme} />
-                <DetailRow label="Müşteri Notu" value={selectedItem?.muster_notu || '-'} theme={theme} />
+                {/* MÜDÜR: 'eklenen_notlar'ı buraya bağladık, artık dolu gelecek! */}
+                <DetailRow label="Müşteri Notu" value={selectedItem?.eklenen_notlar || '-'} theme={theme} />
                 <DetailRow label="Atanan Usta" value={selectedItem?.usta || 'Henüz Atanmadı'} theme={theme} />
                 <DetailRow label="Mevcut Durum" value={selectedItem?.durum} theme={theme} isStatus />
-                <DetailRow label="Kayıt Tarihi" value={selectedItem?.tarih ? new Date(selectedItem.tarih).toLocaleString('tr-TR') : '-'} theme={theme} />
+                <DetailRow label="Kayıt Tarihi" value={selectedItem?.tarih || '-'} theme={theme} />
               </View>
             </ScrollView>
 

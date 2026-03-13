@@ -80,7 +80,7 @@ const CustomSelect = ({ visible, title, data, onSelect, onClose, isDarkMode }: a
 
           {data.length === 0 && (
             <Text style={{ textAlign: 'center', padding: 10, color: '#888' }}>
-              Kayıt bulunamadı...
+              Kayit bulunamadı...
             </Text>
           )}
         </ScrollView>
@@ -140,6 +140,8 @@ const StatusModal = ({ visible, type, message, recordNo, onConfirm, isDarkMode }
 export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
   const initialState = {
     customer_id: null as number | null,
+    firm_id: null as number | null,
+    customer_type: '', 
     cihaz_sahibi: '',
     device_id: null as number | null,
     cihaz_bilgisi: 'Seçiniz...',
@@ -226,7 +228,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
       setAllContacts(combined);
     } catch (e) {
-      console.log('Veri çekme hatası');
+      console.log('Veri cekme hatası');
     }
   };
 
@@ -245,11 +247,15 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
   };
 
   const handleCustomerSelect = async (customer: any) => {
+    const isKurumsal = customer.type === 'kurumsal';
+    
     setServis({
       ...initialState,
-      customer_id: Number(customer.id),
+      customer_id: isKurumsal ? null : Number(customer.id),
+      firm_id: isKurumsal ? Number(customer.id) : null,
+      customer_type: customer.type, 
       cihaz_sahibi: customer.display_name,
-      cihaz_bilgisi: 'Cihaz Seçiniz...',
+      cihaz_bilgisi: 'Cihaz Seciniz...',
     });
 
     setSearchText(customer.display_name);
@@ -257,8 +263,9 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     setFocusField('cihaz_sec');
 
     try {
-      const customerDevices = await getCustomerDevices(customer.id);
-      setDevices([{ id: null, brand: '--- SEÇİMİ TEMİZLE ---', model: '' }, ...customerDevices]);
+      // MÜDÜR: Type bilgisini kuryenin (api.ts) eline tutuştuyoruz
+      const customerDevices = await getCustomerDevices(customer.id, customer.type);
+      setDevices([{ id: null, brand: '--- SECIMI TEMIZLE ---', model: '' }, ...customerDevices]);
 
       setTimeout(() => {
         scrollToSection('deviceSection', 10);
@@ -273,10 +280,10 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
       setServis({
         ...servis,
         device_id: null,
-        cihaz_bilgisi: 'Seçiniz...',
+        cihaz_bilgisi: 'Seciniz...',
         marka: '',
         model: '',
-        cihaz_turu: 'Seçiniz...',
+        cihaz_turu: 'Seciniz...',
       });
     } else {
       setServis({
@@ -285,7 +292,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
         cihaz_bilgisi: `${device.brand} ${device.model}`,
         marka: device.brand,
         model: device.model,
-        cihaz_turu: device.cihaz_turu || 'Belirtilmemiş',
+        cihaz_turu: device.cihaz_turu || 'Belirtilmemis',
       });
 
       setFocusField('usta');
@@ -300,25 +307,30 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
   };
 
   const handleCreateNewDevice = async () => {
-    if (!servis.customer_id) return;
+    if (!servis.customer_id && !servis.firm_id) return;
 
     if (!servis.marka.trim() || !servis.model.trim()) {
-      Alert.alert('Hata', 'Marka ve model boş bırakılamaz.');
+      Alert.alert('Hata', 'Marka ve model bos bırakılamaz.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const newDev = await createDevice({
-        customer_id: Number(servis.customer_id),
+      // MÜDÜR: Burası en kritik yer. Backend'in kafası karısmasın diye net gönderiyoruz.
+      const payload = {
+        customer_id: servis.customer_id, 
+        firm_id: servis.firm_id,
+        customer_type: servis.firm_id ? 'kurumsal' : 'bireysel', // Manuel belirledik, şasmaz!
         brand: servis.marka,
         model: servis.model,
         serial_no: servis.seri_no || 'N/A',
         cihaz_turu: servis.cihaz_turu,
         garanti_durumu: servis.garanti,
         muster_notu: servis.muster_notu,
-      });
+      };
+
+      const newDev = await createDevice(payload as any);
 
       setServis({
         ...servis,
@@ -328,7 +340,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
       setShowNewDeviceForm(false);
 
-      Alert.alert('Başarılı', 'Yeni cihaz tanımlandı.', [
+      Alert.alert('Basarılı', 'Yeni cihaz tanımlandı.', [
         {
           text: 'OK',
           onPress: () => {
@@ -346,11 +358,11 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
   const handleSaveAttempt = async () => {
     if (!servis.device_id) {
-      return Alert.alert('Hata', 'Cihaz seçilmedi!');
+      return Alert.alert('Hata', 'Cihaz secilmedi!');
     }
 
     if (!servis.ariza_notu.trim()) {
-      return Alert.alert('Hata', 'Arıza / şikayet detayı boş bırakılamaz.');
+      return Alert.alert('Hata', 'Arıza / sikayet detayı bos bırakılamaz.');
     }
 
     setLoading(true);
@@ -414,7 +426,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
               bounces={false}
             >
               <View onLayout={setSectionLayout('customerSection')}>
-                <Text style={styles.label}>MÜŞTERİ / FİRMA SEÇİMİ (*)</Text>
+                <Text style={styles.label}>MÜSTERİ / FİRMA SECİMİ (*)</Text>
 
                 <View style={styles.row}>
                   <View
@@ -444,7 +456,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                       <TouchableOpacity
                         onPress={() => {
                           setSearchText('');
-                          setServis({ ...servis, customer_id: null, cihaz_sahibi: '' });
+                          setServis({ ...servis, customer_id: null, firm_id: null, cihaz_sahibi: '' });
                           setModalType(null);
                         }}
                       >
@@ -467,7 +479,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
               <View onLayout={setSectionLayout('deviceSection')}>
                 <Text style={styles.label}>
-                  CİHAZ SEÇİMİ (Eski Cihazı Seç veya + ile Yeni Ekle)
+                  CİHAZ SECİMİ (Eski Cihazı Sec veya + ile Yeni Ekle)
                 </Text>
 
                 <View style={styles.row}>
@@ -482,8 +494,8 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                       focusField === 'cihaz_sec' && styles.focusedBorder,
                     ]}
                     onPress={() => {
-                      if (!servis.customer_id) {
-                        return Alert.alert('Hata', 'Önce Müşteri Seç!');
+                      if (!servis.customer_id && !servis.firm_id) {
+                        return Alert.alert('Hata', 'Once Musteri veya Firma Sec!');
                       }
 
                       setFocusField('cihaz_sec');
@@ -500,15 +512,15 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                       { backgroundColor: showNewDeviceForm ? '#FF3B30' : '#333' },
                     ]}
                     onPress={() => {
-                      if (!servis.customer_id) {
-                        return Alert.alert('Hata', 'Önce Müşteri Seç!');
+                      if (!servis.customer_id && !servis.firm_id) {
+                        return Alert.alert('Hata', 'Once Musteri veya Firma Sec!');
                       }
 
                       if (!showNewDeviceForm) {
                         setServis({
                           ...servis,
                           device_id: null,
-                          cihaz_bilgisi: 'Yeni Cihaz Girişi...',
+                          cihaz_bilgisi: 'Yeni Cihaz Girisi...',
                           marka: '',
                           model: '',
                           seri_no: '',
@@ -538,7 +550,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                   onLayout={setSectionLayout('newDeviceFormSection')}
                   style={[styles.newDeviceForm, { backgroundColor: theme.formBg }]}
                 >
-                  <Text style={[styles.label, { color: theme.textColor }]}>CİHAZ TÜRÜ</Text>
+                  <Text style={[styles.label, { color: theme.textColor }]}>CİHAZ TURU</Text>
 
                   <TouchableOpacity
                     style={[styles.innerSelect, { backgroundColor: theme.inputBg }]}
@@ -650,7 +662,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
                   <View onLayout={setSectionLayout('musteriNotSection')}>
                     <Text style={[styles.label, { marginTop: 15, color: theme.textColor }]}>
-                      MÜŞTERİ NOTU / AKSESUAR (Max 100)
+                      MÜSTERİ NOTU / AKSESUAR (Max 100)
                     </Text>
 
                     <TextInput
@@ -686,7 +698,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                     style={[styles.addBtn, focusField === 'tanimla' && styles.focusedBorder]}
                     onPress={handleCreateNewDevice}
                   >
-                    <Text style={styles.addBtnText}>CİHAZI MÜŞTERİYE TANIMLA</Text>
+                    <Text style={styles.addBtnText}>CİHAZI MÜSTERİYE TANIMLA</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -717,7 +729,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
               </View>
 
               <View onLayout={setSectionLayout('arizaSection')}>
-                <Text style={styles.label}>ARIZA / ŞİKAYET DETAYI (* - Max 250)</Text>
+                <Text style={styles.label}>ARIZA / SİKAYET DETAYI (* - Max 250)</Text>
 
                 <TextInput
                   maxLength={250}
@@ -743,7 +755,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                     setFocusField('kaydet');
                   }}
                   onChangeText={(v) => setServis({ ...servis, ariza_notu: v })}
-                  placeholder="Cihazın şikayeti nedir?"
+                  placeholder="Cihazın sikayeti nedir?"
                   placeholderTextColor="#888"
                   value={servis.ariza_notu}
                 />
@@ -766,7 +778,7 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
             <CustomSelect
               visible={modalType === 'musteri'}
-              title="MÜŞTERİ / FİRMA LİSTESİ"
+              title="MÜSTERİ / FİRMA LİSTESİ"
               data={filteredContacts}
               isDarkMode={isDarkMode}
               onSelect={handleCustomerSelect}
@@ -850,183 +862,33 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#888',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 15,
-    alignItems: 'center',
-  },
-  mainInput: {
-    height: 52,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    justifyContent: 'space-between',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sideIconBtn: {
-    width: 52,
-    height: 52,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  focusedBorder: {
-    borderColor: '#FF3B30',
-    borderWidth: 2.5,
-  },
-  newDeviceForm: {
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: '#ddd',
-  },
-  innerSelect: {
-    height: 48,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-  },
-  innerInput: {
-    flex: 1,
-    height: 48,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  addBtn: {
-    backgroundColor: '#333',
-    height: 50,
-    borderRadius: 12,
-    marginTop: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addBtnText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 12,
-  },
-  textArea: {
-    height: 100,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    padding: 15,
-    textAlignVertical: 'top',
-  },
-  saveBtn: {
-    flex: 1,
-    height: 60,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  saveBtnText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 16,
-  },
-  printBtn: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#333',
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectContent: {
-    width: '85%',
-    borderRadius: 20,
-    padding: 20,
-  },
-  selectTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    paddingBottom: 10,
-  },
-  selectItem: {
-    paddingVertical: 15,
-    borderBottomWidth: 0.5,
-    borderColor: '#eee',
-  },
-  selectItemText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  miniStatusContent: {
-    width: '80%',
-    borderRadius: 15,
-    padding: 20,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusMainText: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  statusSubText: {
-    fontSize: 13,
-  },
-  miniConfirmBtn: {
-    width: 45,
-    height: 45,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordNoBadge: {
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginVertical: 10,
-    alignSelf: 'flex-start',
-  },
-  recordNoText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
+  safeArea: { flex: 1, paddingHorizontal: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 20 },
+  headerTitle: { fontSize: 18, fontWeight: '900' },
+  label: { fontSize: 11, fontWeight: 'bold', marginBottom: 8, color: '#888' },
+  row: { flexDirection: 'row', gap: 12, marginBottom: 15, alignItems: 'center' },
+  mainInput: { height: 52, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 15, justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' },
+  sideIconBtn: { width: 52, height: 52, backgroundColor: '#1A1A1A', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  focusedBorder: { borderColor: '#FF3B30', borderWidth: 2.5 },
+  newDeviceForm: { padding: 20, borderRadius: 15, marginBottom: 20, borderWidth: 1.5, borderColor: '#ddd' },
+  innerSelect: { height: 48, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15 },
+  innerInput: { flex: 1, height: 48, borderRadius: 10, paddingHorizontal: 15, fontSize: 14, borderWidth: 1, borderColor: 'transparent' },
+  addBtn: { backgroundColor: '#333', height: 50, borderRadius: 12, marginTop: 25, justifyContent: 'center', alignItems: 'center' },
+  addBtnText: { color: '#fff', fontWeight: '900', fontSize: 12 },
+  textArea: { height: 100, borderWidth: 1.5, borderRadius: 12, padding: 15, textAlignVertical: 'top' },
+  saveBtn: { flex: 1, height: 60, backgroundColor: '#1A1A1A', borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  printBtn: { width: 60, height: 60, backgroundColor: '#333', borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  selectOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  selectContent: { width: '85%', borderRadius: 20, padding: 20 },
+  selectTitle: { fontSize: 16, fontWeight: '900', textAlign: 'center', marginBottom: 20, borderBottomWidth: 1, paddingBottom: 10 },
+  selectItem: { paddingVertical: 15, borderBottomWidth: 0.5, borderColor: '#eee' },
+  selectItemText: { fontSize: 15, fontWeight: '600' },
+  miniStatusContent: { width: '80%', borderRadius: 15, padding: 20 },
+  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  statusMainText: { fontSize: 16, fontWeight: '900' },
+  statusSubText: { fontSize: 13 },
+  miniConfirmBtn: { width: 45, height: 45, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  recordNoBadge: { backgroundColor: '#FF3B30', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginVertical: 10, alignSelf: 'flex-start' },
+  recordNoText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
 });

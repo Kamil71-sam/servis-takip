@@ -1,12 +1,8 @@
-
 export const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 if (!API_URL) {
   console.error("⚠️ HATA: .env dosyasında EXPO_PUBLIC_API_URL bulunamadı!");
 }
-
-
-
 
 // --- LOGIN ---
 export async function login(email: string, password: string) {
@@ -39,7 +35,6 @@ export async function getCustomers() {
   }
 }
 
-
 // --- FİRMA İŞLEMLERİ ---
 export const getFirms = async () => {
   try {
@@ -68,30 +63,7 @@ export const createFirm = async (firmData: any) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
-
-
 // --- FİRMA İŞLEMLERİ ---
 
 // 1. Firmaları Listele
@@ -135,9 +107,6 @@ export const createFirm = async (firmData: {
 
 */
 
-
-
-
 // --- SERVİS KAYITLARI (MÜDÜR: TAM İSABET AYAR) ---
 export const getServices = async () => {
   try {
@@ -158,9 +127,10 @@ export const getServices = async () => {
 
 // --- CİHAZ VE SERVİS KABLOLARI ---
 
-export const getCustomerDevices = async (customerId: number) => {
+// MÜDÜR: Artık sadece ID değil, type da alıp URL'ye ekliyor (?type=kurumsal gibi)
+export const getCustomerDevices = async (id: number, type: string = 'bireysel') => {
   try {
-    const response = await fetch(`${API_URL}/devices/customer/${customerId}`);
+    const response = await fetch(`${API_URL}/devices/customer/${id}?type=${type}`);
     if (!response.ok) throw new Error("Cihaz HTTP Hatası");
     return await response.json();
   } catch (error) {
@@ -169,8 +139,17 @@ export const getCustomerDevices = async (customerId: number) => {
   }
 };
 
+// MÜDÜR: customer_id opsiyonel oldu, firm_id ve customer_type eklendi.
 export const createDevice = async (deviceData: { 
-    customer_id: number; brand: string; model: string; serial_no: string; cihaz_turu?: string; garanti_durumu?: string; muster_notu?: string;
+    customer_id?: number | null; 
+    firm_id?: number | null;
+    customer_type?: string;
+    brand: string; 
+    model: string; 
+    serial_no: string; 
+    cihaz_turu?: string; 
+    garanti_durumu?: string; 
+    muster_notu?: string;
 }) => {
   try {
     const response = await fetch(`${API_URL}/devices`, {
