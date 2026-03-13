@@ -7,19 +7,17 @@ import {
   TouchableOpacity, 
   ActivityIndicator,
   RefreshControl,
-  Alert // Müdürüm, 'Alert' importunu buraya ekledik (Hata-1 Gitti)
+  Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-//import { getUzmanDashboardData } from '../services/api_uzman';
-// Eskiden getUzmanDashboardData vardı, onu bununla değiştir:
 import { getUzmanTumIsler } from '../services/api_uzman';
 
-
-// TypeScript tipi
+// TypeScript tipi - MÜDÜR: servis_no buraya eklendi
 interface Task {
   id: string;
+  servis_no?: string; // Veritabanındaki koca numara
   status: string;
   issue: string;
   customer?: string;
@@ -32,41 +30,21 @@ export default function IslerUzman() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const ustaAdi = 'Usta_1'; 
 
-  
-    
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      const res = await getUzmanTumIsler(ustaAdi); 
       
-    const loadTasks = async () => {
-  try {
-    setLoading(true);
-    // Dashboard datasını değil, TÜM İŞLERİ çağırdık
-    const res = await getUzmanTumIsler(ustaAdi); 
-    
-    if (res && res.success) {
-      // DİKKAT: Dashboard'daki gibi res.data.sonIsler demiyoruz!
-      // Çünkü /tum-isler rotası veriyi direkt res.data içinde dizi (array) olarak yolluyor.
-      setTasks(res.data || []); 
-    }
-  } catch (err) {
-    console.error("Liste yükleme hatası:", err);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
-
-
-      /*
-      const res = await getUzmanDashboardData(ustaAdi);
       if (res && res.success) {
-        setTasks(res.data.sonIsler || []);
+        setTasks(res.data || []); 
       }
     } catch (err) {
-      console.error("İş listesi çekme hatası:", err);
+      console.error("Liste yükleme hatası:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
-
-*/
+    }
+  };
 
   useEffect(() => {
     loadTasks();
@@ -105,11 +83,12 @@ export default function IslerUzman() {
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.taskCard}
-              onPress={() => Alert.alert("Bilgi", "İş detay sayfası yakında eklenecek.")}
+              onPress={() => Alert.alert("Bilgi", `İş No: ${item.servis_no || item.id} detayları yakında eklenecek.`)}
             >
               <View style={styles.cardTop}>
                 <View style={styles.idBadge}>
-                  <Text style={styles.idText}>#{item.id}</Text>
+                  {/* MÜDÜR: Burayı item.servis_no olarak güncelledim */}
+                  <Text style={styles.idText}>#{item.servis_no || item.id}</Text>
                 </View>
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusText}>{item.status || 'Beklemede'}</Text>

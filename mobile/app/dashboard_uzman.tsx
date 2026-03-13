@@ -14,12 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUzmanDashboardData } from '../services/api_uzman';
 
-// TypeScript tipi - Hataları engellemek için güncellendi
+// TypeScript tipi - MÜDÜR: servis_no buraya eklendi
 interface Task {
   id: string;
+  servis_no?: string; // Veritabanından gelen koca numara
   status: string;
   issue: string;
-  customer?: string; // ? işareti: gelmese de hata verme demek
+  customer?: string; 
   device?: string;
   priority?: string;
 }
@@ -150,7 +151,8 @@ export default function DashboardUzman() {
             recentTasks.map((item) => (
               <TouchableOpacity key={item.id} style={[styles.card, isDarkMode && darkStyles.card]} activeOpacity={0.7}>
                 <View style={styles.cardHeader}>
-                  <Text style={[styles.deviceText, isDarkMode && darkStyles.textMain]}>İş No: {item.id}</Text>
+                  {/* MÜDÜR: Burada item.id yerine item.servis_no basıyoruz! */}
+                  <Text style={[styles.deviceText, isDarkMode && darkStyles.textMain]}>İş No: {item.servis_no || item.id}</Text>
                   <View style={[styles.statusBadge, isDarkMode && darkStyles.statusBadge]}>
                     <Text style={[styles.statusText, isDarkMode && darkStyles.statusText]}>
                       {item.status || 'Beklemede'}
