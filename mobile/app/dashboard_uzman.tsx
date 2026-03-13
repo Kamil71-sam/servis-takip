@@ -14,10 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUzmanDashboardData } from '../services/api_uzman';
 
-// TypeScript tipi - MÜDÜR: servis_no buraya eklendi
 interface Task {
   id: string;
-  servis_no?: string; // Veritabanından gelen koca numara
+  servis_no?: string;
   status: string;
   issue: string;
   customer?: string; 
@@ -100,7 +99,7 @@ export default function DashboardUzman() {
             <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
                 {loading ? ".." : stats.atanan}
             </Text> 
-            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Atanan İş</Text>
+            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Atanan İş/Cihaz Sayısı</Text>
           </View>
           
           <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
@@ -133,15 +132,16 @@ export default function DashboardUzman() {
             style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]} 
             onPress={() => router.push('/isler_uzman' as any)}
           >
-            <Text style={styles.actionBtnText}>Bana Atananlar</Text>
+            <Text style={styles.actionBtnText}>Onarım Listesi</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Malzemelerim</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Randevularım</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Yedek Parça </Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Randevu</Text></TouchableOpacity>
         </View>
 
+        {/* MÜDÜR: Başlık "Sıradaki İşler" olarak güncellendi */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, isDarkMode && darkStyles.textMain]}>Öncelikli İşler</Text>
-          <Text style={[styles.sectionSubtitle, isDarkMode && darkStyles.textSub]}>Sıradaki tamirler</Text>
+          <Text style={[styles.sectionTitle, isDarkMode && darkStyles.textMain]}>SIRADAKİ İŞLER</Text>
+          <Text style={[styles.sectionSubtitle, isDarkMode && darkStyles.textSub]}>Takip listesi</Text>
         </View>
 
         <View style={styles.cardsContainer}>
@@ -149,9 +149,13 @@ export default function DashboardUzman() {
             <ActivityIndicator size="small" color="#FF3B30" style={{marginTop: 20}} />
           ) : recentTasks.length > 0 ? (
             recentTasks.map((item) => (
-              <TouchableOpacity key={item.id} style={[styles.card, isDarkMode && darkStyles.card]} activeOpacity={0.7}>
+              <TouchableOpacity 
+                key={item.id} 
+                style={[styles.card, isDarkMode && darkStyles.card]} 
+                activeOpacity={0.7}
+                onPress={() => router.push('/isler_uzman' as any)} // MÜDÜR: Buradan da listeye gitsin
+              >
                 <View style={styles.cardHeader}>
-                  {/* MÜDÜR: Burada item.id yerine item.servis_no basıyoruz! */}
                   <Text style={[styles.deviceText, isDarkMode && darkStyles.textMain]}>İş No: {item.servis_no || item.id}</Text>
                   <View style={[styles.statusBadge, isDarkMode && darkStyles.statusBadge]}>
                     <Text style={[styles.statusText, isDarkMode && darkStyles.statusText]}>
@@ -165,10 +169,14 @@ export default function DashboardUzman() {
                   <Text style={[styles.issueText, isDarkMode && darkStyles.textSub]} numberOfLines={1}>{item.issue}</Text>
                 </View>
 
+                {/* MÜDÜR: Detay yazısı kalktı, Müşteri ismi geldi */}
                 <View style={[styles.cardFooter, isDarkMode && darkStyles.cardFooter]}>
-                    <Text style={[styles.customerText, isDarkMode && darkStyles.textSub]}>
-                      Detayları görmek için dokunun
-                    </Text>
+                    <View style={{flexDirection:'row', alignItems:'center', gap:5}}>
+                      <Ionicons name="person-outline" size={14} color={isDarkMode ? "#AAA" : "#888"} />
+                      <Text style={[styles.customerText, isDarkMode && darkStyles.textSub]}>
+                        {item.customer || 'DETAY'}
+                      </Text>
+                    </View>
                     <Ionicons name="chevron-forward" size={16} color={isDarkMode ? "#777" : "#ccc"} />
                 </View>
               </TouchableOpacity>
