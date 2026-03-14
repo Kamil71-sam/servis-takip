@@ -14,7 +14,7 @@ export async function login(email: string, password: string) {
   return response.json();
 }
 
-// --- MÜŞTERİ İŞLEMLERİ ---
+// --- MÜŞTERİ İŞLEMLERİ (BİREYSEL) ---
 export async function createCustomer(name: string, phone: string, fax: string, email: string, address: string) {
   const response = await fetch(`${API_URL}/customers`, {
     method: "POST",
@@ -35,6 +35,24 @@ export async function getCustomers() {
   }
 }
 
+// MÜDÜR: Bireysel müşteri güncelleme (Düzeltme)
+export async function updateCustomer(id: number, customerData: any) {
+  const response = await fetch(`${API_URL}/customers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(customerData),
+  });
+  return response.json();
+}
+
+// MÜDÜR: Bireysel müşteri silme
+export async function deleteCustomer(id: number) {
+  const response = await fetch(`${API_URL}/customers/${id}`, {
+    method: "DELETE",
+  });
+  return response.json();
+}
+
 // --- FİRMA İŞLEMLERİ ---
 export const getFirms = async () => {
   try {
@@ -46,7 +64,6 @@ export const getFirms = async () => {
   }
 };
 
-// MÜDÜR: İsimleri backend ile (firma_adi, telefon vb.) birebir eşitledim
 export const createFirm = async (firmData: any) => {
   try {
     const response = await fetch(`${API_URL}/api/firm/add`, {
@@ -63,49 +80,33 @@ export const createFirm = async (firmData: any) => {
   }
 };
 
-/*
-// --- FİRMA İŞLEMLERİ ---
-
-// 1. Firmaları Listele
-export const getFirms = async () => {
+// MÜDÜR: Firma güncelleme (Düzeltme)
+export const updateFirm = async (id: number, firmData: any) => {
   try {
-    const response = await fetch(`${API_URL}/api/firm/all`);
-    if (!response.ok) throw new Error("Firma HTTP Hatası");
-    return await response.json();
-  } catch (error) {
-    console.error("Firmalar çekilirken hata:", error);
-    return []; 
-  }
-};
-
-// 2. Yeni Firma Ekle (MÜDÜR: Backend'deki /add ve isimlerle tam uyumlu!)
-export const createFirm = async (firmData: { 
-  firma_adi: string; 
-  yetkili_ad_soyad?: string; 
-  telefon?: string; 
-  faks?: string; 
-  vergi_no?: string; 
-  eposta?: string; 
-  adres?: string 
-}) => {
-  try {
-    const response = await fetch(`${API_URL}/api/firm/add`, {
-      method: "POST",
+    const response = await fetch(`${API_URL}/api/firm/${id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(firmData),
     });
-
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Firma Kayıt Hatası");
-    
-    return result; 
-  } catch (error: any) {
-    console.error("Firma eklenirken hata:", error);
+    return await response.json();
+  } catch (error) {
+    console.error("Firma güncellenirken hata:", error);
     throw error;
   }
 };
 
-*/
+// MÜDÜR: Firma silme
+export const deleteFirm = async (id: number) => {
+  try {
+    const response = await fetch(`${API_URL}/api/firm/${id}`, {
+      method: "DELETE",
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Firma silinirken hata:", error);
+    throw error;
+  }
+};
 
 // --- SERVİS KAYITLARI (MÜDÜR: TAM İSABET AYAR) ---
 export const getServices = async () => {
@@ -127,7 +128,6 @@ export const getServices = async () => {
 
 // --- CİHAZ VE SERVİS KABLOLARI ---
 
-// MÜDÜR: Artık sadece ID değil, type da alıp URL'ye ekliyor (?type=kurumsal gibi)
 export const getCustomerDevices = async (id: number, type: string = 'bireysel') => {
   try {
     const response = await fetch(`${API_URL}/devices/customer/${id}?type=${type}`);
@@ -139,7 +139,6 @@ export const getCustomerDevices = async (id: number, type: string = 'bireysel') 
   }
 };
 
-// MÜDÜR: customer_id opsiyonel oldu, firm_id ve customer_type eklendi.
 export const createDevice = async (deviceData: { 
     customer_id?: number | null; 
     firm_id?: number | null;
@@ -148,6 +147,7 @@ export const createDevice = async (deviceData: {
     model: string; 
     serial_no: string; 
     cihaz_turu?: string; 
+    auto_focus?: string; // Müdür: auto_focus ismini bozmadım ama kullanım alanına göre bakılır
     garanti_durumu?: string; 
     muster_notu?: string;
 }) => {
