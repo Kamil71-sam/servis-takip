@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, FlatList, StatusBar, TouchableOpacity,
-  TextInput, ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, ScrollView
+  TextInput, ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, ScrollView, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-// api.ts bağlantısı (Müdür: deleteService'i buradan tamamen sildik, sadece işimize yarayanlar var)
 import { getServices, updateService } from '../services/api';
 
 export default function ServisListesi() {
@@ -19,14 +18,12 @@ export default function ServisListesi() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   
-  // DÜZENLEME MODALI
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [editForm, setEditForm] = useState({
     issue_text: '', status: '', atanan_usta: '', offer_price: '', musteri_notu: ''
   });
 
-  // MÜDÜR: STATÜ (DURUM) MODALI
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedForStatus, setSelectedForStatus] = useState<any>(null);
 
@@ -39,19 +36,18 @@ export default function ServisListesi() {
     primary: '#FF3B30',
     antrasit: isDarkMode ? '#DDDDDD' : '#333333',
     inputBg: isDarkMode ? '#2c2c2c' : '#F9F9F9',
-    success: '#34C759', // Yeşil (Hazır)
-    warning: '#FF9500', // Turuncu (Bekliyor)
-    info: '#007AFF', // Mavi (İşlemde)
-    archive: '#8E8E93' // Gri (Teslim/İptal)
+    success: '#34C759', 
+    warning: '#FF9500', 
+    info: '#007AFF', 
+    archive: '#8E8E93'
   };
 
   const fetchServisler = async () => {
     try {
       setLoading(true);
       const data = await getServices();
-      // MÜDÜR: Arşive kalkanları (Pasif, Teslim Edildi, İptal Edildi) listeden gizliyoruz
       const aktifServisler = (data || []).filter((s: any) => {
-        const d = s.durum || '';
+        const d = s.durum || s.status || '';
         return !d.includes('PASIF') && !d.includes('Teslim Edildi') && !d.includes('İptal Edildi');
       });
       setServisler(aktifServisler);
@@ -70,7 +66,7 @@ export default function ServisListesi() {
       issue_text: item.ariza || '',
       status: item.durum || 'Yeni Kayıt',
       atanan_usta: item.usta || '',
-      offer_price: item.price?.toString() || '',
+      offer_price: item.offer_price?.toString() || item.price?.toString() || '',
       musteri_notu: item.eklenen_notlar || ''
     });
     setModalVisible(true);
@@ -87,26 +83,23 @@ export default function ServisListesi() {
     }
   };
 
-  // MÜDÜR: YENİ DURUM DEĞİŞTİRME FONKSİYONU
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string, serviceId?: number) => {
+    const id = serviceId || selectedForStatus?.id;
+    if (!id) return;
+
     try {
-      await updateService(selectedForStatus.id, { status: newStatus });
+      await updateService(id, { status: newStatus });
       setStatusModalVisible(false);
       
       const isArchive = newStatus === 'Teslim Edildi' || newStatus === 'İptal Edildi';
       Alert.alert(
-        "Durum Güncellendi", 
-        isArchive ? `Cihaz "${newStatus}" olarak işaretlendi ve arşive kaldırıldı.` : `Cihazın durumu "${newStatus}" yapıldı.`,
+        "İşlem Tamam", 
+        isArchive ? `Arşive kaldırıldı.` : `Durum: ${newStatus}`,
         [{ text: "Tamam", onPress: () => fetchServisler() }]
       );
     } catch (error) {
-      Alert.alert("Hata", "Durum güncellenemedi.");
+      Alert.alert("Hata", "Güncellenemedi.");
     }
-  };
-
-  const openStatusModal = (item: any) => {
-    setSelectedForStatus(item);
-    setStatusModalVisible(true);
   };
 
   const filtered = (servisler || []).filter((s: any) => {
@@ -119,7 +112,8 @@ export default function ServisListesi() {
   const getStatusColor = (status: string) => {
     if (status === 'Yeni Kayıt') return theme.primary;
     if (status === 'Teşhis Kondu' || status === 'Parça Bekliyor') return theme.warning;
-    if (status === 'Onaylandı') return theme.info;
+    if (status === 'Onaylandı' || status === 'Tamirde') return theme.info;
+    if (status === 'Onay Bekliyor') return '#1A1A1A'; 
     if (status === 'Hazır') return theme.success;
     return theme.antrasit;
   };
@@ -155,8 +149,8 @@ export default function ServisListesi() {
               <View style={styles.cardMain}>
                 <Text style={[styles.name, { color: theme.textColor }]}>{(item.musteri_adi || "İSİMSİZ").toUpperCase()}</Text>
                 
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.durum) }]}>
-                  <Text style={styles.statusBadgeText}>{item.durum || 'Yeni Kayıt'}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.durum || item.status) }]}>
+                  <Text style={styles.statusBadgeText}>{item.durum || item.status || 'Yeni Kayıt'}</Text>
                 </View>
 
                 <View style={styles.infoLine}>
@@ -171,7 +165,32 @@ export default function ServisListesi() {
                   <Ionicons name="calendar-outline" size={14} color={theme.subText} />
                   <Text style={[styles.cardText, { color: theme.subText }]}> {item.tarih || '-'}</Text>
                 </View>
+
+                {/* --- MÜDÜR: FİYAT TEKLİFİ (ARTIK DAHA TEMİZ) --- */}
+                {(item.offer_price > 0 || item.price > 0) && (
+                  <View style={styles.priceContainer}>
+                    <Ionicons name="wallet-outline" size={14} color={theme.primary} />
+                    <Text style={[styles.priceText, { color: theme.textColor }]}>
+                      Fiyat Teklifi: <Text style={{fontWeight: '900'}}>{item.offer_price || item.price} TL</Text>
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              {/* MÜDÜR: KARE ARA BUTONU (SAĞA MONTE EDİLDİ) */}
+              {(item.durum === 'Onay Bekliyor' || item.status === 'Onay Bekliyor') && (
+                <TouchableOpacity 
+                  style={styles.squareCallButton}
+                  onPress={() => {
+                    const telNo = item.telefon || item.phone || ''; 
+                    if(telNo) { Linking.openURL(`tel:${telNo}`); } 
+                    else { Alert.alert("Bilgi", "Telefon kayıtlı değil."); }
+                  }}
+                >
+                  <Ionicons name="call" size={28} color="#FFF" />
+                  <Text style={styles.squareCallText}>ARA</Text>
+                </TouchableOpacity>
+              )}
 
               <View style={styles.actionCol}>
                 <TouchableOpacity style={styles.actionRow} onPress={() => handleEditPress(item)}>
@@ -180,8 +199,8 @@ export default function ServisListesi() {
                 </TouchableOpacity>
                 <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />
                 
-                <TouchableOpacity style={styles.actionRow} onPress={() => openStatusModal(item)}>
-                  <Text style={[styles.actionLabel, { color: theme.info }]}>Durum Değiş</Text>
+                <TouchableOpacity style={styles.actionRow} onPress={() => { setSelectedForStatus(item); setStatusModalVisible(true); }}>
+                  <Text style={[styles.actionLabel, { color: theme.info }]}>Durum</Text>
                   <Ionicons name="swap-horizontal" size={20} color={theme.info} />
                 </TouchableOpacity>
               </View>
@@ -235,43 +254,41 @@ export default function ServisListesi() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* MÜDÜR: DURUM (STATÜ) DEĞİŞTİRME MODALI (Ayakları Toparlandı) */}
+      {/* DURUM MODALI */}
       <Modal visible={statusModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.statusModalContent, { backgroundColor: theme.bg }]}>
             <Text style={[styles.modalTitle, { color: theme.textColor, marginBottom: 5 }]}>Durum Güncelle</Text>
             <Text style={[styles.statusSubTitle, { color: theme.subText }]}>{selectedForStatus?.marka_model}</Text>
 
-            {/* Müdür: flexShrink: 1 ekledik ki ekran daralırsa ScrollView boyundan fedakarlık etsin, alt tarafı dışarı itmesin */}
             <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingVertical: 5 }} showsVerticalScrollIndicator={false}>
               {[
                 { label: 'Yeni Kayıt', color: theme.primary },
                 { label: 'Teşhis Kondu', color: theme.warning },
+                { label: 'Onay Bekliyor', color: '#1A1A1A' },
                 { label: 'Onaylandı', color: theme.info },
+                { label: 'Tamirde', color: theme.info },
                 { label: 'Parça Bekliyor', color: theme.warning },
                 { label: 'Hazır', color: theme.success },
               ].map((s, idx) => (
                 <TouchableOpacity key={idx} style={[styles.statusOptionRow, { borderColor: theme.borderColor }]} onPress={() => handleStatusChange(s.label)}>
                   <View style={[styles.statusDot, { backgroundColor: s.color }]} />
                   <Text style={[styles.statusOptionText, { color: theme.textColor }]}>{s.label}</Text>
-                  {selectedForStatus?.durum === s.label && <Ionicons name="checkmark-circle" size={22} color={s.color} />}
+                  {(selectedForStatus?.durum === s.label || selectedForStatus?.status === s.label) && <Ionicons name="checkmark-circle" size={22} color={s.color} />}
                 </TouchableOpacity>
               ))}
 
               <View style={[styles.divider, { backgroundColor: theme.borderColor, marginVertical: 10 }]} />
               
-              <Text style={{ fontSize: 11, color: theme.subText, textAlign: 'center', marginBottom: 10 }}>Aşağıdaki işlemler cihazı arşive kaldırır</Text>
-              
               <TouchableOpacity style={[styles.statusOptionRow, { borderColor: theme.borderColor }]} onPress={() => handleStatusChange('Teslim Edildi')}>
                 <View style={[styles.statusDot, { backgroundColor: theme.archive }]} />
-                <Text style={[styles.statusOptionText, { color: theme.textColor, fontWeight: 'bold' }]}>Teslim Edildi (İşi Kapat)</Text>
+                <Text style={[styles.statusOptionText, { color: theme.textColor, fontWeight: 'bold' }]}>Teslim Edildi</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={[styles.statusOptionRow, { borderColor: theme.borderColor, borderBottomWidth: 0 }]} onPress={() => handleStatusChange('İptal Edildi')}>
                 <View style={[styles.statusDot, { backgroundColor: theme.primary }]} />
-                <Text style={[styles.statusOptionText, { color: theme.primary, fontWeight: 'bold' }]}>İptal Edildi (İşi Kapat)</Text>
+                <Text style={[styles.statusOptionText, { color: theme.primary, fontWeight: 'bold' }]}>İptal Edildi</Text>
               </TouchableOpacity>
-
             </ScrollView>
 
             <TouchableOpacity style={[styles.closeModalBtn, { backgroundColor: theme.inputBg }]} onPress={() => setStatusModalVisible(false)}>
@@ -291,15 +308,15 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700' },
   searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, height: 45, borderRadius: 10, marginBottom: 15, borderWidth: 1 },
   input: { flex: 1, marginLeft: 6, fontSize: 15 },
-  card: { flexDirection: 'row', borderRadius: 12, padding: 15, marginBottom: 12, borderWidth: 1, alignItems: 'center', minHeight: 120 },
-  cardMain: { flex: 1, justifyContent: 'center' },
+  card: { flexDirection: 'row', borderRadius: 12, padding: 15, marginBottom: 12, borderWidth: 1, alignItems: 'center' },
+  cardMain: { flex: 1 },
   name: { fontSize: 15, fontWeight: '800', marginBottom: 4 },
   statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5, marginBottom: 8 },
   statusBadgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
   infoLine: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
   cardText: { fontSize: 12, marginLeft: 4 },
   actionCol: { alignItems: 'flex-end', borderLeftWidth: 1, paddingLeft: 12, marginLeft: 8, justifyContent: 'center' },
-  actionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   actionLabel: { fontSize: 10, marginRight: 6, fontWeight: '700', textTransform: 'uppercase' },
   divider: { height: 1, width: '100%', marginVertical: 6, opacity: 0.2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -313,16 +330,38 @@ const styles = StyleSheet.create({
   modalInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 },
   btn: { flex: 0.48, height: 48, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-
-  // MÜDÜR: Statü Modalı Stilleri (Burayı Toparladık)
-  statusModalContent: { 
-    borderTopLeftRadius: 25, 
-    borderTopRightRadius: 25, 
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 25, // iPhone'un alt çizgisine çarpmasın diye pay verdik
-    maxHeight: '75%' // Kesin limit koyduk, daha fazla büyümez!
+  
+  // MÜDÜR: KARE ARA BUTONU STİLİ (3 MM TRAŞLANMIŞ)
+  squareCallButton: {
+    width: 65,             // Boyut biraz daraltıldı
+    height: 65,            // Boyut biraz daraltıldı
+    backgroundColor: '#34C759', 
+    borderRadius: 10,      // Köşeler milimetrik yuvarlatıldı
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,       // Sağdaki aksiyonlarla mesafe
+    elevation: 3,
   },
+  squareCallText: {
+    color: '#FFF',
+    fontWeight: '900',
+    fontSize: 11,
+    marginTop: 4,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: '#EEE',
+  },
+  priceText: {
+    marginLeft: 5,
+    fontSize: 13,
+  },
+
+  statusModalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingTop: 20, paddingHorizontal: 20, paddingBottom: 40, maxHeight: '75%' },
   statusSubTitle: { fontSize: 12, textAlign: 'center', fontWeight: 'bold', marginBottom: 10 },
   statusOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5 },
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },

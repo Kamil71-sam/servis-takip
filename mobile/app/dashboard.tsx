@@ -14,11 +14,16 @@ import YeniServisKaydi from '../components/YeniServisKaydi';
 import StokTakibiAnaEkran from '../components/StokTakibiAnaEkran';
 import MaliIslemlerAnaEkran from '../components/MaliIslemlerAnaEkran';
 
+// MÜDÜR: Servisleri çekip onay bekleyenleri saymak için API'yi çağırdık
+import { getServices } from '../services/api';
+
 export default function DashboardScreen() {
   const router = useRouter(); 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [stokSayisi, setStokSayisi] = useState(0); 
+  
+  // MÜDÜR: Stok yerine onay bekleyen cihaz sayısını tutuyoruz
+  const [onayBekleyenSayisi, setOnayBekleyenSayisi] = useState(0); 
 
   // --- ASANSÖR KİLİTLERİ (MODALLAR) ---
   const [musteriVisible, setMusteriVisible] = useState(false);
@@ -52,20 +57,20 @@ export default function DashboardScreen() {
     if (nextState) setIsMusteriSubMenuOpen(false);
   };
 
-  // ANDROID CANLI BAĞLANTI (STOK İKAZ SİSTEMİ)
+  // MÜDÜR: ONAY BEKLEYEN İKAZ SİSTEMİ MOTORU
   useEffect(() => {
-    const fetchStok = async () => {
+    const fetchIkaz = async () => {
       try {
-        const response = await fetch('http://192.168.1.44:3000/stok-ikaz'); 
-        const data = await response.json();
-        setStokSayisi(data.length); 
+        const data = await getServices();
+        const bekleyenler = (data || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
+        setOnayBekleyenSayisi(bekleyenler.length);
       } catch (e) { 
         console.log("Motorla iletişim aranıyor..."); 
       }
     };
 
-    fetchStok();
-    const interval = setInterval(fetchStok, 5000); 
+    fetchIkaz();
+    const interval = setInterval(fetchIkaz, 5000); // Her 5 saniyede bir ustayı kontrol et
     return () => clearInterval(interval);
   }, []);
 
@@ -108,20 +113,35 @@ export default function DashboardScreen() {
             <Text style={[styles.bigTitleText, isDarkMode && styles.darkText]}>TEKNİK SERVİS TAKİP PROGRAMI</Text>
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
           </View>
+          
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
             <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
             <Ionicons name="pie-chart" size={160} color={isDarkMode ? "#555" : "#333"} style={{ alignSelf: 'center' }} />
           </View>
-          <TouchableOpacity style={styles.sahaBox} activeOpacity={0.8}>
+          
+          <TouchableOpacity style={styles.sahaBox} activeOpacity={0.8} onPress={() => setServisVisible(true)}>
             <Ionicons name="calendar-outline" size={26} color="#fff" />
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.alertBanner} activeOpacity={0.9} onPress={() => setStokVisible(true)}>
-            <Ionicons name="warning" size={22} color="#fff" />
-            <View style={{ marginLeft: 10 }}>
-              <Text style={styles.alertTitle}>STOK TAKİP SİSTEMİ</Text>
-              <Text style={styles.alertText}>{stokSayisi > 0 ? `${stokSayisi} Ürün Kritik!` : "Normal"}</Text>
+          
+          {/* MÜDÜR: YENİ AKILLI İKAZ PLAKASI */}
+          <TouchableOpacity 
+            style={[styles.alertBanner, { backgroundColor: onayBekleyenSayisi > 0 ? '#FF3B30' : '#34C759' }]} 
+            activeOpacity={0.9} 
+            onPress={() => router.push({ pathname: '/servisler', params: { theme: isDarkMode ? 'dark' : 'light' } })}
+          >
+            <Ionicons name={onayBekleyenSayisi > 0 ? "warning" : "checkmark-circle"} size={24} color="#fff" />
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <Text style={styles.alertTitle}>
+                {onayBekleyenSayisi > 0 ? "MÜŞTERİ ONAYI BEKLENİYOR" : "SİSTEM TEMİZ"}
+              </Text>
+              <Text style={styles.alertText}>
+                {onayBekleyenSayisi > 0 
+                  ? `Usta fiyat verdi! ${onayBekleyenSayisi} cihaza müşteri onayı gerekiyor.` 
+                  : "Onay bekleyen cihaz bulunmuyor."}
+              </Text>
             </View>
+            <Ionicons name="chevron-forward" size={20} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
         </ScrollView>
 
@@ -195,7 +215,6 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
                     
-                    {/* MÜDÜR: Burası artık 'servisler' sayfasına gider, maval okumaz! */}
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
                         setIsMenuOpen(false); 
                         router.push({ pathname: '/servisler', params: { theme: isDarkMode ? 'dark' : 'light' } }); 
@@ -215,11 +234,14 @@ export default function DashboardScreen() {
                   <Text style={[styles.menuItemText, { color: D_COLOR }]}>Mali İşlemler</Text>
                 </TouchableOpacity>
               </ScrollView>
+              
               <View style={styles.fixedInfoArea}>
                 <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
                 <View style={styles.fixedInfoRow}>
-                  <Ionicons name="cube" size={18} color="#FF3B30" />
-                  <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>Stok: {stokSayisi}</Text>
+                  <Ionicons name="alert-circle" size={18} color={onayBekleyenSayisi > 0 ? "#FF3B30" : "#34C759"} />
+                  <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>
+                    Onay Bekleyen İş: {onayBekleyenSayisi}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -253,9 +275,12 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   sahaBox: { width: '100%', height: 75, backgroundColor: '#333', borderRadius: 20, marginTop: 25, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   actionText: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginLeft: 12 },
-  alertBanner: { backgroundColor: '#FF3B30', borderRadius: 20, flexDirection: 'row', padding: 20, alignItems: 'center', marginTop: 30 },
-  alertTitle: { color: '#fff', fontWeight: '900', fontSize: 14 },
-  alertText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  
+  // MÜDÜR: ALERT KUTUSU STİLLERİ
+  alertBanner: { borderRadius: 20, flexDirection: 'row', padding: 20, alignItems: 'center', marginTop: 20, elevation: 4 },
+  alertTitle: { color: '#fff', fontWeight: '900', fontSize: 14, marginBottom: 2 },
+  alertText: { color: '#fff', fontWeight: '600', fontSize: 12, opacity: 0.9 },
+  
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
   menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', paddingVertical: 60, paddingHorizontal: 0 },
   menuTitle: { fontSize: 20, fontWeight: '900', marginBottom: 30, paddingHorizontal: 30 },

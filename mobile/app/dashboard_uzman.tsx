@@ -26,7 +26,11 @@ interface Task {
 
 export default function DashboardUzman() {
   const router = useRouter();
+  
+  // MÜDÜR: MOTORUN İŞGÜZARLIĞI İPTAL EDİLDİ! 
+  // Açılışta telefonun ayarına falan bakmaz, DİREKT GÜNDÜZ (false) açılır. Sen basarsan gece olur.
   const [isDarkMode, setIsDarkMode] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState({
@@ -130,7 +134,7 @@ export default function DashboardUzman() {
         <View style={styles.actionRow}>
           <TouchableOpacity 
             style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]} 
-            onPress={() => router.push('/isler_uzman' as any)}
+            onPress={() => router.push({ pathname: '/isler_uzman', params: { theme: isDarkMode ? 'dark' : 'light' } })}
           >
             <Text style={styles.actionBtnText}>Onarım Listesi</Text>
           </TouchableOpacity>
@@ -138,7 +142,6 @@ export default function DashboardUzman() {
           <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Randevu</Text></TouchableOpacity>
         </View>
 
-        {/* MÜDÜR: Başlık "Sıradaki İşler" olarak güncellendi */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, isDarkMode && darkStyles.textMain]}>SIRADAKİ İŞLER</Text>
           <Text style={[styles.sectionSubtitle, isDarkMode && darkStyles.textSub]}>Takip listesi</Text>
@@ -153,7 +156,7 @@ export default function DashboardUzman() {
                 key={item.id} 
                 style={[styles.card, isDarkMode && darkStyles.card]} 
                 activeOpacity={0.7}
-                onPress={() => router.push('/isler_uzman' as any)} // MÜDÜR: Buradan da listeye gitsin
+                onPress={() => router.push({ pathname: '/isler_uzman', params: { theme: isDarkMode ? 'dark' : 'light' } })}
               >
                 <View style={styles.cardHeader}>
                   <Text style={[styles.deviceText, isDarkMode && darkStyles.textMain]}>İş No: {item.servis_no || item.id}</Text>
@@ -169,7 +172,6 @@ export default function DashboardUzman() {
                   <Text style={[styles.issueText, isDarkMode && darkStyles.textSub]} numberOfLines={1}>{item.issue}</Text>
                 </View>
 
-                {/* MÜDÜR: Detay yazısı kalktı, Müşteri ismi geldi */}
                 <View style={[styles.cardFooter, isDarkMode && darkStyles.cardFooter]}>
                     <View style={{flexDirection:'row', alignItems:'center', gap:5}}>
                       <Ionicons name="person-outline" size={14} color={isDarkMode ? "#AAA" : "#888"} />
