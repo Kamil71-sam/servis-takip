@@ -201,9 +201,21 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
       setSearchText('');
       loadData();
 
-      setTimeout(() => {
+
+       // Eski hali yerine bunu yapıştır:
+      const timer = setTimeout(() => {
         rMusteriInput.current?.focus();
       }, 500);
+      
+      return () => clearTimeout(timer);  
+
+
+     
+
+
+
+
+
     }
   }, [visible]);
 
@@ -247,6 +259,11 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
   };
 
   const handleCustomerSelect = async (customer: any) => {
+
+    Keyboard.dismiss();
+    rMusteriInput.current?.blur();
+
+
     const isKurumsal = customer.type === 'kurumsal';
     
     setServis({
@@ -368,10 +385,17 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     setLoading(true);
 
     try {
+
+
+
+
+
       const result = await createServiceRecord({
         device_id: Number(servis.device_id),
         issue_text: servis.ariza_notu,
         atanan_usta: servis.usta,
+
+        musteri_notu: servis.muster_notu,
       });
 
       setStatus({
@@ -495,6 +519,10 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                     ]}
                     onPress={() => {
                       if (!servis.customer_id && !servis.firm_id) {
+
+
+                      Keyboard.dismiss();
+
                         return Alert.alert('Hata', 'Once Musteri veya Firma Sec!');
                       }
 

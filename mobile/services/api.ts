@@ -35,7 +35,6 @@ export async function getCustomers() {
   }
 }
 
-// MÜDÜR: Bireysel müşteri güncelleme (Düzeltme)
 export async function updateCustomer(id: number, customerData: any) {
   const response = await fetch(`${API_URL}/customers/${id}`, {
     method: "PUT",
@@ -45,9 +44,10 @@ export async function updateCustomer(id: number, customerData: any) {
   return response.json();
 }
 
-// MÜDÜR: Bireysel müşteri silme
-export async function deleteCustomer(id: number) {
-  const response = await fetch(`${API_URL}/customers/${id}`, {
+// MÜDÜR: Bireysel müşteri silme (Akıllı Kontrol - Zorla Silme)
+export async function deleteCustomer(id: number, force: boolean = false) {
+  const url = `${API_URL}/customers/${id}${force ? '?force=true' : ''}`;
+  const response = await fetch(url, {
     method: "DELETE",
   });
   return response.json();
@@ -80,7 +80,6 @@ export const createFirm = async (firmData: any) => {
   }
 };
 
-// MÜDÜR: Firma güncelleme (Düzeltme)
 export const updateFirm = async (id: number, firmData: any) => {
   try {
     const response = await fetch(`${API_URL}/api/firm/${id}`, {
@@ -95,10 +94,11 @@ export const updateFirm = async (id: number, firmData: any) => {
   }
 };
 
-// MÜDÜR: Firma silme
-export const deleteFirm = async (id: number) => {
+// MÜDÜR: Firma silme (Akıllı Kontrol - Zorla Silme)
+export const deleteFirm = async (id: number, force: boolean = false) => {
   try {
-    const response = await fetch(`${API_URL}/api/firm/${id}`, {
+    const url = `${API_URL}/api/firm/${id}${force ? '?force=true' : ''}`;
+    const response = await fetch(url, {
       method: "DELETE",
     });
     return await response.json();
@@ -108,7 +108,7 @@ export const deleteFirm = async (id: number) => {
   }
 };
 
-// --- SERVİS KAYITLARI (MÜDÜR: TAM İSABET AYAR) ---
+// --- SERVİS KAYITLARI (MÜDÜR: LİSTELEME) ---
 export const getServices = async () => {
   try {
     const response = await fetch(`${API_URL}/services/all`);
@@ -127,7 +127,6 @@ export const getServices = async () => {
 };
 
 // --- CİHAZ VE SERVİS KABLOLARI ---
-
 export const getCustomerDevices = async (id: number, type: string = 'bireysel') => {
   try {
     const response = await fetch(`${API_URL}/devices/customer/${id}?type=${type}`);
@@ -147,7 +146,7 @@ export const createDevice = async (deviceData: {
     model: string; 
     serial_no: string; 
     cihaz_turu?: string; 
-    auto_focus?: string; // Müdür: auto_focus ismini bozmadım ama kullanım alanına göre bakılır
+    auto_focus?: string; 
     garanti_durumu?: string; 
     muster_notu?: string;
 }) => {
@@ -164,9 +163,18 @@ export const createDevice = async (deviceData: {
   }
 };
 
+
 export const createServiceRecord = async (serviceData: { 
-    device_id: number; issue_text: string; atanan_usta?: string;
+    device_id: number; issue_text: string; atanan_usta?: string; musteri_notu?: string;
 }) => {
+
+
+
+
+
+
+
+
   try {
     const response = await fetch(`${API_URL}/services`, {
       method: 'POST',
@@ -176,6 +184,37 @@ export const createServiceRecord = async (serviceData: {
     return await response.json();
   } catch (error) {
     console.error("Servis açılırken hata:", error);
+    throw error;
+  }
+};
+
+// --- MÜDÜR: SERVİS GÜNCELLEME (STATÜ PINPONU BURADAN ÇALIŞIYOR) ---
+export const updateService = async (id: number, data: any) => {
+  try {
+    const response = await fetch(`${API_URL}/services/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error("Güncelleme işlemi başarısız");
+    return await response.json();
+  } catch (error) {
+    console.error("Servis güncelleme API hatası:", error);
+    throw error;
+  }
+};
+
+// --- MÜDÜR: ARTIK KULLANILMAYAN ESKİ SİLME KODU (Yedek Parça) ---
+// Not: Mobilde çöp kutusunu kaldırdığımız için bu kod tetiklenmez!
+export const deleteService = async (id: number) => {
+  try {
+    const response = await fetch(`${API_URL}/services/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error("Silme işlemi başarısız");
+    return await response.json();
+  } catch (error) {
+    console.error("Servis silme API hatası:", error);
     throw error;
   }
 };

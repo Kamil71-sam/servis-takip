@@ -81,18 +81,45 @@ export default function MusterilerScreen() {
   };
 
 
+  // MÜDÜR: İŞTE AKILLI SİLME MEKANİZMASI BURASI
+  const handleDelete = (id: number, name: string, force: boolean = false) => {
+    const title = force ? "SON UYARI" : "Kayıt Silme";
+    const msg = force 
+      ? "Bu işlem geri alınamaz! Müşteri ve tüm geçmişi silinsin mi?" 
+      : `${name} silinecek. Emin misiniz?`;
 
-const handleDelete = (id: number, name: string) => {
-    Alert.alert("Kayıt Silme", `${name} silinecek. Emin misiniz?`, [
+    Alert.alert(title, msg, [
       { text: "Vazgeç", style: "cancel" },
-      { text: "SİL", style: "destructive", onPress: async () => {
+      { text: force ? "KÖKTEN SİL" : "SİL", style: "destructive", onPress: async () => {
           try {
-            const res = await deleteCustomer(id);
+            // Backend'e force (zorla sil) parametresini de gönderiyoruz
+            const res = await deleteCustomer(id, force);
+
+            // 1. DURUM: Backend iş kaydı buldu ve bizi uyardı!
+            if (res && res.uyariVar) {
+              Alert.alert(
+                "DİKKAT: Kayıtlar Bulundu!",
+                res.message,
+                [
+                  { text: "İptal Et", style: "cancel" },
+                  { 
+                    text: "YİNE DE SİL", 
+                    style: "destructive", 
+                    // Kullanıcı yine de sil derse, fonksiyonu force=true ile tekrar çağırıyoruz
+                    onPress: () => handleDelete(id, name, true) 
+                  }
+                ]
+              );
+              return; // İşlemi durdur, kullanıcının kararını bekle
+            }
+
+            // 2. DURUM: Hata oldu
             if (res && res.success === false) { 
-              Alert.alert("Hata", res.message); 
-            } else { 
-              // MÜDÜR: Ekranda uyarı kalır, 'Tamam'a basınca liste yenilenir.
-              Alert.alert("Başarılı", "Müşteri kaydı sistemden başarıyla silindi.", [
+              Alert.alert("Hata", res.message || "Silme işlemi başarısız."); 
+            } 
+            // 3. DURUM: Tertemiz silindi
+            else { 
+              Alert.alert("Başarılı", res.message || "Müşteri kaydı sistemden başarıyla silindi.", [
                 { text: "Tamam", onPress: () => loadCustomers() }
               ]);
             }
@@ -100,17 +127,6 @@ const handleDelete = (id: number, name: string) => {
       }}
     ]);
   };
-
-
-  
-
-
-
-
-
-
-
-
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
