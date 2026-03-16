@@ -1,20 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router'; 
 import { getAllMaterialRequests, updateMaterialStatus } from '../services/api_material';
 
 export default function BankoStokOnay() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const filterMode = params.filterMode; 
+
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // MÜDÜR: Çekmece (Modal) ve Kırmızı Kutu ayarları
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [checkingId, setCheckingId] = useState<number | null>(null);
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
       const res = await getAllMaterialRequests();
-      if (res.success) setRequests(res.data);
+      if (res.success) {
+        // MÜDÜR: İŞTE MOLOZ TEMİZLİĞİ BURADA! 'Geldi' olanları listeden uçuruyoruz.
+        const aktifTalepler = res.data.filter((item: any) => item.status !== 'Geldi');
+        setRequests(aktifTalepler);
+      }
     } catch (err) {
       Alert.alert("Hata", "Talepler yüklenemedi.");
     } finally {
@@ -24,21 +36,56 @@ export default function BankoStokOnay() {
 
   useEffect(() => { fetchRequests(); }, []);
 
-  // MÜDÜR: Burası artık daha akıllı! Sadece durum değil, log için isim de gönderiyor.
-  const handleStatusUpdate = async (id: number, status: string) => {
-    try {
-      // MÜDÜR: 'Kemal Müdür' ismini log sistemine gönderiyoruz
-      await updateMaterialStatus(id, status, "Kemal Müdür"); 
-      
-      Alert.alert(
-        "İşlem Başarılı", 
-        `Parça onaylandı, cihaz durumu otomatik olarak 'Tamirde' konumuna alındı ve kayıt günlüğüne işlendi.`
-      );
-      
-      fetchRequests(); // Listeyi tazele
-    } catch (err) {
-      Alert.alert("Hata", "Güncelleme ve loglama sırasında bir sorun oluştu.");
-    }
+  // MÜDÜR: İŞTE O MÜTHİŞ GRUPLAMA MOTORU (Aynı cihazın siparişlerini tek dosyada toplar)
+  const getGroupedData = () => {
+    const groups: any = {};
+    requests.forEach(r => {
+      // Eğer filterMode onlyStok ise ve durum Beklemede DEĞİLSE, gruba ekleme
+      if (filterMode === 'onlyStok' && r.status !== 'Beklemede') return;
+
+      if (!groups[r.servis_no]) {
+        groups[r.servis_no] = {
+          servis_no: r.servis_no,
+          marka_model: r.marka_model,
+          items: []
+        };
+      }
+      groups[r.servis_no].items.push(r);
+    });
+    return Object.values(groups);
+  };
+
+  const groupedRequests = getGroupedData();
+
+  // MÜDÜR: Modal içindeki boş kutuya tıklandığında çalışacak Akıllı Şalter
+  const handleCheckItem = (item: any, totalItemsInGroup: number) => {
+    if (checkingId) return; // Zaten bir şeye basıldıysa kilitle
+    
+    // 1. Kutuyu kırmızıya boya
+    setCheckingId(item.id);
+
+    // 2. Kullanıcı kırmızıyı görsün diye yarım saniye (500ms) bekle, sonra işlemi yap ve kapat
+    setTimeout(async () => {
+      try {
+        await updateMaterialStatus(item.id, 'Geldi', "Kemal Müdür"); 
+        
+        setCheckingId(null);
+        setDetailModalVisible(false); // Diğerlerini takip etmek için modalı otomatik kapat
+
+        if (totalItemsInGroup === 1) {
+          // Gruptaki SON parça onaylandıysa
+          Alert.alert(
+            "Tüm Parçalar Tamam!", 
+            `Cihazın bekleyen SON parçası da geldi! Cihaz eksiksiz, durumu 'Tamirde' konumuna alındı.`
+          );
+        }
+        
+        fetchRequests(); // Listeyi tazele, 'Geldi' olan anında kaybolur.
+      } catch (err) {
+        setCheckingId(null);
+        Alert.alert("Hata", "İşlem sırasında bir sorun oluştu.");
+      }
+    }, 500);
   };
 
   return (
@@ -51,36 +98,93 @@ export default function BankoStokOnay() {
 
       {loading ? <ActivityIndicator size="large" color="#FF3B30" style={{marginTop:50}} /> : (
         <FlatList
-          data={requests}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={[styles.card, item.status === 'Geldi' && { opacity: 0.6 }]}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.servisNo}>Kayıt No: #{item.servis_no}</Text>
-                <Text style={[styles.statusText, { color: item.status === 'Beklemede' ? '#FF9500' : '#34C759' }]}>
-                  {item.status.toUpperCase()}
-                </Text>
-              </View>
-              
-              <Text style={styles.markaModel}>{item.marka_model}</Text>
-              <Text style={styles.partName}>{item.part_name} ({item.quantity} Adet)</Text>
-              <Text style={styles.desc}>{item.description}</Text>
+          data={groupedRequests}
+          keyExtractor={(item: any) => item.servis_no.toString()}
+          
+          ListEmptyComponent={
+            <View style={{alignItems: 'center', marginTop: 50}}>
+              <Ionicons name="checkmark-done-circle" size={60} color="#34C759" opacity={0.5} />
+              <Text style={{marginTop: 15, fontSize: 16, color: '#666', fontWeight: 'bold'}}>Bekleyen Sipariş Yok.</Text>
+            </View>
+          }
 
-              {item.status === 'Beklemede' && (
+          renderItem={({ item }: { item: any }) => {
+            return (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.servisNo}>Kayıt No: #{item.servis_no}</Text>
+                  <Text style={[styles.statusText, { color: '#FF9500' }]}>
+                    BEKLEMEDE
+                  </Text>
+                </View>
+                
+                <Text style={styles.markaModel}>{item.marka_model}</Text>
+                
+                {/* MÜDÜR: İçindeki parçaların kısa özeti */}
+                <Text style={styles.desc} numberOfLines={2}>
+                  Bekleyenler: {item.items.map((i: any) => i.part_name).join(', ')}
+                </Text>
+
                 <View style={styles.btnRow}>
+                  {/* MÜDÜR: SARI BUTON BURASI */}
                   <TouchableOpacity 
-                    style={[styles.actionBtn, { backgroundColor: '#34C759' }]}
-                    onPress={() => handleStatusUpdate(item.id, 'Geldi')}
+                    style={[styles.actionBtn, { backgroundColor: '#FFCC00' }]}
+                    onPress={() => {
+                      setSelectedGroup(item);
+                      setDetailModalVisible(true);
+                    }}
                   >
-                    <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-                    <Text style={styles.btnText}>PARÇA GELDİ</Text>
+                    <Ionicons name="cube" size={20} color="#333" />
+                    <Text style={[styles.btnText, { color: '#333' }]}>
+                      {item.items.length} PARÇA GELDİ
+                    </Text>
                   </TouchableOpacity>
                 </View>
-              )}
-            </View>
-          )}
+              </View>
+            );
+          }}
         />
       )}
+
+      {/* MÜDÜR: DETAY (ÇEKMECE) MODALI */}
+      <Modal visible={detailModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Sipariş Detayı (#{selectedGroup?.servis_no})</Text>
+              <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+                <Ionicons name="close-circle" size={28} color="#999" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubTitle}>{selectedGroup?.marka_model}</Text>
+            
+            <ScrollView style={{ marginTop: 15 }} showsVerticalScrollIndicator={false}>
+              {selectedGroup?.items.map((part: any, index: number) => (
+                <View key={part.id} style={styles.partRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.partName}>{part.quantity}x {part.part_name}</Text>
+                    {part.description ? <Text style={styles.partDesc}>{part.description}</Text> : null}
+                  </View>
+                  
+                  {/* MÜDÜR: KUTU VE KIRMIZI ONAY İŞLEMİ BURADA */}
+                  <TouchableOpacity 
+                    style={styles.checkBoxBtn}
+                    onPress={() => handleCheckItem(part, selectedGroup.items.length)}
+                  >
+                    <Ionicons 
+                      name={checkingId === part.id ? "checkbox" : "square-outline"} 
+                      size={28} 
+                      color={checkingId === part.id ? "#FF3B30" : "#AAA"} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -94,9 +198,19 @@ const styles = StyleSheet.create({
   servisNo: { fontWeight: 'bold', color: '#FF3B30' },
   statusText: { fontSize: 12, fontWeight: '900' },
   markaModel: { fontSize: 15, fontWeight: '800', marginBottom: 4 },
-  partName: { fontSize: 16, fontWeight: '600', color: '#333' },
-  desc: { fontSize: 13, color: '#666', marginTop: 5, fontStyle: 'italic' },
-  btnRow: { marginTop: 15, borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 10 },
-  actionBtn: { flexDirection: 'row', padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  btnText: { color: '#FFF', fontWeight: 'bold', marginLeft: 8 }
+  desc: { fontSize: 12, color: '#666', marginTop: 5, fontStyle: 'italic' },
+  btnRow: { marginTop: 15, paddingTop: 10 },
+  actionBtn: { flexDirection: 'row', padding: 15, borderRadius: 10, justifyContent: 'center', alignItems: 'center', elevation: 1 },
+  btnText: { fontWeight: '900', marginLeft: 8, fontSize: 15 },
+
+  // Modal Stilleri
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, maxHeight: '80%', minHeight: '40%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: '#333' },
+  modalSubTitle: { fontSize: 14, color: '#666', fontWeight: 'bold', marginTop: 5 },
+  partRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  partName: { fontSize: 16, fontWeight: 'bold', color: '#1A1A1A' },
+  partDesc: { fontSize: 12, color: '#888', marginTop: 4 },
+  checkBoxBtn: { padding: 5, marginLeft: 10 }
 });

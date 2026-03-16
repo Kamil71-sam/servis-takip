@@ -13,6 +13,7 @@ export default function ServisListesi() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const isDarkMode = params.theme === 'dark';
+  const filterMode = params.filterMode; // MÜDÜR: Dashboard'dan gelen sis farı komutu
 
   const [servisler, setServisler] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,18 +88,36 @@ export default function ServisListesi() {
     const id = serviceId || selectedForStatus?.id;
     if (!id) return;
 
-    try {
-      await updateService(id, { status: newStatus });
-      setStatusModalVisible(false);
-      
-      const isArchive = newStatus === 'Teslim Edildi' || newStatus === 'İptal Edildi';
+    const isArchive = newStatus === 'Teslim Edildi' || newStatus === 'İptal Edildi';
+
+    if (isArchive) {
       Alert.alert(
-        "İşlem Tamam", 
-        isArchive ? `Arşive kaldırıldı.` : `Durum: ${newStatus}`,
-        [{ text: "Tamam", onPress: () => fetchServisler() }]
+        "KAYIT ARŞİVLENİYOR",
+        `${newStatus} işlemi geri alınamaz ve aktif listeden kalkar. Devam etmek istiyor musunuz?`,
+        [
+          { text: "Vazgeç", style: "cancel" },
+          { 
+            text: "Evet, Onayla", 
+            onPress: async () => {
+              try {
+                await updateService(id, { status: newStatus });
+                setStatusModalVisible(false);
+                fetchServisler();
+              } catch (error) {
+                Alert.alert("Hata", "İşlem başarısız.");
+              }
+            } 
+          }
+        ]
       );
-    } catch (error) {
-      Alert.alert("Hata", "Güncellenemedi.");
+    } else {
+      try {
+        await updateService(id, { status: newStatus });
+        setStatusModalVisible(false);
+        fetchServisler();
+      } catch (error) {
+        Alert.alert("Hata", "Güncellenemedi.");
+      }
     }
   };
 
@@ -111,7 +130,7 @@ export default function ServisListesi() {
 
   const getStatusColor = (status: string) => {
     if (status === 'Yeni Kayıt') return theme.primary;
-    if (status === 'Teşhis Kondu' || status === 'Parça Bekliyor') return theme.warning;
+    if (status === 'Parça Bekliyor') return theme.warning;
     if (status === 'Onaylandı' || status === 'Tamirde') return theme.info;
     if (status === 'Onay Bekliyor') return '#1A1A1A'; 
     if (status === 'Hazır') return theme.success;
@@ -142,70 +161,100 @@ export default function ServisListesi() {
 
       {loading ? ( <ActivityIndicator color={theme.primary} style={{ marginTop: 20 }} /> ) : (
         <FlatList
-          data={filtered}
+          // MÜDÜR: ASANSÖR SİSTEMİ BURAYA KURULDU
+          data={[...filtered].sort((a, b) => {
+            if (filterMode === 'onlyOnay') {
+              const aTarget = a.durum === 'Onay Bekliyor' || a.status === 'Onay Bekliyor';
+              const bTarget = b.durum === 'Onay Bekliyor' || b.status === 'Onay Bekliyor';
+              
+              if (aTarget && !bTarget) return -1; // Onay bekleyenleri en üste at
+              if (!aTarget && bTarget) return 1;
+            }
+            return 0; // Filtre yoksa sırayı elleme
+          })}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-              <View style={styles.cardMain}>
-                <Text style={[styles.name, { color: theme.textColor }]}>{(item.musteri_adi || "İSİMSİZ").toUpperCase()}</Text>
-                
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.durum || item.status) }]}>
-                  <Text style={styles.statusBadgeText}>{item.durum || item.status || 'Yeni Kayıt'}</Text>
-                </View>
+          renderItem={({ item }) => {
+            // MÜDÜR: Vurgu (Sis Farı) ayarı tam burada
+            const isDimmed = filterMode === 'onlyOnay' && (item.durum !== 'Onay Bekliyor' && item.status !== 'Onay Bekliyor');
 
-                <View style={styles.infoLine}>
-                  <Ionicons name="hardware-chip-outline" size={14} color={theme.primary} />
-                  <Text style={[styles.cardText, { color: theme.textColor }]}> {item.marka_model || '-'}</Text>
-                </View>
-                <View style={styles.infoLine}>
-                  <Ionicons name="receipt-outline" size={14} color={theme.subText} />
-                  <Text style={[styles.cardText, { color: theme.subText }]}> No: {item.plaka || '-'}</Text>
-                </View>
-                <View style={styles.infoLine}>
-                  <Ionicons name="calendar-outline" size={14} color={theme.subText} />
-                  <Text style={[styles.cardText, { color: theme.subText }]}> {item.tarih || '-'}</Text>
-                </View>
-
-                {/* --- MÜDÜR: FİYAT TEKLİFİ (ARTIK DAHA TEMİZ) --- */}
-                {(item.offer_price > 0 || item.price > 0) && (
-                  <View style={styles.priceContainer}>
-                    <Ionicons name="wallet-outline" size={14} color={theme.primary} />
-                    <Text style={[styles.priceText, { color: theme.textColor }]}>
-                      Fiyat Teklifi: <Text style={{fontWeight: '900'}}>{item.offer_price || item.price} TL</Text>
-                    </Text>
+            return (
+              <View 
+                style={[
+                  styles.card, 
+                  { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
+                  isDimmed && { opacity: 0.2 } // SÖNÜK OLSUN
+                ]}
+                pointerEvents={isDimmed ? 'none' : 'auto'} // MÜDAHALE EDİLEMESİN
+              >
+                <View style={styles.cardMain}>
+                  <Text style={[styles.name, { color: theme.textColor }]}>{(item.musteri_adi || "İSİMSİZ").toUpperCase()}</Text>
+                  
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.durum || item.status) }]}>
+                    <Text style={styles.statusBadgeText}>{item.durum || item.status || 'Yeni Kayıt'}</Text>
                   </View>
+
+                  <View style={styles.infoLine}>
+                    <Ionicons name="hardware-chip-outline" size={14} color={theme.primary} />
+                    <Text style={[styles.cardText, { color: theme.textColor }]}> {item.marka_model || '-'}</Text>
+                  </View>
+                  <View style={styles.infoLine}>
+                    <Ionicons name="receipt-outline" size={14} color={theme.subText} />
+                    <Text style={[styles.cardText, { color: theme.subText }]}> No: {item.plaka || '-'}</Text>
+                  </View>
+                  <View style={styles.infoLine}>
+                    <Ionicons name="calendar-outline" size={14} color={theme.subText} />
+                    <Text style={[styles.cardText, { color: theme.subText }]}> {item.tarih || '-'}</Text>
+                  </View>
+
+                  {(item.offer_price > 0 || item.price > 0) && (
+                    <View style={styles.priceContainer}>
+                      <Ionicons name="wallet-outline" size={14} color={theme.primary} />
+                      <Text style={[styles.priceText, { color: theme.textColor }]}>
+                        Fiyat Teklifi: <Text style={{fontWeight: '900'}}>{item.offer_price || item.price} TL</Text>
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* MÜDÜR: Yeşil telefon faaliyeti artık "Hazır" durumunda da canlı! */}
+                {((item.durum === 'Onay Bekliyor' || item.status === 'Onay Bekliyor') || 
+                   (item.durum === 'Hazır' || item.status === 'Hazır')) && (
+                  <TouchableOpacity 
+                    style={styles.squareCallButton}
+                    onPress={() => {
+                      const telNo = item.telefon || item.phone || ''; 
+                      if(telNo) { Linking.openURL(`tel:${telNo}`); } 
+                      else { Alert.alert("Bilgi", "Telefon kayıtlı değil."); }
+                    }}
+                  >
+                    <Ionicons name="call" size={20} color="#FFF" />
+                    <Text style={styles.squareCallText}>ARA</Text>
+                  </TouchableOpacity>
                 )}
-              </View>
 
-              {/* MÜDÜR: KARE ARA BUTONU (SAĞA MONTE EDİLDİ) */}
-              {(item.durum === 'Onay Bekliyor' || item.status === 'Onay Bekliyor') && (
-                <TouchableOpacity 
-                  style={styles.squareCallButton}
-                  onPress={() => {
-                    const telNo = item.telefon || item.phone || ''; 
-                    if(telNo) { Linking.openURL(`tel:${telNo}`); } 
-                    else { Alert.alert("Bilgi", "Telefon kayıtlı değil."); }
-                  }}
-                >
-                  <Ionicons name="call" size={28} color="#FFF" />
-                  <Text style={styles.squareCallText}>ARA</Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.actionCol}>
-                <TouchableOpacity style={styles.actionRow} onPress={() => handleEditPress(item)}>
-                  <Text style={[styles.actionLabel, { color: theme.antrasit }]}>Düzenle</Text>
-                  <Ionicons name="create" size={20} color={theme.antrasit} />
-                </TouchableOpacity>
-                <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />
-                
-                <TouchableOpacity style={styles.actionRow} onPress={() => { setSelectedForStatus(item); setStatusModalVisible(true); }}>
-                  <Text style={[styles.actionLabel, { color: theme.info }]}>Durum</Text>
-                  <Ionicons name="swap-horizontal" size={20} color={theme.info} />
-                </TouchableOpacity>
+                <View style={styles.actionCol}>
+                  <TouchableOpacity 
+                    style={styles.actionRow} 
+                    onPress={() => handleEditPress(item)}
+                    disabled={isDimmed} // Sönükse tıklanmasın
+                  >
+                    <Text style={[styles.actionLabel, { color: theme.antrasit }]}>Düzenle</Text>
+                    <Ionicons name="create" size={20} color={theme.antrasit} />
+                  </TouchableOpacity>
+                  <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />
+                  
+                  <TouchableOpacity 
+                    style={styles.actionRow} 
+                    onPress={() => { setSelectedForStatus(item); setStatusModalVisible(true); }}
+                    disabled={isDimmed} // Sönükse tıklanmasın
+                  >
+                    <Text style={[styles.actionLabel, { color: theme.info }]}>Durum</Text>
+                    <Ionicons name="swap-horizontal" size={20} color={theme.info} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
 
@@ -258,13 +307,18 @@ export default function ServisListesi() {
       <Modal visible={statusModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.statusModalContent, { backgroundColor: theme.bg }]}>
-            <Text style={[styles.modalTitle, { color: theme.textColor, marginBottom: 5 }]}>Durum Güncelle</Text>
-            <Text style={[styles.statusSubTitle, { color: theme.subText }]}>{selectedForStatus?.marka_model}</Text>
+            <View style={{ marginBottom: 10 }}>
+              <Text style={[styles.modalTitle, { color: theme.textColor, marginBottom: 5 }]}>Durum Güncelle</Text>
+              <Text style={[styles.statusSubTitle, { color: theme.subText }]}>{selectedForStatus?.marka_model}</Text>
+            </View>
 
-            <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingVertical: 5 }} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={{ flexShrink: 1 }} 
+              contentContainerStyle={{ paddingVertical: 5 }} 
+              showsVerticalScrollIndicator={false}
+            >
               {[
                 { label: 'Yeni Kayıt', color: theme.primary },
-                { label: 'Teşhis Kondu', color: theme.warning },
                 { label: 'Onay Bekliyor', color: '#1A1A1A' },
                 { label: 'Onaylandı', color: theme.info },
                 { label: 'Tamirde', color: theme.info },
@@ -331,22 +385,27 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 },
   btn: { flex: 0.48, height: 48, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   
-  // MÜDÜR: KARE ARA BUTONU STİLİ (3 MM TRAŞLANMIŞ)
+  // MÜDÜR: HAFIZADAKİ YEŞİL KUYU AYARLARI
   squareCallButton: {
-    width: 65,             // Boyut biraz daraltıldı
-    height: 65,            // Boyut biraz daraltıldı
+    width: 50,
+    height: 50,
     backgroundColor: '#34C759', 
-    borderRadius: 10,      // Köşeler milimetrik yuvarlatıldı
-    justifyContent: 'center',
+    borderRadius: 10,
+    paddingTop: 8, // MÜDÜR: İKONU AŞAĞI İTEN AYAR
     alignItems: 'center',
-    marginRight: 10,       // Sağdaki aksiyonlarla mesafe
+    marginRight: 10,
     elevation: 3,
+    transform: [
+      { translateX: 12 }, // MÜDÜR: SAĞA KAKTIRMA
+      { translateY: 8 }   // MÜDÜR: AŞAĞI KAKTIRMA
+    ]
   },
   squareCallText: {
     color: '#FFF',
     fontWeight: '900',
     fontSize: 11,
-    marginTop: 4,
+    marginTop: 2,
+    marginLeft: 3,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -360,10 +419,16 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontSize: 13,
   },
-
-  statusModalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingTop: 20, paddingHorizontal: 20, paddingBottom: 40, maxHeight: '75%' },
+  statusModalContent: { 
+    borderTopLeftRadius: 25, 
+    borderTopRightRadius: 25, 
+    paddingTop: 15, 
+    paddingHorizontal: 20, 
+    paddingBottom: Platform.OS === 'ios' ? 40 : 25, 
+    maxHeight: '90%' 
+  },
   statusSubTitle: { fontSize: 12, textAlign: 'center', fontWeight: 'bold', marginBottom: 10 },
-  statusOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5 },
+  statusOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 }, 
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   statusOptionText: { flex: 1, fontSize: 15, fontWeight: '500' },
   closeModalBtn: { marginTop: 15, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }

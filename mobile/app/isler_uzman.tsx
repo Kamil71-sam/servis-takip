@@ -42,6 +42,7 @@ export default function IslerUzman() {
   const systemTheme = useColorScheme();
   
   const isDarkMode = params.theme ? params.theme === 'dark' : systemTheme === 'dark';
+  const filterMode = params.filterMode; 
 
   const theme = {
     bg: isDarkMode ? '#121212' : '#F4F4F4',
@@ -61,7 +62,6 @@ export default function IslerUzman() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // MÜDÜR: STOK MODALININ ŞALTERLERİ
   const [stokModalVisible, setStokModalVisible] = useState(false);
   const [currentTaskForStok, setCurrentTaskForStok] = useState<Task | null>(null);
 
@@ -86,10 +86,7 @@ export default function IslerUzman() {
     loadTasks();
   }, []);
 
-
-const handleUpdateStatus = async (item: Task, nextStatus: string) => {
-    console.log("MÜDÜR: Butona basıldı, hedef durum:", nextStatus); // Terminale yazar
-    
+  const handleUpdateStatus = async (item: Task, nextStatus: string) => {
     const price = prices[item.id];
     
     if (nextStatus === 'Onay Bekliyor' && !price) {
@@ -97,26 +94,21 @@ const handleUpdateStatus = async (item: Task, nextStatus: string) => {
       return;
     }
 
+    // MÜDÜR: PARÇA BEKLEME AKIŞI GÜNCELLENDİ
     if (nextStatus === 'Parça Bekliyor') {
-      console.log("MÜDÜR: Parça Bekliyor soru aşamasına girildi.");
       Alert.alert(
-        "Malzeme Talebi",
-        "Bu cihaz için malzeme/parça siparişi verilecek mi?",
+        "Malzeme / Parça Talebi",
+        "Bu cihaz için sipariş listesini oluşturun. (Sipariş girmeden durum değişmez)",
         [
           {
-            text: "Hayır, Sadece Bekle",
-            onPress: async () => {
-              console.log("MÜDÜR: Usta 'Hayır' dedi.");
-              await processStatusChange(item, nextStatus);
-            }
+            text: "Vazgeç", 
+            style: "cancel"
           },
           {
-            text: "Evet, Sipariş Gir",
+            text: "Siparişi Hazırla", // TEK ÇIKIŞ BURASI MÜDÜR!
             onPress: () => {
-              console.log("MÜDÜR: Usta 'Evet' dedi, modal açılıyor...");
               setCurrentTaskForStok(item);
               setStokModalVisible(true);
-              processStatusChange(item, nextStatus);
             }
           }
         ],
@@ -128,54 +120,6 @@ const handleUpdateStatus = async (item: Task, nextStatus: string) => {
     await processStatusChange(item, nextStatus);
   };
 
-
-
-
-
-
-
-
-
-
-/*
-  const handleUpdateStatus = async (item: Task, nextStatus: string) => {
-    const price = prices[item.id];
-    
-    if (nextStatus === 'Onay Bekliyor' && !price) {
-      Alert.alert("Hata", "Müşteriye iletilecek fiyatı giriniz.");
-      return;
-    }
-
-    // MÜDÜR: PARÇA BEKLEYEN ÖZEL DURUMU
-    if (nextStatus === 'Parça Bekliyor') {
-      Alert.alert(
-        "Malzeme Talebi",
-        "Bu cihaz için malzeme/parça siparişi verilecek mi?",
-        [
-          {
-            text: "Hayır, Sadece Bekle",
-            onPress: async () => await processStatusChange(item, nextStatus)
-          },
-          {
-            text: "Evet, Sipariş Gir",
-            onPress: () => {
-              setCurrentTaskForStok(item);
-              setStokModalVisible(true);
-              processStatusChange(item, nextStatus); // Durumu da güncelle
-            }
-          }
-        ]
-      );
-      return;
-    }
-
-    await processStatusChange(item, nextStatus);
-  };
-
-*/
-
-
-  // MÜDÜR: Kod kalabalığı olmasın diye asıl güncelleme motorunu ayırdım
   const processStatusChange = async (item: Task, nextStatus: string) => {
     const price = prices[item.id];
     try {
@@ -224,111 +168,134 @@ const handleUpdateStatus = async (item: Task, nextStatus: string) => {
         </View>
       ) : (
         <FlatList
-          data={tasks}
+          data={[...tasks].sort((a, b) => {
+            if (filterMode === 'onlyParca') {
+              const aIsTarget = a.status === 'Parça Bekliyor';
+              const bIsTarget = b.status === 'Parça Bekliyor';
+              if (aIsTarget && !bIsTarget) return -1;
+              if (!aIsTarget && bIsTarget) return 1;
+            }
+            return 0;
+          })}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listPadding}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
-          renderItem={({ item }) => (
-            <View style={[styles.taskCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-              <View style={styles.cardTop}>
-                <View style={[styles.idBadge, { backgroundColor: isDarkMode ? '#3a1010' : '#FEF2F2' }]}>
-                  <Text style={styles.idText}>#{item.servis_no || item.id}</Text>
+          renderItem={({ item }) => {
+            const isDimmed = filterMode === 'onlyParca' && item.status !== 'Parça Bekliyor';
+
+            return (
+              <View 
+                style={[
+                  styles.taskCard, 
+                  { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
+                  isDimmed && { opacity: 0.2 } 
+                ]}
+                pointerEvents={isDimmed ? 'none' : 'auto'} 
+              >
+                <View style={styles.cardTop}>
+                  <View style={[styles.idBadge, { backgroundColor: isDarkMode ? '#3a1010' : '#FEF2F2' }]}>
+                    <Text style={styles.idText}>#{item.servis_no || item.id}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, {backgroundColor: item.status === 'Yeni Kayıt' ? theme.primary : (isDarkMode ? '#333' : '#F1F5F9')}]}>
+                    <Text style={[styles.statusText, {color: item.status === 'Yeni Kayıt' ? '#FFF' : theme.textColor}]}>
+                      {item.status?.toUpperCase() || 'YENİ KAYIT'}
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.statusBadge, {backgroundColor: item.status === 'Yeni Kayıt' ? theme.primary : (isDarkMode ? '#333' : '#F1F5F9')}]}>
-                  <Text style={[styles.statusText, {color: item.status === 'Yeni Kayıt' ? '#FFF' : theme.textColor}]}>
-                    {item.status?.toUpperCase() || 'YENİ KAYIT'}
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <Ionicons name="person-circle" size={20} color={theme.primary} />
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textColor }}>
+                    {item.customer || 'Müşteri Bilgisi Yok'}
                   </Text>
                 </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                <Ionicons name="person-circle" size={20} color={theme.primary} />
-                <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textColor }}>
-                  {item.customer || 'Müşteri Bilgisi Yok'}
-                </Text>
-              </View>
-              
-              <Text style={styles.deviceHeaderText}>{item.cihaz_turu || 'Cihaz'}</Text>
-              <Text style={[styles.markaText, { color: theme.textColor }]}>{item.marka_model}</Text>
-
-              <Text style={[styles.issueText, { color: theme.subText }]} numberOfLines={2}>{item.issue}</Text>
-
-              <View style={[styles.actionContainer, { backgroundColor: isDarkMode ? '#252525' : '#F9F9F9' }]}>
-                {item.status === 'Yeni Kayıt' && (
-                  <View style={styles.priceRow}>
-                    <TextInput 
-                      style={[styles.priceInput, { backgroundColor: theme.inputBg, color: theme.textColor, borderColor: theme.borderColor }]}
-                      placeholder="Maliyet (TL)"
-                      placeholderTextColor={theme.subText}
-                      keyboardType="numeric"
-                      value={prices[item.id] || ''}
-                      onChangeText={(val) => setPrices({...prices, [item.id]: val})}
-                    />
-                    <TouchableOpacity 
-                      style={[styles.btnFiyat, { backgroundColor: isDarkMode ? '#444' : '#1A1A1A' }]} 
-                      onPress={() => handleUpdateStatus(item, 'Onay Bekliyor')}
-                    >
-                      <Text style={styles.btnText}>Fiyat Bildir</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {item.status === 'Onaylandı' && (
-                  <TouchableOpacity 
-                    style={styles.btnBasla} 
-                    onPress={() => handleUpdateStatus(item, 'Tamirde')}
-                  >
-                    <Text style={styles.btnText}>Tamiri Başlat</Text>
-                  </TouchableOpacity>
-                )}
-
-                {item.status === 'Tamirde' && (
-                  <View style={{flexDirection: 'row', gap: 10}}>
-                    <TouchableOpacity 
-                      style={[styles.btnBasla, {backgroundColor: '#FF9500', flex: 1}]} 
-                      onPress={() => handleUpdateStatus(item, 'Parça Bekliyor')}
-                    >
-                      <Text style={styles.btnText}>Parça Bekle</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.btnBasla, {backgroundColor: '#34C759', flex: 1}]} 
-                      onPress={() => handleUpdateStatus(item, 'Hazır')}
-                    >
-                      <Text style={styles.btnText}>Bitti (Hazır)</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
                 
-                {item.status === 'Parça Bekliyor' && (
-                   <TouchableOpacity 
-                    style={[styles.btnBasla, {backgroundColor: '#5856D6'}]} 
-                    onPress={() => handleUpdateStatus(item, 'Tamirde')}
-                  >
-                    <Text style={styles.btnText}>Parça Geldi / Devam Et</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                <Text style={styles.deviceHeaderText}>{item.cihaz_turu || 'Cihaz'}</Text>
+                <Text style={[styles.markaText, { color: theme.textColor }]}>{item.marka_model}</Text>
 
-              <View style={[styles.cardFooterRevize, { borderTopColor: theme.borderColor }]}>
-                <View style={styles.detailInfoRow}>
-                  <Ionicons name="clipboard-outline" size={16} color={theme.subText} />
-                  <Text style={[styles.detailInfoText, { color: theme.subText }]}>İş Detayı</Text>
+                <Text style={[styles.issueText, { color: theme.subText }]} numberOfLines={2}>{item.issue}</Text>
+
+                <View style={[styles.actionContainer, { backgroundColor: isDarkMode ? '#252525' : '#F9F9F9' }]}>
+                  {item.status === 'Yeni Kayıt' && (
+                    <View style={styles.priceRow}>
+                      <TextInput 
+                        style={[styles.priceInput, { backgroundColor: theme.inputBg, color: theme.textColor, borderColor: theme.borderColor }]}
+                        placeholder="Maliyet (TL)"
+                        placeholderTextColor={theme.subText}
+                        keyboardType="numeric"
+                        value={prices[item.id] || ''}
+                        onChangeText={(val) => setPrices({...prices, [item.id]: val})}
+                      />
+                      <TouchableOpacity 
+                        style={[styles.btnFiyat, { backgroundColor: isDarkMode ? '#444' : '#1A1A1A' }]} 
+                        onPress={() => handleUpdateStatus(item, 'Onay Bekliyor')}
+                      >
+                        <Text style={styles.btnText}>Fiyat Bildir</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {item.status === 'Onaylandı' && (
+                    <TouchableOpacity 
+                      style={styles.btnBasla} 
+                      onPress={() => handleUpdateStatus(item, 'Tamirde')}
+                    >
+                      <Text style={styles.btnText}>TAMİRİ BAŞLAT (İŞE GİRİŞ)</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {item.status === 'Tamirde' && (
+                    <View>
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: theme.textColor, marginBottom: 12, textAlign: 'center' }}>
+                        🛠️ CİHAZ TEZGAHTA / TAMİR EDİLİYOR
+                      </Text>
+                      <View style={{flexDirection: 'row', gap: 10}}>
+                        <TouchableOpacity 
+                          style={[styles.btnBasla, {backgroundColor: '#FF9500', flex: 1}]} 
+                          onPress={() => handleUpdateStatus(item, 'Parça Bekliyor')}
+                        >
+                          <Text style={styles.btnText}>Malzeme/Parça İste</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.btnBasla, {backgroundColor: '#34C759', flex: 1}]} 
+                          onPress={() => handleUpdateStatus(item, 'Hazır')}
+                        >
+                          <Text style={styles.btnText}>Tamir Bitti (Hazır)</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {item.status === 'Parça Bekliyor' && (
+                     <View style={[styles.btnBasla, {backgroundColor: isDarkMode ? '#333' : '#E5E5EA', paddingVertical: 14, borderWidth: 1, borderColor: theme.borderColor}]}>
+                        <Ionicons name="time-outline" size={18} color={isDarkMode ? "#AAA" : "#888"} style={{marginBottom: 4}} />
+                        <Text style={[styles.btnText, {color: isDarkMode ? '#AAA' : '#666', fontWeight: '900', fontSize: 12}]}>
+                          SİPARİŞ BANKOYA İLETİLDİ - ONAY BEKLENİYOR
+                        </Text>
+                     </View>
+                  )}
                 </View>
-                
-                <TouchableOpacity 
-                  style={styles.btnAcBox}
-                  onPress={() => { setSelectedTask(item); setModalVisible(true); }}
-                >
-                  <Text style={styles.btnAcText}>DETAYLARI AÇ</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#FFF" />
-                </TouchableOpacity>
+
+                <View style={[styles.cardFooterRevize, { borderTopColor: theme.borderColor }]}>
+                  <View style={styles.detailInfoRow}>
+                    <Ionicons name="clipboard-outline" size={16} color={theme.subText} />
+                    <Text style={[styles.detailInfoText, { color: theme.subText }]}>İş Detayı</Text>
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.btnAcBox}
+                    onPress={() => { setSelectedTask(item); setModalVisible(true); }}
+                  >
+                    <Text style={styles.btnAcText}>DETAYLARI AÇ</Text>
+                    <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
 
-      {/* MÜDÜR: COMPACT VE ÇARPISIZ DETAY MODALI */}
       <Modal animationType="slide" transparent={true} visible={modalVisible}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
@@ -359,10 +326,15 @@ const handleUpdateStatus = async (item: Task, nextStatus: string) => {
         </View>
       </Modal>
 
-      {/* MÜDÜR: YENİ STOK TALEP MODALI ÇAĞRISI */}
       <UstaStokTalepModali 
         visible={stokModalVisible}
         onClose={() => setStokModalVisible(false)}
+        // MÜDÜR: İŞTE O KRİTİK ŞALTER BAĞLANTISI!
+        onSuccess={() => {
+          if (currentTaskForStok) {
+            processStatusChange(currentTaskForStok, 'Parça Bekliyor');
+          }
+        }}
         serviceId={currentTaskForStok ? parseInt(currentTaskForStok.id) : 0}
         kayitNo={currentTaskForStok?.servis_no || currentTaskForStok?.id || ''}
         markaModel={currentTaskForStok?.marka_model || ''}

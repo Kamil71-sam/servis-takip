@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  ScrollView, StatusBar, Alert 
+  ScrollView, StatusBar, Alert, Platform 
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +24,7 @@ export default function DashboardScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const [onayBekleyenSayisi, setOnayBekleyenSayisi] = useState(0); 
-  const [parcaBekleyenSayisi, setParcaBekleyenSayisi] = useState(0); // MÜDÜR: Parça bekleyen sayaç
+  const [parcaBekleyenSayisi, setParcaBekleyenSayisi] = useState(0); 
 
   // --- ASANSÖR KİLİTLERİ (MODALLAR) ---
   const [musteriVisible, setMusteriVisible] = useState(false);
@@ -52,16 +52,13 @@ export default function DashboardScreen() {
     if (nextState) setIsMusteriSubMenuOpen(false);
   };
 
-  // MÜDÜR: ONAY VE PARÇA BEKLEYEN İKAZ SİSTEMİ MOTORU
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        // 1. Onay Bekleyenleri Say
         const srvData = await getServices();
         const bekleyenler = (srvData || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
         setOnayBekleyenSayisi(bekleyenler.length);
 
-        // 2. Parça Taleplerini Say (MÜDÜR: Burası yeni tesisat)
         const matRes = await getAllMaterialRequests();
         if (matRes && matRes.success) {
           const talepler = (matRes.data || []).filter((m: any) => m.status === 'Beklemede');
@@ -119,32 +116,54 @@ export default function DashboardScreen() {
           
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
             <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
-            <Ionicons name="pie-chart" size={160} color={isDarkMode ? "#555" : "#333"} style={{ alignSelf: 'center' }} />
+            <Ionicons name="pie-chart" size={140} color={isDarkMode ? "#555" : "#333"} style={{ alignSelf: 'center' }} />
           </View>
           
           <TouchableOpacity style={styles.sahaBox} activeOpacity={0.8} onPress={() => setServisVisible(true)}>
-            <Ionicons name="calendar-outline" size={26} color="#fff" />
+            <Ionicons name="calendar-outline" size={22} color="#fff" />
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
           </TouchableOpacity>
           
-          {/* MÜDÜR: ONAY BEKLEYEN İKAZ PLAKASI */}
+          {/* ONAY BEKLEYEN TUŞU (KIRMIZI/YEŞİL) */}
           <TouchableOpacity 
             style={[styles.alertBanner, { backgroundColor: onayBekleyenSayisi > 0 ? '#FF3B30' : '#34C759' }]} 
             activeOpacity={0.9} 
-            onPress={() => router.push({ pathname: '/servisler', params: { theme: isDarkMode ? 'dark' : 'light' } })}
+            onPress={() => router.push({ 
+              pathname: '/servisler', 
+              params: { 
+                theme: isDarkMode ? 'dark' : 'light',
+                filterMode: 'onlyOnay'
+              } 
+            })}
           >
-            <Ionicons name={onayBekleyenSayisi > 0 ? "warning" : "checkmark-circle"} size={24} color="#fff" />
+            <Ionicons name={onayBekleyenSayisi > 0 ? "warning" : "checkmark-circle"} size={22} color="#fff" />
             <View style={{ marginLeft: 12, flex: 1 }}>
               <Text style={styles.alertTitle}>
-                {onayBekleyenSayisi > 0 ? "MÜŞTERİ ONAYI BEKLENİYOR" : "SİSTEM TEMİZ"}
-              </Text>
-              <Text style={styles.alertText}>
-                {onayBekleyenSayisi > 0 
-                  ? `Usta fiyat verdi! ${onayBekleyenSayisi} cihaza müşteri onayı gerekiyor.` 
-                  : "Onay bekleyen cihaz bulunmuyor."}
+                {onayBekleyenSayisi > 0 ? `${onayBekleyenSayisi} Cihaz Müşteri Onayı Bekliyor` : "SİSTEM TEMİZ"}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#FFF" style={{ opacity: 0.7 }} />
+            <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
+          </TouchableOpacity>
+
+          {/* MÜDÜR: PARÇA BEKLEYEN (TURUNCU) TUŞUNA DA SİNYAL EKLENDİ */}
+          <TouchableOpacity 
+            style={[styles.alertBanner, { backgroundColor: parcaBekleyenSayisi > 0 ? '#FF9500' : '#8E8E93', marginTop: 12 }]} 
+            activeOpacity={0.9} 
+            onPress={() => router.push({ 
+              pathname: '/banko_stok_onay',  // Stok onay sayfasına gider
+              params: { 
+                theme: isDarkMode ? 'dark' : 'light',
+                filterMode: 'onlyStok'       // Yeni sinyalimiz bu!
+              } 
+            })}
+          >
+            <Ionicons name="cube-outline" size={22} color="#fff" />
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <Text style={styles.alertTitle}>
+                {parcaBekleyenSayisi > 0 ? `${parcaBekleyenSayisi} Adet Parça Siparişi Bekliyor` : "BEKLEYEN PARÇA SİPARİŞİ YOK"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
         </ScrollView>
 
@@ -222,7 +241,6 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                {/* MÜDÜR: PARÇA SİPARİŞ TAKİBİ BUTONU BURAYA MONTE EDİLDİ */}
                 <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/banko_stok_onay'); }}>
                   <Ionicons name="cube-outline" size={24} color={parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR} />
                   <Text style={[styles.menuItemText, { color: parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR }]}>Parça Takibi</Text>
@@ -285,13 +303,13 @@ const styles = StyleSheet.create({
   headerSection: { marginBottom: 20, alignItems: 'center' },
   bigTitleText: { fontSize: 19, fontWeight: '900', color: '#333', textAlign: 'center' },
   welcomeText: { fontSize: 18, color: '#888', fontWeight: 'bold', textAlign: 'center' },
-  chartCard: { backgroundColor: '#fff', borderRadius: 25, padding: 30, elevation: 6 },
+  chartCard: { backgroundColor: '#fff', borderRadius: 25, padding: 20, elevation: 6 },
   darkCard: { backgroundColor: '#1e1e1e' },
-  cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  sahaBox: { width: '100%', height: 75, backgroundColor: '#333', borderRadius: 20, marginTop: 25, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginLeft: 12 },
-  alertBanner: { borderRadius: 20, flexDirection: 'row', padding: 20, alignItems: 'center', marginTop: 20, elevation: 4 },
-  alertTitle: { color: '#fff', fontWeight: '900', fontSize: 14, marginBottom: 2 },
+  cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
+  sahaBox: { width: '100%', height: 55, backgroundColor: '#333', borderRadius: 15, marginTop: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginLeft: 10 },
+  alertBanner: { height: 55, borderRadius: 15, flexDirection: 'row', paddingHorizontal: 15, alignItems: 'center', marginTop: 12, elevation: 4 },
+  alertTitle: { color: '#fff', fontWeight: '900', fontSize: 13 },
   alertText: { color: '#fff', fontWeight: '600', fontSize: 12, opacity: 0.9 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
   menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', paddingVertical: 60, paddingHorizontal: 0 },

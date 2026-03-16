@@ -14,6 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUzmanDashboardData } from '../services/api_uzman';
 
+import { useFocusEffect } from 'expo-router'; // Bunu yukarıya ekle
+import { useCallback } from 'react'; // Bunu da ekle
+
 interface Task {
   id: string;
   servis_no?: string;
@@ -41,7 +44,7 @@ export default function DashboardUzman() {
   });
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
 
-  const ustaEmail = 'Usta_1';
+  const ustaEmail = 'Usta 1';
 
   const loadDashboard = async () => {
     try {
@@ -62,6 +65,14 @@ export default function DashboardUzman() {
       setLoading(false);
     }
   };
+
+  useFocusEffect(
+  useCallback(() => {
+    loadDashboard(); // Sayfaya her girdiğinde/döndüğünde veriyi tazeler
+  }, [])
+);
+
+
 
   useEffect(() => {
     loadDashboard();
@@ -138,7 +149,21 @@ export default function DashboardUzman() {
           >
             <Text style={styles.actionBtnText}>Onarım Listesi</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Yedek Parça </Text></TouchableOpacity>
+          
+          {/* MÜDÜR: YEDEK PARÇA BUTONUNA SİS FARI EKLENDİ */}
+          <TouchableOpacity 
+            style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}
+            onPress={() => router.push({ 
+              pathname: '/isler_uzman', 
+              params: { 
+                theme: isDarkMode ? 'dark' : 'light',
+                filterMode: 'onlyParca' // Sinyali gönderiyoruz
+              } 
+            })}
+          >
+            <Text style={styles.actionBtnText}>Yedek Parça </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Randevu</Text></TouchableOpacity>
         </View>
 
@@ -205,7 +230,7 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 22, fontWeight: '900', color: '#FF3B30', marginVertical: 2 },
   statLabel: { fontSize: 12, color: '#666', fontWeight: '600' },
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 }, 
-  actionBtn: { flex: 1, backgroundColor: '#1A1A1A', paddingVertical: 12, paddingHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
+  actionBtn: { flex: 1, backgroundColor: '#aaa9a9', paddingVertical: 30, paddingHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
   actionBtnText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' },
   sectionHeader: { marginTop: 35, marginBottom: 10 }, 
   sectionTitle: { fontSize: 16, fontWeight: '900', color: '#1A1A1A' },

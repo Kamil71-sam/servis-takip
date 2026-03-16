@@ -218,8 +218,8 @@ const handleSaveAttempt = async () => {
                 returnKeyType="done" onSubmitEditing={()=>Keyboard.dismiss()} blurOnSubmit={true} />
 
               <TouchableOpacity style={[styles.saveButton, { backgroundColor: theme.badgeBtnBg }]} onPress={handleSaveAttempt}>
-                <Ionicons name="save-outline" size={24} color="#fff" style={{marginRight: 10}} />
-                <Text style={styles.saveButtonText}>KAYDI ONAYLA VE TAMAMLA</Text>
+                
+                <Text style={styles.saveButtonText}>KAYDI TAMAMLA</Text>
               </TouchableOpacity>
 
             </ScrollView>
