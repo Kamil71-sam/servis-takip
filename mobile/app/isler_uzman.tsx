@@ -19,6 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUzmanTumIsler, updateServiceProcess } from '../services/api_uzman';
 
+// MÜDÜR: YENİ STOK TALEP MODALI BURAYA EKLENDİ
+import UstaStokTalepModali from '../components/UstaStokTalepModali';
+
 interface Task {
   id: string;
   servis_no?: string;
@@ -38,9 +41,6 @@ export default function IslerUzman() {
   const params = useLocalSearchParams();
   const systemTheme = useColorScheme();
   
-  // MÜDÜR: İŞTE KESİN ÇÖZÜM BURASI!
-  // Eğer 'params.theme' gelmişse ('light' veya 'dark'), sadece ona bak. 
-  // Eğer gelmemişse, systemTheme'e bak.
   const isDarkMode = params.theme ? params.theme === 'dark' : systemTheme === 'dark';
 
   const theme = {
@@ -60,6 +60,10 @@ export default function IslerUzman() {
   
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // MÜDÜR: STOK MODALININ ŞALTERLERİ
+  const [stokModalVisible, setStokModalVisible] = useState(false);
+  const [currentTaskForStok, setCurrentTaskForStok] = useState<Task | null>(null);
 
   const ustaAdi = 'Usta_1'; 
 
@@ -82,6 +86,58 @@ export default function IslerUzman() {
     loadTasks();
   }, []);
 
+
+const handleUpdateStatus = async (item: Task, nextStatus: string) => {
+    console.log("MÜDÜR: Butona basıldı, hedef durum:", nextStatus); // Terminale yazar
+    
+    const price = prices[item.id];
+    
+    if (nextStatus === 'Onay Bekliyor' && !price) {
+      Alert.alert("Hata", "Müşteriye iletilecek fiyatı giriniz.");
+      return;
+    }
+
+    if (nextStatus === 'Parça Bekliyor') {
+      console.log("MÜDÜR: Parça Bekliyor soru aşamasına girildi.");
+      Alert.alert(
+        "Malzeme Talebi",
+        "Bu cihaz için malzeme/parça siparişi verilecek mi?",
+        [
+          {
+            text: "Hayır, Sadece Bekle",
+            onPress: async () => {
+              console.log("MÜDÜR: Usta 'Hayır' dedi.");
+              await processStatusChange(item, nextStatus);
+            }
+          },
+          {
+            text: "Evet, Sipariş Gir",
+            onPress: () => {
+              console.log("MÜDÜR: Usta 'Evet' dedi, modal açılıyor...");
+              setCurrentTaskForStok(item);
+              setStokModalVisible(true);
+              processStatusChange(item, nextStatus);
+            }
+          }
+        ],
+        { cancelable: true }
+      );
+      return;
+    }
+
+    await processStatusChange(item, nextStatus);
+  };
+
+
+
+
+
+
+
+
+
+
+/*
   const handleUpdateStatus = async (item: Task, nextStatus: string) => {
     const price = prices[item.id];
     
@@ -90,6 +146,38 @@ export default function IslerUzman() {
       return;
     }
 
+    // MÜDÜR: PARÇA BEKLEYEN ÖZEL DURUMU
+    if (nextStatus === 'Parça Bekliyor') {
+      Alert.alert(
+        "Malzeme Talebi",
+        "Bu cihaz için malzeme/parça siparişi verilecek mi?",
+        [
+          {
+            text: "Hayır, Sadece Bekle",
+            onPress: async () => await processStatusChange(item, nextStatus)
+          },
+          {
+            text: "Evet, Sipariş Gir",
+            onPress: () => {
+              setCurrentTaskForStok(item);
+              setStokModalVisible(true);
+              processStatusChange(item, nextStatus); // Durumu da güncelle
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    await processStatusChange(item, nextStatus);
+  };
+
+*/
+
+
+  // MÜDÜR: Kod kalabalığı olmasın diye asıl güncelleme motorunu ayırdım
+  const processStatusChange = async (item: Task, nextStatus: string) => {
+    const price = prices[item.id];
     try {
       const res = await updateServiceProcess({
         id: parseInt(item.id),
@@ -246,7 +334,6 @@ export default function IslerUzman() {
           <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.textColor }]}>Cihaz ve Servis Detayı</Text>
-              {/* Çarpı butonu buradan söküldü, başlık tam ortaya alındı */}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                <DetailItem label="Müşteri" value={selectedTask?.customer} theme={theme} />
@@ -271,6 +358,17 @@ export default function IslerUzman() {
           </View>
         </View>
       </Modal>
+
+      {/* MÜDÜR: YENİ STOK TALEP MODALI ÇAĞRISI */}
+      <UstaStokTalepModali 
+        visible={stokModalVisible}
+        onClose={() => setStokModalVisible(false)}
+        serviceId={currentTaskForStok ? parseInt(currentTaskForStok.id) : 0}
+        kayitNo={currentTaskForStok?.servis_no || currentTaskForStok?.id || ''}
+        markaModel={currentTaskForStok?.marka_model || ''}
+        isDarkMode={isDarkMode}
+      />
+
     </SafeAreaView>
   );
 }
@@ -311,17 +409,15 @@ const styles = StyleSheet.create({
   detailInfoText: { fontSize: 14, fontWeight: '700' },
   btnAcBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF3B30', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
   btnAcText: { color: '#FFF', fontWeight: 'bold', fontSize: 12, marginRight: 4 },
-  
-  // MÜDÜR: COMPACT MODAL STİLLERİ
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, maxHeight: '85%' }, // height kalktı, maxHeight eklendi ve padding daraltıldı
-  modalHeader: { justifyContent: 'center', alignItems: 'center', marginBottom: 15 }, // Flex ayarı ortaya alındı
+  modalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, maxHeight: '85%' }, 
+  modalHeader: { justifyContent: 'center', alignItems: 'center', marginBottom: 15 }, 
   modalTitle: { fontSize: 18, fontWeight: '900' },
-  detailItem: { marginBottom: 12 }, // 18'den 12'ye daraltıldı
+  detailItem: { marginBottom: 12 }, 
   detailLabel: { fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
   detailValue: { fontSize: 15, fontWeight: '600', marginTop: 2 },
-  noteBox: { padding: 12, borderRadius: 10, marginBottom: 15, borderLeftWidth: 4 }, // Padding ve margin daraltıldı
+  noteBox: { padding: 12, borderRadius: 10, marginBottom: 15, borderLeftWidth: 4 }, 
   noteLabel: { fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
   noteValue: { fontSize: 13, fontWeight: '500' },
-  modalCloseBtn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 5 } // Kapat butonu da daraltıldı
+  modalCloseBtn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 5 } 
 });
