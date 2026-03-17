@@ -7,15 +7,17 @@ import {
   Alert,
   StatusBar,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  // MÜDÜR: Kaydırma için eklendi
+  ScrollView 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUzmanDashboardData } from '../services/api_uzman';
 
-import { useFocusEffect } from 'expo-router'; // Bunu yukarıya ekle
-import { useCallback } from 'react'; // Bunu da ekle
+import { useFocusEffect } from 'expo-router'; 
+import { useCallback } from 'react'; 
 
 interface Task {
   id: string;
@@ -30,16 +32,14 @@ interface Task {
 export default function DashboardUzman() {
   const router = useRouter();
   
-  // MÜDÜR: MOTORUN İŞGÜZARLIĞI İPTAL EDİLDİ! 
-  // Açılışta telefonun ayarına falan bakmaz, DİREKT GÜNDÜZ (false) açılır. Sen basarsan gece olur.
   const [isDarkMode, setIsDarkMode] = useState(false);
-
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState({
     atanan: 0,
     aktif: 0,
     parcaBekleyen: 0,
+    onayBekleyen: 0, // MÜDÜR: Yeni veri alanı
     randevu: 0
   });
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
@@ -55,6 +55,7 @@ export default function DashboardUzman() {
           atanan: res.data.atanananIslerSayisi || 0,
           aktif: res.data.aktifIslerSayisi || 0,
           parcaBekleyen: res.data.parcaBekleyenSayisi || 0,
+          onayBekleyen: res.data.onayBekleyenSayisi || 0, // MÜDÜR: Bağlantı yapıldı
           randevu: res.data.randevuSayisi || 0
         });
         setRecentTasks(res.data.sonIsler || []);
@@ -67,22 +68,33 @@ export default function DashboardUzman() {
   };
 
   useFocusEffect(
-  useCallback(() => {
-    loadDashboard(); // Sayfaya her girdiğinde/döndüğünde veriyi tazeler
-  }, [])
-);
-
-
+    useCallback(() => {
+      loadDashboard();
+    }, [])
+  );
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
+  // MÜDÜR: LAPTOP (WEB) VE MOBİL İÇİN ÇİFT SİLİNDİRLİ LOGOUT MOTORU
   const handleLogout = () => {
-    Alert.alert("Çıkış", "Sistemden çıkış yapmak istiyor musunuz?", [
-      { text: "Vazgeç", style: "cancel" },
-      { text: "Çıkış", onPress: () => router.replace('/'), style: "destructive" }
-    ]);
+    const performLogout = () => {
+        // Web tarafında 'as any' ile '/' rotasına zorla diyoruz
+        router.replace('/' as any);
+    };
+
+    if (Platform.OS === 'web') {
+      // Laptopta Alert.alert bazen tarayıcı tarafından engellenir, direkt soralım
+      const confirmLogout = window.confirm("Sistemden çıkış yapmak istiyor musunuz?");
+      if (confirmLogout) performLogout();
+    } else {
+      // Cep telefonunda orijinal şık Alert
+      Alert.alert("Çıkış", "Sistemden çıkış yapmak istiyor musunuz?", [
+        { text: "Vazgeç", style: "cancel" },
+        { text: "Çıkış", onPress: performLogout, style: "destructive" }
+      ]);
+    }
   };
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
@@ -97,45 +109,67 @@ export default function DashboardUzman() {
           <Text style={[styles.uzmanName, isDarkMode && darkStyles.textMain]}>Uzman 1</Text>
         </View>
         <View style={styles.headerRight}>
-           <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
-              <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#555"} />
-           </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout} style={styles.iconBtn}>
-              <Ionicons name="exit-outline" size={28} color="#FF3B30" />
+            <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
+               <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={isDarkMode ? "#FFD700" : "#555"} />
             </TouchableOpacity>
+             <TouchableOpacity 
+                onPress={handleLogout} 
+                style={[styles.iconBtn, { zIndex: 9999 }]} // Katmanı en üste aldık laptop basabilsin diye
+             >
+               <Ionicons name="exit-outline" size={28} color="#FF3B30" />
+             </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.mainContent}>
+      <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={false}>
         
         <View style={styles.statsGrid}>
-          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+          {/* ÜST SOL: ATANAN */}
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%'}]}>
             <Ionicons name="briefcase-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
             <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
                 {loading ? ".." : stats.atanan}
             </Text> 
-            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Atanan İş/Cihaz Sayısı</Text>
+            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Atanan İş Sayısı</Text>
           </View>
           
-          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+          {/* ÜST SAĞ: AKTİF */}
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%'}]}>
             <Ionicons name="hardware-chip-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
-            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, {color: '#4CAF50'}]}>
                 {loading ? ".." : stats.aktif}
             </Text>
             <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Aktif İşler</Text>
           </View>
 
-          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
-            <Ionicons name="cube-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
-            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
-                {loading ? ".." : stats.parcaBekleyen}
-            </Text>
-            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Parça Bekleyen</Text>
+          {/* ALT SOL: PARÇA BEKLEYEN (MÜDÜR: KUTU BURADAN BÖLÜNDÜ) */}
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%', flexDirection: 'row', alignItems: 'center', padding: 0}]}>
+            {/* SOL YARI: PARÇA BEKLEYEN */}
+            <View style={{flex: 1, padding: 10, alignItems: 'flex-start'}}>
+                <Ionicons name="cube-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+                <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+                    {loading ? ".." : stats.parcaBekleyen}
+                </Text>
+                <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Parça Bekleyen</Text>
+            </View>
+            
+            {/* MÜDÜR: ORTADAKİ DİKEY ÇİZGİ */}
+            <View style={{width: 1, height: '80%', backgroundColor: isDarkMode ? '#3A3A3A' : '#DDDDDD'}} />
+
+            {/* SAĞ YARI: ONAY BEKLEYEN (MÜDÜR: BURASI YENİ) */}
+            <View style={{flex: 1, padding: 10, alignItems: 'flex-start'}}>
+                <Ionicons name="time-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+                <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, {color: '#FF9500'}]}>
+                    {loading ? ".." : stats.onayBekleyen}
+                </Text>
+                <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Onay Bekleyen</Text>
+            </View>
           </View>
 
-          <View style={[styles.statBox, isDarkMode && darkStyles.statBox]}>
+          {/* ALT SAĞ: RANDEVULAR (MÜDÜR: BURASI AYNEN KORUNDU) */}
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%'}]}>
             <Ionicons name="calendar-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
-            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
+            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, {color: '#2196F3'}]}>
                 {loading ? ".." : stats.randevu}
             </Text>
             <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Randevular</Text>
@@ -150,14 +184,13 @@ export default function DashboardUzman() {
             <Text style={styles.actionBtnText}>Onarım Listesi</Text>
           </TouchableOpacity>
           
-          {/* MÜDÜR: YEDEK PARÇA BUTONUNA SİS FARI EKLENDİ */}
           <TouchableOpacity 
             style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}
             onPress={() => router.push({ 
               pathname: '/isler_uzman', 
               params: { 
                 theme: isDarkMode ? 'dark' : 'light',
-                filterMode: 'onlyParca' // Sinyali gönderiyoruz
+                filterMode: 'onlyParca'
               } 
             })}
           >
@@ -212,7 +245,7 @@ export default function DashboardUzman() {
             <Text style={{textAlign:'center', color:'#888', marginTop: 20, fontSize: 13}}>Henüz atanmış aktif iş bulunmuyor.</Text>
           )}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -224,18 +257,18 @@ const styles = StyleSheet.create({
   uzmanName: { fontSize: 22, fontWeight: '900', color: '#1A1A1A' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBtn: { padding: 4 },
-  mainContent: { flex: 1, paddingHorizontal: 15, paddingTop: 10, paddingBottom: 15 },
+  mainContent: { flex: 1, paddingHorizontal: 15, paddingTop: 10 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 12 }, 
-  statBox: { width: '48%', padding: 10, borderRadius: 14, borderWidth: 1, marginBottom: 8, alignItems: 'flex-start', elevation: 1, backgroundColor: '#EEEEEE', borderColor: '#DDDDDD' },
+  statBox: { padding: 10, borderRadius: 14, borderWidth: 1, marginBottom: 8, alignItems: 'flex-start', elevation: 1, backgroundColor: '#EEEEEE', borderColor: '#DDDDDD' },
   statNumber: { fontSize: 22, fontWeight: '900', color: '#FF3B30', marginVertical: 2 },
   statLabel: { fontSize: 12, color: '#666', fontWeight: '600' },
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 }, 
-  actionBtn: { flex: 1, backgroundColor: '#aaa9a9', paddingVertical: 30, paddingHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
-  actionBtnText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' },
-  sectionHeader: { marginTop: 35, marginBottom: 10 }, 
+  actionBtn: { flex: 1, backgroundColor: '#aaa9a9', paddingVertical: 20, paddingHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
+  actionBtnText: { color: '#fff', fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
+  sectionHeader: { marginTop: 25, marginBottom: 10 }, 
   sectionTitle: { fontSize: 16, fontWeight: '900', color: '#1A1A1A' },
   sectionSubtitle: { fontSize: 12, color: '#888', marginTop: 1 },
-  cardsContainer: { flex: 1 },
+  cardsContainer: { paddingBottom: 30 },
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#eee', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   deviceText: { fontSize: 14, fontWeight: '800', color: '#1A1A1A' },

@@ -12,7 +12,8 @@ import {
   Modal, 
   ScrollView,
   StatusBar,
-  useColorScheme
+  useColorScheme,
+  Platform // Platform kontrolü eklendi
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -96,24 +97,32 @@ export default function IslerUzman() {
 
     // MÜDÜR: PARÇA BEKLEME AKIŞI GÜNCELLENDİ
     if (nextStatus === 'Parça Bekliyor') {
-      Alert.alert(
-        "Malzeme / Parça Talebi",
-        "Bu cihaz için sipariş listesini oluşturun. (Sipariş girmeden durum değişmez)",
-        [
-          {
-            text: "Vazgeç", 
-            style: "cancel"
-          },
-          {
-            text: "Siparişi Hazırla", // TEK ÇIKIŞ BURASI MÜDÜR!
-            onPress: () => {
-              setCurrentTaskForStok(item);
-              setStokModalVisible(true);
-            }
-          }
-        ],
-        { cancelable: true }
-      );
+      const startSiparisHazirla = () => {
+          // MÜDÜR: Windows/Web tarafında state güncelleme ve modal açma çakışmasın diye
+          // Önce veriyi set ediyoruz, sonra 50ms bekleyip modalı ateşliyoruz.
+          setCurrentTaskForStok(item);
+          setTimeout(() => {
+            setStokModalVisible(true);
+          }, 50);
+      };
+
+      if (Platform.OS === 'web') {
+        // Laptop tarafında Alert.alert bazen takılır, tarayıcı onayı kullanıyoruz
+        if (window.confirm("Bu cihaz için sipariş listesini oluşturmak istiyor musunuz?")) {
+            startSiparisHazirla();
+        }
+      } else {
+        // Telefon tarafında orijinal şık Alert
+        Alert.alert(
+          "Malzeme / Parça Talebi",
+          "Bu cihaz için sipariş listesini oluşturun. (Sipariş girmeden durum değişmez)",
+          [
+            { text: "Vazgeç", style: "cancel" },
+            { text: "Siparişi Hazırla", onPress: startSiparisHazirla }
+          ],
+          { cancelable: true }
+        );
+      }
       return;
     }
 
@@ -284,7 +293,10 @@ export default function IslerUzman() {
                   
                   <TouchableOpacity 
                     style={styles.btnAcBox}
-                    onPress={() => { setSelectedTask(item); setModalVisible(true); }}
+                    onPress={() => { 
+                      setSelectedTask(item); 
+                      setTimeout(() => setModalVisible(true), 50); // Web için mola
+                    }}
                   >
                     <Text style={styles.btnAcText}>DETAYLARI AÇ</Text>
                     <Ionicons name="chevron-forward" size={14} color="#FFF" />
@@ -296,9 +308,15 @@ export default function IslerUzman() {
         />
       )}
 
-      <Modal animationType="slide" transparent={true} visible={modalVisible}>
+      {/* DETAY MODALI */}
+      <Modal 
+        animationType="fade" 
+        transparent={true} 
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBg, zIndex: 1000 }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.textColor }]}>Cihaz ve Servis Detayı</Text>
             </View>
@@ -326,10 +344,10 @@ export default function IslerUzman() {
         </View>
       </Modal>
 
+      {/* STOK TALEP MODALI */}
       <UstaStokTalepModali 
         visible={stokModalVisible}
         onClose={() => setStokModalVisible(false)}
-        // MÜDÜR: İŞTE O KRİTİK ŞALTER BAĞLANTISI!
         onSuccess={() => {
           if (currentTaskForStok) {
             processStatusChange(currentTaskForStok, 'Parça Bekliyor');
@@ -379,9 +397,9 @@ const styles = StyleSheet.create({
   cardFooterRevize: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1 },
   detailInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   detailInfoText: { fontSize: 14, fontWeight: '700' },
-  btnAcBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF3B30', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
+  btnAcBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF3B30', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10, zIndex: 10 },
   btnAcText: { color: '#FFF', fontWeight: 'bold', fontSize: 12, marginRight: 4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end', zIndex: 999 },
   modalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, maxHeight: '85%' }, 
   modalHeader: { justifyContent: 'center', alignItems: 'center', marginBottom: 15 }, 
   modalTitle: { fontSize: 18, fontWeight: '900' },
