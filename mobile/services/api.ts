@@ -44,7 +44,6 @@ export async function updateCustomer(id: number, customerData: any) {
   return response.json();
 }
 
-// MÜDÜR: Bireysel müşteri silme (Akıllı Kontrol - Zorla Silme)
 export async function deleteCustomer(id: number, force: boolean = false) {
   const url = `${API_URL}/customers/${id}${force ? '?force=true' : ''}`;
   const response = await fetch(url, {
@@ -71,7 +70,6 @@ export const createFirm = async (firmData: any) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(firmData),
     });
-
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Kayıt başarısız");
     return result;
@@ -94,7 +92,6 @@ export const updateFirm = async (id: number, firmData: any) => {
   }
 };
 
-// MÜDÜR: Firma silme (Akıllı Kontrol - Zorla Silme)
 export const deleteFirm = async (id: number, force: boolean = false) => {
   try {
     const url = `${API_URL}/api/firm/${id}${force ? '?force=true' : ''}`;
@@ -108,17 +105,15 @@ export const deleteFirm = async (id: number, force: boolean = false) => {
   }
 };
 
-// --- SERVİS KAYITLARI (MÜDÜR: LİSTELEME) ---
+// --- SERVİS KAYITLARI ---
 export const getServices = async () => {
   try {
     const response = await fetch(`${API_URL}/services/all`);
-    
     if (!response.ok) {
         const altResponse = await fetch(`${API_URL}/services`);
         if (!altResponse.ok) throw new Error("Servis HTTP Hatası");
         return await altResponse.json();
     }
-    
     return await response.json();
   } catch (error) {
     console.error("Servisler çekilirken hata:", error);
@@ -164,17 +159,17 @@ export const createDevice = async (deviceData: {
 };
 
 
+
+
+
 export const createServiceRecord = async (serviceData: { 
-    device_id: number; issue_text: string; atanan_usta?: string; musteri_notu?: string;
+    device_id: number; 
+    customer_id?: number | null; 
+    firm_id?: number | null; // MÜDÜR: FIRMA BORUSU EKLENDİ!
+    issue_text: string; 
+    atanan_usta?: string; 
+    musteri_notu?: string;
 }) => {
-
-
-
-
-
-
-
-
   try {
     const response = await fetch(`${API_URL}/services`, {
       method: 'POST',
@@ -188,7 +183,42 @@ export const createServiceRecord = async (serviceData: {
   }
 };
 
-// --- MÜDÜR: SERVİS GÜNCELLEME (STATÜ PINPONU BURADAN ÇALIŞIYOR) ---
+
+
+
+
+/*
+
+// MÜDÜR: Buradaki tek hatayı bitiren güncelleme!
+export const createServiceRecord = async (serviceData: { 
+    device_id: number; 
+    customer_id?: number | null; // Boru buraya eklendi!
+    issue_text: string; 
+    atanan_usta?: string; 
+    musteri_notu?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_URL}/services`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serviceData),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Servis açılırken hata:", error);
+    throw error;
+  }
+};
+
+*/
+
+
+
+
+
+
+
+// --- MÜDÜR: SERVİS GÜNCELLEME ---
 export const updateService = async (id: number, data: any) => {
   try {
     const response = await fetch(`${API_URL}/services/${id}`, {
@@ -204,8 +234,6 @@ export const updateService = async (id: number, data: any) => {
   }
 };
 
-// --- MÜDÜR: ARTIK KULLANILMAYAN ESKİ SİLME KODU (Yedek Parça) ---
-// Not: Mobilde çöp kutusunu kaldırdığımız için bu kod tetiklenmez!
 export const deleteService = async (id: number) => {
   try {
     const response = await fetch(`${API_URL}/services/${id}`, {
@@ -218,3 +246,44 @@ export const deleteService = async (id: number) => {
     throw error;
   }
 };
+
+
+export const getAppointments = async () => {
+  try {
+    // MÜDÜR: Tarayıcıda çalışan adresin aynısını buraya çakıyoruz
+    const response = await fetch(`${API_URL}/api/appointments/liste/aktif`);
+    
+    if (!response.ok) throw new Error("Randevu listesi alınamadı");
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Randevular çekilirken hata:", error);
+    return [];
+  }
+};
+
+
+
+export const cancelAppointment = async (id: number) => {
+  try {
+    const response = await fetch(`${API_URL}/api/appointments/iptal/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    const text = await response.text(); // Önce ham metni al (Hata sayfasını görmek için)
+    
+    try {
+        const result = JSON.parse(text); // Sonra JSON'a çevirmeyi dene
+        if (!response.ok) throw new Error(result.error || "Sunucu hatası");
+        return result;
+    } catch (e) {
+        // Eğer JSON değilse, gelen ham metni terminalde gör
+        console.error("Backend'den garip bir şey geldi:", text);
+        throw new Error("Sunucudan geçersiz yanıt geldi.");
+    }
+  } catch (error: any) {
+    throw error;
+  }
+};
+

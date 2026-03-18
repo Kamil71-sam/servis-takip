@@ -166,14 +166,17 @@ export default function DashboardUzman() {
             </View>
           </View>
 
-          {/* ALT SAĞ: RANDEVULAR (MÜDÜR: BURASI AYNEN KORUNDU) */}
-          <View style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%'}]}>
+          {/* ALT SAĞ: RANDEVULAR (MÜDÜR: BURASI ARTIK TIKLANABİLİR) */}
+          <TouchableOpacity 
+            style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%'}]}
+            onPress={() => router.push('/yeni_randevu')}
+          >
             <Ionicons name="calendar-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
             <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, {color: '#2196F3'}]}>
                 {loading ? ".." : stats.randevu}
             </Text>
             <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Randevular</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.actionRow}>
@@ -197,7 +200,13 @@ export default function DashboardUzman() {
             <Text style={styles.actionBtnText}>Yedek Parça </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}><Text style={styles.actionBtnText}>Randevu</Text></TouchableOpacity>
+          {/* MÜDÜR: ALTTAKİ RANDEVU BUTONU DA SAYFAYA GİDER */}
+          <TouchableOpacity 
+            style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}
+            onPress={() => router.push('/yeni_randevu')}
+          >
+            <Text style={styles.actionBtnText}>Randevu</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.sectionHeader}>

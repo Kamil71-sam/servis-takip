@@ -37,19 +37,35 @@ export default function DashboardScreen() {
   const [isServisSubMenuOpen, setIsServisSubMenuOpen] = useState(false);
   const [isMusteriSubMenuOpen, setIsMusteriSubMenuOpen] = useState(false);
   const [isListeSubMenuOpen, setIsListeSubMenuOpen] = useState(false); 
+  const [isRandevuSubMenuOpen, setIsRandevuSubMenuOpen] = useState(false); 
 
   const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; 
 
   const toggleMusteriMenu = () => {
     const nextState = !isMusteriSubMenuOpen;
     setIsMusteriSubMenuOpen(nextState);
-    if (nextState) setIsServisSubMenuOpen(false);
+    if (nextState) {
+        setIsServisSubMenuOpen(false);
+        setIsRandevuSubMenuOpen(false);
+    }
   };
 
   const toggleServisMenu = () => {
     const nextState = !isServisSubMenuOpen;
     setIsServisSubMenuOpen(nextState);
-    if (nextState) setIsMusteriSubMenuOpen(false);
+    if (nextState) {
+        setIsMusteriSubMenuOpen(false);
+        setIsRandevuSubMenuOpen(false);
+    }
+  };
+
+  const toggleRandevuMenu = () => {
+    const nextState = !isRandevuSubMenuOpen;
+    setIsRandevuSubMenuOpen(nextState);
+    if (nextState) {
+        setIsMusteriSubMenuOpen(false);
+        setIsServisSubMenuOpen(false);
+    }
   };
 
   useEffect(() => {
@@ -119,12 +135,16 @@ export default function DashboardScreen() {
             <Ionicons name="pie-chart" size={140} color={isDarkMode ? "#555" : "#333"} style={{ alignSelf: 'center' }} />
           </View>
           
-          <TouchableOpacity style={styles.sahaBox} activeOpacity={0.8} onPress={() => setServisVisible(true)}>
+          {/* MÜDÜR: BURAYA TEMA PARAMETRESİ EKLENDİ */}
+          <TouchableOpacity 
+            style={styles.sahaBox} 
+            activeOpacity={0.8} 
+            onPress={() => router.push({ pathname: '/yeni_randevu', params: { theme: isDarkMode ? 'dark' : 'light' } })}
+          >
             <Ionicons name="calendar-outline" size={22} color="#fff" />
             <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
           </TouchableOpacity>
           
-          {/* ONAY BEKLEYEN TUŞU (KIRMIZI/YEŞİL) */}
           <TouchableOpacity 
             style={[styles.alertBanner, { backgroundColor: onayBekleyenSayisi > 0 ? '#FF3B30' : '#34C759' }]} 
             activeOpacity={0.9} 
@@ -145,15 +165,14 @@ export default function DashboardScreen() {
             <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
 
-          {/* MÜDÜR: PARÇA BEKLEYEN (TURUNCU) TUŞUNA DA SİNYAL EKLENDİ */}
           <TouchableOpacity 
             style={[styles.alertBanner, { backgroundColor: parcaBekleyenSayisi > 0 ? '#FF9500' : '#8E8E93', marginTop: 12 }]} 
             activeOpacity={0.9} 
             onPress={() => router.push({ 
-              pathname: '/banko_stok_onay',  // Stok onay sayfasına gider
+              pathname: '/banko_stok_onay', 
               params: { 
                 theme: isDarkMode ? 'dark' : 'light',
-                filterMode: 'onlyStok'       // Yeni sinyalimiz bu!
+                filterMode: 'onlyStok' 
               } 
             })}
           >
@@ -237,6 +256,29 @@ export default function DashboardScreen() {
                     }}>
                       <Ionicons name="list-circle" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Kayıt Listeleme</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <TouchableOpacity style={styles.menuItem} onPress={toggleRandevuMenu}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Ionicons name="calendar-outline" size={24} color={D_COLOR} />
+                    <Text style={[styles.menuItemText, { color: D_COLOR }]}>Randevu İşlemleri</Text>
+                  </View>
+                  <Ionicons name={isRandevuSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
+                </TouchableOpacity>
+
+                {isRandevuSubMenuOpen && (
+                  <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
+                    {/* MÜDÜR: BURAYA TEMA PARAMETRESİ EKLENDİ */}
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push({ pathname: '/yeni_randevu', params: { theme: isDarkMode ? 'dark' : 'light' } }); }}>
+                      <Ionicons name="add-circle" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Yeni Randevu Kaydı</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { router.push({ pathname: '/randevu_takip', params: { theme: isDarkMode ? 'dark' : 'light' } }); setIsMenuOpen(false); }}>
+                      <Ionicons name="time" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Randevu Takip & Teyit</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -326,4 +368,4 @@ const styles = StyleSheet.create({
   fixedInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   fixedInfoText: { marginLeft: 10, fontSize: 14, color: '#666', fontWeight: 'bold' },
   darkText: { color: '#fff' }
-});
+})

@@ -201,21 +201,11 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
       setSearchText('');
       loadData();
 
-
-       // Eski hali yerine bunu yapıştır:
       const timer = setTimeout(() => {
         rMusteriInput.current?.focus();
       }, 500);
       
       return () => clearTimeout(timer);  
-
-
-     
-
-
-
-
-
     }
   }, [visible]);
 
@@ -250,7 +240,6 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
 
   const handleSearchChange = (t: string) => {
     setSearchText(t);
-
     if (t.length >= 3) {
       setModalType('musteri');
     } else {
@@ -258,18 +247,18 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     }
   };
 
+  // MÜDÜR: ZEYNEP-DERİN DENİZCİLİK KARIŞIKLIĞINI BİTİREN KISIM BURASI
   const handleCustomerSelect = async (customer: any) => {
-
     Keyboard.dismiss();
     rMusteriInput.current?.blur();
 
-
     const isKurumsal = customer.type === 'kurumsal';
-    
+    const selectedId = Number(customer.id);
+
     setServis({
-      ...initialState,
-      customer_id: isKurumsal ? null : Number(customer.id),
-      firm_id: isKurumsal ? Number(customer.id) : null,
+      ...initialState, // Tamamen temizleyip öyle dolduruyoruz
+      customer_id: isKurumsal ? null : selectedId, // Firma ise müşteri null
+      firm_id: isKurumsal ? selectedId : null,     // Bireysel ise firma null
       customer_type: customer.type, 
       cihaz_sahibi: customer.display_name,
       cihaz_bilgisi: 'Cihaz Seciniz...',
@@ -280,15 +269,14 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     setFocusField('cihaz_sec');
 
     try {
-      // MÜDÜR: Type bilgisini kuryenin (api.ts) eline tutuştuyoruz
-      const customerDevices = await getCustomerDevices(customer.id, customer.type);
+      const customerDevices = await getCustomerDevices(selectedId, customer.type);
       setDevices([{ id: null, brand: '--- SECIMI TEMIZLE ---', model: '' }, ...customerDevices]);
 
       setTimeout(() => {
         scrollToSection('deviceSection', 10);
       }, 150);
     } catch (e) {
-      console.log('Cihaz hatası');
+      console.log('Cihaz çekme hatası');
     }
   };
 
@@ -334,11 +322,10 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     setLoading(true);
 
     try {
-      // MÜDÜR: Burası en kritik yer. Backend'in kafası karısmasın diye net gönderiyoruz.
       const payload = {
         customer_id: servis.customer_id, 
         firm_id: servis.firm_id,
-        customer_type: servis.firm_id ? 'kurumsal' : 'bireysel', // Manuel belirledik, şasmaz!
+        customer_type: servis.firm_id ? 'kurumsal' : 'bireysel',
         brand: servis.marka,
         model: servis.model,
         serial_no: servis.seri_no || 'N/A',
@@ -373,6 +360,44 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     }
   };
 
+
+
+
+
+
+
+
+const handleSaveAttempt = async () => {
+    if (!servis.device_id) return Alert.alert('Hata', 'Cihaz secilmedi!');
+    if (!servis.ariza_notu.trim()) return Alert.alert('Hata', 'Arıza / sikayet detayı bos bırakılamaz.');
+
+    setLoading(true);
+
+    try {
+      // MÜDÜR: ZEYNEP OLAYINI BİTİREN KISIM! İkisini de kendi borusundan yolluyoruz.
+      const result = await createServiceRecord({
+        device_id: Number(servis.device_id),
+        customer_id: servis.customer_id, // Sadece bireyselse gider (Yoksa null)
+        firm_id: servis.firm_id,         // Sadece firmaysa gider (Yoksa null)
+        issue_text: servis.ariza_notu,
+        atanan_usta: servis.usta,
+        musteri_notu: servis.muster_notu,
+      });
+
+      setStatus({ visible: true, type: 'success', msg: 'Servis Kaydı Tamamlandı.', recordNo: result.servis_no });
+    } catch (error) {
+      setStatus({ visible: true, type: 'error', msg: 'Kayıt hatası!', recordNo: '' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
+
+/*
+
   const handleSaveAttempt = async () => {
     if (!servis.device_id) {
       return Alert.alert('Hata', 'Cihaz secilmedi!');
@@ -385,16 +410,14 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
     setLoading(true);
 
     try {
-
-
-
-
+      // MÜDÜR: Kaydederken doğru ID'yi alıyoruz
+      const finalCustomerId = servis.customer_type === 'kurumsal' ? Number(servis.firm_id) : Number(servis.customer_id);
 
       const result = await createServiceRecord({
         device_id: Number(servis.device_id),
+        customer_id: finalCustomerId, // İSİM KARIŞIKLIĞINI BİTİREN ASIL PAS BURASI!
         issue_text: servis.ariza_notu,
         atanan_usta: servis.usta,
-
         musteri_notu: servis.muster_notu,
       });
 
@@ -415,6 +438,17 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
       setLoading(false);
     }
   };
+
+
+
+*/
+
+
+
+
+
+
+
 
   const theme = {
     bg: isDarkMode ? '#121212' : '#fff',
@@ -519,13 +553,9 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                     ]}
                     onPress={() => {
                       if (!servis.customer_id && !servis.firm_id) {
-
-
-                      Keyboard.dismiss();
-
+                        Keyboard.dismiss();
                         return Alert.alert('Hata', 'Once Musteri veya Firma Sec!');
                       }
-
                       setFocusField('cihaz_sec');
                       setModalType('cihaz');
                       scrollToSection('deviceSection', 10);
@@ -543,7 +573,6 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                       if (!servis.customer_id && !servis.firm_id) {
                         return Alert.alert('Hata', 'Once Musteri veya Firma Sec!');
                       }
-
                       if (!showNewDeviceForm) {
                         setServis({
                           ...servis,
@@ -555,10 +584,8 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
                           muster_notu: '',
                         });
                       }
-
                       setShowNewDeviceForm(!showNewDeviceForm);
                       setFocusField('yeni_cihaz');
-
                       setTimeout(() => {
                         scrollToSection('newDeviceFormSection', 10);
                       }, 120);
@@ -843,7 +870,6 @@ export default function YeniServisKaydi({ visible, onClose, isDarkMode }: any) {
               onSelect={(v: string) => {
                 setServis({ ...servis, garanti: v });
                 setModalType(null);
-
                 setTimeout(() => {
                   rMNot.current?.focus();
                   setTimeout(() => {
