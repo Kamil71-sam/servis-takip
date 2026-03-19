@@ -78,12 +78,69 @@ export default function RandevuTakip({ isDarkMode }: any) {
     ]);
   };
 
+
+const renderRandevu = ({ item }: any) => (
+    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
+      <View style={styles.cardHeader}>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{item.servis_no}</Text>
+        </View>
+
+        {/* MÜDÜR: Tarih 29-03-2026 formatına sabitlendi ve yanına Saat eklendi */}
+        <Text style={{ color: theme.subText, fontSize: 13, fontWeight: 'bold' }}>
+          {item.appointment_date ? item.appointment_date.split('T')[0].split('-').reverse().join('-') : ''} 
+          {item.appointment_time ? ` | ${item.appointment_time}` : ''}
+        </Text>
+      </View>
+      
+      <Text style={[styles.customerName, { color: theme.text }]}>
+        {item.customer_name || 'İsimsiz Müşteri'}
+      </Text>
+      
+      <Text style={[styles.detailText, { color: theme.subText }]} numberOfLines={2}>
+        {item.issue_text || 'Detay belirtilmemiş.'}
+      </Text>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity 
+          style={[styles.btn, styles.callBtn]} 
+          onPress={() => item.customer_phone ? Linking.openURL(`tel:${item.customer_phone}`) : Alert.alert("Hata", "Telefon yok")}
+        >
+           <Ionicons name="call" size={18} color="#fff" />
+           <Text style={styles.btnText}>Ara</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.btn, styles.cancelBtn]} 
+          onPress={() => handleCancelAction(item.id, item.servis_no)}
+        >
+           <Ionicons name="close-circle" size={18} color="#fff" />
+           <Text style={styles.btnText}>İptal</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+);
+
+
+
+
+
+
+
+
+
+
+
+/*
+
   const renderRandevu = ({ item }: any) => (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
       <View style={styles.cardHeader}>
         <View style={styles.badge}><Text style={styles.badgeText}>{item.servis_no}</Text></View>
-        <Text style={{color: theme.subText, fontSize: 12}}>{item.appointment_date}</Text>
-      </View>
+
+
+        <Text style={{color: theme.subText, fontSize: 12}}>{new Date(item.appointment_date).toLocaleDateString("tr-TR" )}</Text>
+     </View>
       
       <Text style={[styles.customerName, {color: theme.text}]}>{item.customer_name || 'İsimsiz Müşteri'}</Text>
       <Text style={[styles.detailText, {color: theme.subText}]} numberOfLines={2}>
@@ -109,6 +166,9 @@ export default function RandevuTakip({ isDarkMode }: any) {
       </View>
     </View>
   );
+
+
+*/
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>

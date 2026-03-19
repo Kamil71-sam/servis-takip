@@ -25,6 +25,8 @@ export default function DashboardScreen() {
   
   const [onayBekleyenSayisi, setOnayBekleyenSayisi] = useState(0); 
   const [parcaBekleyenSayisi, setParcaBekleyenSayisi] = useState(0); 
+  // MÜDÜR: Yarınki randevular için yeni kilit
+  const [teyitBekleyenSayisi, setTeyitBekleyenSayisi] = useState(0); 
 
   // --- ASANSÖR KİLİTLERİ (MODALLAR) ---
   const [musteriVisible, setMusteriVisible] = useState(false);
@@ -71,15 +73,26 @@ export default function DashboardScreen() {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
+        // 1. Onay bekleyen servisleri çek
         const srvData = await getServices();
         const bekleyenler = (srvData || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
         setOnayBekleyenSayisi(bekleyenler.length);
 
+        // 2. Parça taleplerini çek
         const matRes = await getAllMaterialRequests();
         if (matRes && matRes.success) {
           const talepler = (matRes.data || []).filter((m: any) => m.status === 'Beklemede');
           setParcaBekleyenSayisi(talepler.length);
         }
+
+        // 3. MÜDÜR: Yarınki Teyit Bekleyen Randevuları çek
+        // Not: IP adresini senin terminalde gördüğün 192.168.1.41 adresine göre sabitledim
+        const response = await fetch('http://192.168.1.41:3000/api/operation/pending-confirmations');
+        const teyitData = await response.json();
+        if (teyitData.success) {
+          setTeyitBekleyenSayisi(teyitData.data.length);
+        }
+
       } catch (e) { 
         console.log("Dashboard motoru iletişim bekliyor..."); 
       }
@@ -129,13 +142,12 @@ export default function DashboardScreen() {
             <Text style={[styles.bigTitleText, isDarkMode && styles.darkText]}>TEKNİK SERVİS TAKİP PROGRAMI</Text>
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
           </View>
-          
+
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
             <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
             <Ionicons name="pie-chart" size={140} color={isDarkMode ? "#555" : "#333"} style={{ alignSelf: 'center' }} />
           </View>
           
-          {/* MÜDÜR: BURAYA TEMA PARAMETRESİ EKLENDİ */}
           <TouchableOpacity 
             style={styles.sahaBox} 
             activeOpacity={0.8} 
@@ -184,6 +196,26 @@ export default function DashboardScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
+
+          {/* MÜDÜR: YARINKİ RANDEVU TEYİT BİLGİLENDİRME ŞERİDİ - ŞİMDİ TURUNCUNUN ALTINDA! */}
+          {teyitBekleyenSayisi >= 0 && (
+            <TouchableOpacity 
+              style={[styles.alertBanner, { backgroundColor: '#6558dd', marginTop: 12, height: 56,  }]} 
+              activeOpacity={0.9} 
+              onPress={() => router.push({ 
+                pathname: '/randevu_takip', 
+                params: { theme: isDarkMode ? 'dark' : 'light', filter: 'tomorrow' } 
+              })}
+            >
+              <Ionicons name="call" size={24} color="#fff" />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={styles.alertTitle}> {teyitBekleyenSayisi} Randevu Teyit Bekliyor</Text>
+                <Text style={{color: '#fff', fontSize: 11, fontWeight: '600'}}> Müşteri Aranacak.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
+            </TouchableOpacity>
+          )}
+
         </ScrollView>
 
         {isMenuOpen && (
@@ -270,7 +302,6 @@ export default function DashboardScreen() {
 
                 {isRandevuSubMenuOpen && (
                   <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
-                    {/* MÜDÜR: BURAYA TEMA PARAMETRESİ EKLENDİ */}
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push({ pathname: '/yeni_randevu', params: { theme: isDarkMode ? 'dark' : 'light' } }); }}>
                       <Ionicons name="add-circle" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Yeni Randevu Kaydı</Text>
@@ -348,10 +379,10 @@ const styles = StyleSheet.create({
   chartCard: { backgroundColor: '#fff', borderRadius: 25, padding: 20, elevation: 6 },
   darkCard: { backgroundColor: '#1e1e1e' },
   cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  sahaBox: { width: '100%', height: 55, backgroundColor: '#333', borderRadius: 15, marginTop: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  sahaBox: { width: '100%', height: 55, backgroundColor: '#333', borderRadius: 15, marginTop: 15, flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center', paddingHorizontal: 20 },
   actionText: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginLeft: 10 },
   alertBanner: { height: 55, borderRadius: 15, flexDirection: 'row', paddingHorizontal: 15, alignItems: 'center', marginTop: 12, elevation: 4 },
-  alertTitle: { color: '#fff', fontWeight: '900', fontSize: 13 },
+  alertTitle: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   alertText: { color: '#fff', fontWeight: '600', fontSize: 12, opacity: 0.9 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
   menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', paddingVertical: 60, paddingHorizontal: 0 },
@@ -368,4 +399,4 @@ const styles = StyleSheet.create({
   fixedInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   fixedInfoText: { marginLeft: 10, fontSize: 14, color: '#666', fontWeight: 'bold' },
   darkText: { color: '#fff' }
-})
+});

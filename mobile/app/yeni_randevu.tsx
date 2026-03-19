@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; 
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   Alert, ScrollView, ActivityIndicator, Platform, StatusBar,
-  KeyboardAvoidingView, Keyboard 
+  KeyboardAvoidingView, Keyboard, Modal, FlatList 
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router'; 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { Picker } from '@react-native-picker/picker'; 
 import axios from 'axios';
+import { BlurView } from 'expo-blur'; // MÜDÜR: Blur için bunu ekledik
 
 const API_BASE = 'http://192.168.1.41:3000/api';
 
@@ -20,14 +21,24 @@ export default function YeniRandevu() {
   const isDarkMode = theme === 'dark';
 
   const [loading, setLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<null | 'success' | 'error'>(null);
+  
+  // MÜDÜR: Şık Onay Ekranı State'leri
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [assignedServiceNo, setAssignedServiceNo] = useState('');
+
+  // REHBER STATE'LERİ
+  const [modalVisible, setModalVisible] = useState(false);
+  const [allCustomers, setAllCustomers] = useState<any[]>([]); 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [phone, setPhone] = useState('');
   
   const [customerInfo, setCustomerInfo] = useState({ id: null, name: '', exists: false });
-  const [customerType, setCustomerType] = useState('bireysel'); // MÜDÜR: Firma/Bireysel ayrımı için
+  const [customerType, setCustomerType] = useState('bireysel'); 
   const [unregistered, setUnregistered] = useState(false); 
   const [address, setAddress] = useState(''); 
 
-  // MÜDÜR: Cihaz Bilgileri State'leri
   const [deviceType, setDeviceType] = useState(''); 
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -51,7 +62,32 @@ export default function YeniRandevu() {
   const timeRef = useRef<TextInput>(null);
   const issueRef = useRef<TextInput>(null);
 
+  useEffect(() => {
+    fetchAllCustomers();
+  }, []);
+
+  const fetchAllCustomers = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/customers/all`); 
+      if (res.data.success) {
+        setAllCustomers(res.data.data);
+      }
+    } catch (err) {
+      console.log("Rehber verisi çekilemedi.");
+    }
+  };
+
+  const handleSelectFromGuide = (item: any) => {
+    setPhone(item.phone);
+    setCustomerInfo({ id: item.id, name: item.name, exists: true });
+    setCustomerType(item.tip || 'bireysel');
+    setUnregistered(false);
+    setModalVisible(false);
+    setTimeout(() => addressRef.current?.focus(), 500);
+  };
+
   const handleGoToDashboard = () => {
+    setSuccessModalVisible(false);
     router.replace({ pathname: '/dashboard', params: { theme: theme } });
   };
 
@@ -68,7 +104,6 @@ const handleSearchCustomer = async (val: string) => {
           name: res.data.data.name, 
           exists: true 
         });
-        // MÜDÜR: Backend'den gelen tip bilgisini (bireysel/firma) burada yakalıyoruz
         setCustomerType(res.data.data.tip || 'bireysel'); 
         setUnregistered(false); 
         addressRef.current?.focus(); 
@@ -122,6 +157,10 @@ const handleSave = async () => {
       return;
     }
 
+    setLoading(true);
+    setSaveStatus(null);
+    Keyboard.dismiss();
+
     let dbDate = date;
     if (date.length === 10 && date.includes('-')) {
       const parts = date.split('-');
@@ -136,10 +175,19 @@ const handleSave = async () => {
     const paketlenmisVeri = `📍 ADRES: ${girilenAdres}\n🔧 CİHAZ: ${deviceType} ${brand} ${model}\n📝 NOT: ${girilenNot}`;
 
     try {
-      setLoading(true);
+      // MÜDÜR: ÖNCE ÇAKIŞMA KONTROLÜ YAPIYORUZ
+      const conflictRes = await axios.get(`${API_BASE}/appointments/check-conflict?date=${dbDate}&time=${time}`);
+      
+      if (conflictRes.data.isOccupied) {
+        setLoading(false);
+        Alert.alert("Randevu Çakışması", "Bu tarih ve saatte zaten bir randevu mevcut. Lütfen başka bir zaman seçin.");
+        return;
+      }
+
+      // EĞER SAAT BOŞSA KAYDA DEVAM ET
       const res = await axios.post(`${API_BASE}/appointments/ekle`, {
         customer_id: customerInfo.id,
-        type: customerType, // MÜDÜR: Backend'in hangi tabloya yazacağını bilmesi için tipi gönderiyoruz
+        type: customerType, 
         device_brand: brand, 
         device_model: model,
         date: dbDate, 
@@ -149,14 +197,12 @@ const handleSave = async () => {
       });
       
       if (res.data.success) {
-        Keyboard.dismiss(); 
-        Alert.alert(
-            "Başarılı", 
-            `Randevu kaydedildi!\n\nKAYIT NO: ${res.data.servis_no || 'Atandı'}`, 
-            [{ text: "Tamam", onPress: () => handleGoToDashboard() }]
-        );
+        setAssignedServiceNo(res.data.servis_no || 'Atandı');
+        setSaveStatus('success'); 
+        setSuccessModalVisible(true); // ŞIK EKRANI AÇ
       }
     } catch (err: any) {
+      setSaveStatus('error'); 
       const errMsg = err.response?.data?.error || err.response?.data?.message || err.message;
       Alert.alert("Kayıt Başarısız", `Hata Detayı: ${errMsg}`);
     } finally {
@@ -171,7 +217,7 @@ const handleSave = async () => {
       
       <View style={[styles.header, isDarkMode && darkStyles.header]}>
         <Text style={[styles.headerTitle, isDarkMode && darkStyles.textMain]}>Yeni Randevu</Text>
-        <TouchableOpacity onPress={handleGoToDashboard} style={styles.closeBtn}>
+        <TouchableOpacity onPress={() => router.replace({ pathname: '/dashboard', params: { theme: theme } })} style={styles.closeBtn}>
           <Ionicons name="close" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -211,6 +257,12 @@ const handleSave = async () => {
                 value={phone}
                 onChangeText={handleSearchCustomer}
               />
+              <TouchableOpacity 
+                style={styles.guideBtn} 
+                onPress={() => { fetchAllCustomers(); setModalVisible(true); }}
+              >
+                <Ionicons name="person-add-outline" size={26} color="#FFF" />
+              </TouchableOpacity>
               {loading && <ActivityIndicator size="small" color="#FF3B30" style={{marginLeft: 10}} />}
             </View>
           </View>
@@ -252,37 +304,46 @@ const handleSave = async () => {
             />
           </View>
 
-          {/* MÜDÜR: CİHAZ BİLGİLERİ (3 KUTU YAN YANA) */}
+          {/* CİHAZ BİLGİLERİ */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, isDarkMode && darkStyles.textSub]}>Cihaz Çeşidi / Marka / Model</Text>
             <View style={{flexDirection: 'row', gap: 8}}>
               <TextInput 
                 ref={deviceTypeRef}
-                style={[styles.input, isDarkMode && darkStyles.input, {flex: 1}]}
+                style={[styles.input, isDarkMode && darkStyles.input, {flex: 1}, focusField === 'deviceType' && styles.focusedBorder]}
                 placeholder="Çeşit"
                 placeholderTextColor={isDarkMode ? "#888" : "#999"}
                 returnKeyType="next"
+                onFocus={() => setFocusField('deviceType')}
+                onBlur={() => setFocusField(null)}
                 onSubmitEditing={() => brandRef.current?.focus()}
+                blurOnSubmit={false}
                 value={deviceType}
                 onChangeText={setDeviceType}
               />
               <TextInput 
                 ref={brandRef}
-                style={[styles.input, isDarkMode && darkStyles.input, {flex: 1}]}
+                style={[styles.input, isDarkMode && darkStyles.input, {flex: 1}, focusField === 'brand' && styles.focusedBorder]}
                 placeholder="Marka"
                 placeholderTextColor={isDarkMode ? "#888" : "#999"}
                 returnKeyType="next"
+                onFocus={() => setFocusField('brand')}
+                onBlur={() => setFocusField(null)}
                 onSubmitEditing={() => modelRef.current?.focus()}
+                blurOnSubmit={false}
                 value={brand}
                 onChangeText={setBrand}
               />
               <TextInput 
                 ref={modelRef}
-                style={[styles.input, isDarkMode && darkStyles.input, {flex: 1}]}
+                style={[styles.input, isDarkMode && darkStyles.input, {flex: 1}, focusField === 'model' && styles.focusedBorder]}
                 placeholder="Model"
                 placeholderTextColor={isDarkMode ? "#888" : "#999"}
                 returnKeyType="next"
+                onFocus={() => setFocusField('model')}
+                onBlur={() => setFocusField(null)}
                 onSubmitEditing={() => dateRef.current?.focus()}
+                blurOnSubmit={false}
                 value={model}
                 onChangeText={setModel}
               />
@@ -325,7 +386,7 @@ const handleSave = async () => {
                 returnKeyType="next"
                 onFocus={() => setFocusField('time')}
                 onBlur={() => setFocusField(null)}
-                onSubmitEditing={() => issueRef.current?.focus()}
+                onSubmitEditing={() => Keyboard.dismiss()} 
                 blurOnSubmit={false}
                 value={time}
                 onChangeText={setTime}
@@ -333,14 +394,7 @@ const handleSave = async () => {
             </View>
           </View>
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={dateObj}
-              mode="date"
-              display="default"
-              onChange={onChangeDate}
-            />
-          )}
+          {showDatePicker && (<DateTimePicker value={dateObj} mode="date" display="default" onChange={onChangeDate} />)}
 
           {/* USTA */}
           <View style={styles.inputGroup}>
@@ -368,6 +422,8 @@ const handleSave = async () => {
               placeholder="Notunuzu buraya yazın..."
               placeholderTextColor={isDarkMode ? "#888" : "#999"}
               multiline={true}
+              returnKeyType="done"
+              blurOnSubmit={true} 
               onFocus={() => setFocusField('issue')}
               onBlur={() => setFocusField(null)}
               value={issue}
@@ -385,6 +441,64 @@ const handleSave = async () => {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* REHBER MODAL */}
+      <Modal animationType="slide" transparent={true} visible={modalVisible}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, isDarkMode && {backgroundColor: '#1A1A1A'}]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, isDarkMode && {color: '#FFF'}]}>Müşteri Rehberi</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close-circle" size={32} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+            <TextInput 
+              style={[styles.input, isDarkMode && darkStyles.input, {marginBottom: 15}]}
+              placeholder="İsim veya telefon ile ara..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            <FlatList
+              data={allCustomers.filter(c => (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (c.phone || '').includes(searchQuery))}
+              keyExtractor={(item, index) => `${item.tip}-${item.id}-${index}`}
+              renderItem={({item}) => (
+                <TouchableOpacity style={styles.customerItem} onPress={() => handleSelectFromGuide(item)}>
+                  <Ionicons name={item.tip === 'firma' ? "business" : "person"} size={24} color={item.tip === 'firma' ? "#FF9500" : "#4CAF50"} />
+                  <View style={{marginLeft: 15}}>
+                    <Text style={[styles.customerName, isDarkMode && {color: '#FFF'}]}>{item.name}</Text>
+                    <Text style={styles.customerPhone}>{item.phone}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* MÜDÜR: JİLET GİBİ ONAY EKRANI (BLUR'LU VE TİKLİ) */}
+      <Modal animationType="fade" transparent={true} visible={successModalVisible}>
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
+          <View style={styles.successWrapper}>
+            <View style={styles.successCard}>
+              <View style={styles.successHeaderRow}>
+                <View style={{flex: 1}}>
+                  <Text style={styles.successTitleText}>İŞLEM TAMAM</Text>
+                  <View style={styles.successBadgeBox}>
+                    <Text style={styles.successBadgeLabel}>KAYIT NO:</Text>
+                    <Text style={styles.successBadgeValue}>{assignedServiceNo}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.successTickBox} onPress={handleGoToDashboard}>
+                  <Ionicons name="checkmark" size={40} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.successInfoText}>Randevu Kaydı Başarıyla Tamamlandı.</Text>
+            </View>
+          </View>
+        </BlurView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -402,10 +516,28 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#F2F2F2', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, padding: 12, fontSize: 16, color: '#333' },
   focusedBorder: { borderColor: '#FF3B30', borderWidth: 1.5, backgroundColor: '#FFFFFF' }, 
   searchRow: { flexDirection: 'row', alignItems: 'center' },
+  guideBtn: { backgroundColor: '#000000', padding: 10, borderRadius: 10, marginLeft: 10 },
   infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', padding: 12, borderRadius: 10, marginBottom: 20, gap: 8 },
   infoText: { color: '#2E7D32', fontSize: 14 },
-  saveBtn: { backgroundColor: '#FF3B30', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 40 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
+  saveBtn: { backgroundColor: '#000000', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 40 },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '75%', padding: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold' },
+  customerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  customerName: { fontSize: 16, fontWeight: '600' },
+  customerPhone: { fontSize: 14, color: '#888' },
+  // MÜDÜR: ONAY EKRANI ÖZEL STİLLERİ
+  successWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  successCard: { backgroundColor: '#FFF', width: '85%', borderRadius: 30, padding: 25, shadowColor: "#000", shadowOpacity: 0.2, elevation: 15 },
+  successHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  successTitleText: { fontSize: 24, fontWeight: 'bold', color: '#000' },
+  successBadgeBox: { flexDirection: 'row', backgroundColor: '#EE404C', padding: 7, borderRadius: 8, marginTop: 5, alignSelf: 'flex-start' },
+  successBadgeLabel: { color: '#FFF', fontSize: 12, marginRight: 5 },
+  successBadgeValue: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
+  successTickBox: { backgroundColor: '#000', width: 70, height: 70, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  successInfoText: { color: '#666', fontSize: 15, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 15, marginTop: 10 }
 });
 
 const darkStyles = StyleSheet.create({
@@ -414,8 +546,8 @@ const darkStyles = StyleSheet.create({
   textMain: { color: '#F8F9FA' },
   textSub: { color: '#9BA4B5' },
   input: { backgroundColor: '#2C2C2C', borderColor: '#3A3A3A', color: '#FFF' },
-  trackingBadge: { backgroundColor: '#1E1E1E', borderColor: '#444' }, 
+  trackingBadge: { backgroundColor: '#1E1E1E' }, 
   infoBox: { backgroundColor: '#1B2E1D' },
   infoText: { color: '#81C784' },
-  saveBtn: { backgroundColor: '#D32F2F' }
+  saveBtn: { backgroundColor: '#000000' }
 });
