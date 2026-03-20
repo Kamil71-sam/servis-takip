@@ -14,7 +14,6 @@ import YeniServisKaydi from '../components/YeniServisKaydi';
 import StokTakibiAnaEkran from '../components/StokTakibiAnaEkran';
 import MaliIslemlerAnaEkran from '../components/MaliIslemlerAnaEkran';
 
-// MÜDÜR: Servisleri ve Parça Taleplerini çekmek için API'leri çağırdık
 import { getServices } from '../services/api';
 import { getAllMaterialRequests } from '../services/api_material';
 
@@ -25,7 +24,6 @@ export default function DashboardScreen() {
   
   const [onayBekleyenSayisi, setOnayBekleyenSayisi] = useState(0); 
   const [parcaBekleyenSayisi, setParcaBekleyenSayisi] = useState(0); 
-  // MÜDÜR: Yarınki randevular için yeni kilit
   const [teyitBekleyenSayisi, setTeyitBekleyenSayisi] = useState(0); 
 
   // --- ASANSÖR KİLİTLERİ (MODALLAR) ---
@@ -40,6 +38,8 @@ export default function DashboardScreen() {
   const [isMusteriSubMenuOpen, setIsMusteriSubMenuOpen] = useState(false);
   const [isListeSubMenuOpen, setIsListeSubMenuOpen] = useState(false); 
   const [isRandevuSubMenuOpen, setIsRandevuSubMenuOpen] = useState(false); 
+  // MÜDÜR: Envanter menüsü için yeni kilit eklendi
+  const [isEnvanterSubMenuOpen, setIsEnvanterSubMenuOpen] = useState(false); 
 
   const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; 
 
@@ -49,6 +49,7 @@ export default function DashboardScreen() {
     if (nextState) {
         setIsServisSubMenuOpen(false);
         setIsRandevuSubMenuOpen(false);
+        setIsEnvanterSubMenuOpen(false);
     }
   };
 
@@ -58,6 +59,7 @@ export default function DashboardScreen() {
     if (nextState) {
         setIsMusteriSubMenuOpen(false);
         setIsRandevuSubMenuOpen(false);
+        setIsEnvanterSubMenuOpen(false);
     }
   };
 
@@ -67,26 +69,34 @@ export default function DashboardScreen() {
     if (nextState) {
         setIsMusteriSubMenuOpen(false);
         setIsServisSubMenuOpen(false);
+        setIsEnvanterSubMenuOpen(false);
+    }
+  };
+
+  // MÜDÜR: Envanter menüsünü açıp diğerlerini kapatan motor
+  const toggleEnvanterMenu = () => {
+    const nextState = !isEnvanterSubMenuOpen;
+    setIsEnvanterSubMenuOpen(nextState);
+    if (nextState) {
+        setIsMusteriSubMenuOpen(false);
+        setIsServisSubMenuOpen(false);
+        setIsRandevuSubMenuOpen(false);
     }
   };
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        // 1. Onay bekleyen servisleri çek
         const srvData = await getServices();
         const bekleyenler = (srvData || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
         setOnayBekleyenSayisi(bekleyenler.length);
 
-        // 2. Parça taleplerini çek
         const matRes = await getAllMaterialRequests();
         if (matRes && matRes.success) {
           const talepler = (matRes.data || []).filter((m: any) => m.status === 'Beklemede');
           setParcaBekleyenSayisi(talepler.length);
         }
 
-        // 3. MÜDÜR: Yarınki Teyit Bekleyen Randevuları çek
-        // Not: IP adresini senin terminalde gördüğün 192.168.1.41 adresine göre sabitledim
         const response = await fetch('http://192.168.1.41:3000/api/operation/pending-confirmations');
         const teyitData = await response.json();
         if (teyitData.success) {
@@ -197,7 +207,6 @@ export default function DashboardScreen() {
             <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
 
-          {/* MÜDÜR: YARINKİ RANDEVU TEYİT BİLGİLENDİRME ŞERİDİ - ŞİMDİ TURUNCUNUN ALTINDA! */}
           {teyitBekleyenSayisi >= 0 && (
             <TouchableOpacity 
               style={[styles.alertBanner, { backgroundColor: '#6558dd', marginTop: 12, height: 56,  }]} 
@@ -314,20 +323,42 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/banko_stok_onay'); }}>
-                  <Ionicons name="cube-outline" size={24} color={parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR} />
-                  <Text style={[styles.menuItemText, { color: parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR }]}>Parça Takibi</Text>
-                  {parcaBekleyenSayisi > 0 && (
-                    <View style={{backgroundColor: '#FF3B30', borderRadius: 10, paddingHorizontal: 6, marginLeft: 10}}>
-                       <Text style={{color: '#fff', fontSize: 10, fontWeight: 'bold'}}>{parcaBekleyenSayisi}</Text>
-                    </View>
-                  )}
+                {/* --- MÜDÜR: YENİ ENVANTER İŞLEMLERİ ASANSÖR MENÜSÜ --- */}
+                <TouchableOpacity style={styles.menuItem} onPress={toggleEnvanterMenu}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Ionicons name="file-tray-full-outline" size={24} color={D_COLOR} />
+                    <Text style={[styles.menuItemText, { color: D_COLOR }]}>Envanter İşlemleri</Text>
+                  </View>
+                  <Ionicons name={isEnvanterSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setStokVisible(true); setIsMenuOpen(false); }}>
-                  <Ionicons name="file-tray-full-outline" size={24} color={D_COLOR} />
-                  <Text style={[styles.menuItemText, { color: D_COLOR }]}>Stok Takibi</Text>
-                </TouchableOpacity>
+                {isEnvanterSubMenuOpen && (
+                  <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
+                    
+                    {/* PARÇA TAKİBİ (Eski tekli buton buraya taşındı, rozetiyle birlikte) */}
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push('/banko_stok_onay'); }}>
+                      <Ionicons name="cube-outline" size={20} color={parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR} style={{ marginRight: 15 }} />
+                      <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                        <Text style={[styles.subMenuItemText, { color: parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR }]}>Parça Takibi</Text>
+                        {parcaBekleyenSayisi > 0 && (
+                          <View style={{backgroundColor: '#FF3B30', borderRadius: 10, paddingHorizontal: 6, marginLeft: 10}}>
+                             <Text style={{color: '#fff', fontSize: 10, fontWeight: 'bold'}}>{parcaBekleyenSayisi}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    
+                    <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
+                    
+                    {/* STOK İŞLEMLERİ (Yeni eklenen bölüm) */}
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setStokVisible(true); setIsMenuOpen(false); }}>
+                      <Ionicons name="layers-outline" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Stok İşlemleri</Text>
+                    </TouchableOpacity>
+
+                  </View>
+                )}
+                {/* -------------------------------------------------------- */}
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMaliVisible(true); setIsMenuOpen(false); }}>
                   <Ionicons name="wallet-outline" size={24} color={D_COLOR} />

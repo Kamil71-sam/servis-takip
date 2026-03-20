@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert, Modal, StatusBar, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert, Modal, StatusBar, ActivityIndicator, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router'; // MÜDÜR: Tema mirası için bu şart
+import { useRouter, useLocalSearchParams } from 'expo-router'; 
 
 export default function UstaPaneli() {
   const router = useRouter(); 
-  const { theme } = useLocalSearchParams(); // DASHBOARD'DAN GELEN MİRAS
-  const isDarkMode = theme === 'dark';
+  const params = useLocalSearchParams(); 
+  const systemColorScheme = useColorScheme();
+
+  // MÜDÜR: Şalter kusursuz çalışıyor
+  const isDarkMode = 
+    params.theme === 'dark' || 
+    params.isDarkMode === 'true' || 
+    (params.theme === undefined && params.isDarkMode === undefined && systemColorScheme === 'dark');
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,11 +60,97 @@ export default function UstaPaneli() {
     }
   };
 
+  const renderItem = ({ item }: any) => {
+    // MÜDÜR: PARÇALAMA MOTORU (Chrome'dan gelen veriye göre)
+    let dAdres = "";
+    let dCihaz = "";
+    let dNot = "";
+    let isParsed = false;
+
+    // Backend'den gelen 'detay' verisine bakıyoruz
+    const rawText = item.detay || item.issue_text || "";
+
+    if (rawText.includes('ADRES:') || rawText.includes('CİHAZ:')) {
+        isParsed = true;
+        const lines = rawText.split('\n');
+        
+        lines.forEach((line: string) => {
+            if (line.toUpperCase().includes('ADRES:')) {
+                dAdres = line.replace(/[📍🔧📝]/g, '').replace(/ADRES:/gi, '').trim();
+            } else if (line.toUpperCase().includes('CİHAZ:')) {
+                dCihaz = line.replace(/[📍🔧📝]/g, '').replace(/CİHAZ:/gi, '').trim();
+            } else if (line.toUpperCase().includes('NOT:')) {
+                dNot = line.replace(/[📍🔧📝]/g, '').replace(/NOT:/gi, '').trim();
+            }
+        });
+    }
+
+    return (
+      <View style={[styles.card, isDarkMode && { backgroundColor: '#1E1E1E', borderColor: '#333' }]}>
+        
+        {/* MÜDÜR: --- YENİ EKLENEN KAYIT NO ROZETİ (Kırmızı Dolgulu, Sola Dayalı) --- */}
+        <View style={styles.servisNoBadge}>
+          <Text style={styles.servisNoText}>KAYIT NO: {item.servis_no}</Text>
+        </View>
+        {/* -------------------------------------------------------------------------- */}
+
+        <View style={styles.cardHeader}>
+          <Text style={[styles.cardTitle, isDarkMode && { color: '#fff' }]}>
+            {item.musteri_adi || "İsimsiz Müşteri"}
+          </Text>
+          <View style={[styles.statusBadge, isDarkMode && { backgroundColor: '#333' }]}>
+            <Text style={[styles.statusText, isDarkMode && { color: '#2196F3' }]}>{item.status}</Text>
+          </View>
+        </View>
+        
+        <Text style={[styles.jobDate, isDarkMode && { color: '#AAA' }]}>
+          📅 {item.tarih} - 🕒 {item.saat}
+        </Text>
+        
+        {/* MÜDÜR: JİLET GİBİ KUTULAR (Senin Chrome'dan gelen veriler!) */}
+        <View style={{ marginTop: 15, marginBottom: 20, gap: 10 }}>
+          {isParsed ? (
+            <>
+              {dAdres ? (
+                <Text style={[styles.infoText, isDarkMode && { color: '#AAA' }]}>
+                  📍 ADRES: {dAdres}
+                </Text>
+              ) : null}
+              
+              {dCihaz ? (
+                <Text style={[styles.infoText, { color: isDarkMode ? '#FFF' : '#000', fontWeight: '700' }]}>
+                  🔧 CİHAZ: {dCihaz}
+                </Text>
+              ) : null}
+              
+              {dNot ? (
+                <Text style={[styles.infoText, isDarkMode && { color: '#AAA' }]}>
+                  📝 NOT: {dNot}
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            rawText ? (
+              <Text style={[styles.infoText, isDarkMode && { color: '#AAA' }]}>{rawText}</Text>
+            ) : null
+          )}
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.finishBtn, isDarkMode && { backgroundColor: '#333' }]} 
+          onPress={() => { setSelectedJob(item); setModalVisible(true); }}
+        >
+          <Ionicons name="checkmark-circle" size={20} color="#fff" />
+          <Text style={styles.finishBtnText}> ÜCRET GİRİŞİ</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, isDarkMode && { backgroundColor: '#121212' }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
-      {/* 1. ANA BAŞLIK: TEMAYA GÖRE RENK DEĞİŞTİRİR */}
       <View style={[styles.mainHeader, isDarkMode && { borderBottomColor: '#333' }]}>
         <TouchableOpacity style={styles.backBtnBlack} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={isDarkMode ? "#fff" : "#000"} />
@@ -77,31 +169,7 @@ export default function UstaPaneli() {
         <FlatList
           data={jobs}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={[styles.card, isDarkMode && { backgroundColor: '#1E1E1E', borderColor: '#333' }]}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, isDarkMode && { color: '#fff' }]}>
-                  {item.musteri_adi || "İsimsiz Müşteri"}
-                </Text>
-                <View style={[styles.statusBadge, isDarkMode && { backgroundColor: '#333' }]}>
-                  <Text style={[styles.statusText, isDarkMode && { color: '#2196F3' }]}>{item.status}</Text>
-                </View>
-              </View>
-              <Text style={[styles.jobDate, isDarkMode && { color: '#AAA' }]}>
-                📅 {item.tarih} - 🕒 {item.saat}
-              </Text>
-              {item.issue_text && (
-                <Text style={[styles.detayText, isDarkMode && { backgroundColor: '#2C2C2E', color: '#BBB' }]}>📝 {item.issue_text}</Text>
-              )}
-              <TouchableOpacity 
-                style={[styles.finishBtn, isDarkMode && { backgroundColor: '#333' }]} 
-                onPress={() => { setSelectedJob(item); setModalVisible(true); }}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.finishBtnText}> ÜCRET GİRİŞİ</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          renderItem={renderItem}
           ListEmptyComponent={
             <View style={{marginTop: 100, alignItems: 'center'}}>
                <Ionicons name="cafe-outline" size={64} color={isDarkMode ? "#444" : "#ccc"} />
@@ -111,7 +179,7 @@ export default function UstaPaneli() {
         />
       )}
 
-      {/* 2. ÜCRET KAYDİ MODALI (GECE MODU UYUMLU) */}
+      {/* ÜCRET KAYDİ MODALI */}
       <Modal visible={modalVisible} animationType="slide" transparent={false}>
         <SafeAreaView style={[styles.modalContainer, isDarkMode && { backgroundColor: '#121212' }]}>
           <View style={[styles.modalHeader, isDarkMode && { borderBottomColor: '#333' }]}>
@@ -169,17 +237,37 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
   modalTitle: { fontSize: 18, fontWeight: '900', flex: 1, textAlign: 'center' },
   
-  card: { padding: 20, marginHorizontal: 15, marginBottom: 15, backgroundColor: '#fff', borderRadius: 15, elevation: 3, borderWidth: 1, borderColor: '#eee' },
+  card: { padding: 24, marginHorizontal: 15, marginBottom: 15, backgroundColor: '#fff', borderRadius: 15, elevation: 3, borderWidth: 1, borderColor: '#eee', minHeight: 180 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { fontSize: 18, fontWeight: 'bold' },
   statusBadge: { backgroundColor: '#E3F2FD', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText: { color: '#2a74be', fontSize: 12, fontWeight: 'bold' },
   jobDate: { color: '#666', marginTop: 8 },
-  detayText: { marginTop: 10, color: '#777', backgroundColor: '#f9f9f9', padding: 8, borderRadius: 5, fontSize: 13 },
+  
+  // MÜDÜR: YENİ VERİ TASARIMI
+  infoText: { fontSize: 14, lineHeight: 22, color: '#555' },
+  
   finishBtn: { backgroundColor: '#1e1c25', padding: 15, borderRadius: 12, marginTop: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   finishBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   closeCircle: { backgroundColor: '#ff4d4d', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   label: { fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 },
   input: { backgroundColor: '#f0f0f0', padding: 18, borderRadius: 12, fontSize: 16, marginBottom: 20, borderWidth: 1, borderColor: '#ddd' },
-  saveBtn: { backgroundColor: '#1b1e20', padding: 20, borderRadius: 12, alignItems: 'center', marginTop: 10, elevation: 2 }
+  saveBtn: { backgroundColor: '#1b1e20', padding: 20, borderRadius: 12, alignItems: 'center', marginTop: 10, elevation: 2 },
+
+  // MÜDÜR: --- YENİ EKLENEN ROZET STİLLERİ ---
+  servisNoBadge: {
+    backgroundColor: '#FF3B30', // Kırmızı Dolgu
+    alignSelf: 'flex-start', // Sola Dayalı
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 10, // Aşağıdaki Header ile boşluk
+    marginTop: -5, // Kart Padding'i 24 olduğu için biraz yukarı çekip dengeledik
+  },
+  servisNoText: {
+    color: '#FFF', // Beyaz Yazı
+    fontWeight: 'bold',
+    fontSize: 13,
+  }
+  // -------------------------------------------
 });
