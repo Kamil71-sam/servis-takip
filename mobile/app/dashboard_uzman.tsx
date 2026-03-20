@@ -8,14 +8,12 @@ import {
   StatusBar,
   Platform,
   ActivityIndicator,
-  // MÜDÜR: Kaydırma için eklendi
   ScrollView 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getUzmanDashboardData } from '../services/api_uzman';
-
 import { useFocusEffect } from 'expo-router'; 
 import { useCallback } from 'react'; 
 
@@ -39,57 +37,65 @@ export default function DashboardUzman() {
     atanan: 0,
     aktif: 0,
     parcaBekleyen: 0,
-    onayBekleyen: 0, // MÜDÜR: Yeni veri alanı
+    onayBekleyen: 0,
     randevu: 0
   });
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
 
   const ustaEmail = 'Usta 1';
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+  // MÜDÜR: CANLI VERİ MOTORU
   const loadDashboard = async () => {
     try {
-      setLoading(true);
+      // 1. Mevcut uzman servisini çağır
       const res = await getUzmanDashboardData(ustaEmail);
+      
+      // 2. MÜDÜR: Mavi rakamı canlandıran o yeni canlı damara direkt bağlanıyoruz
+      const statsRes = await fetch(`${API_URL}/api/operation/usta-stats/${encodeURIComponent(ustaEmail)}`);
+      const statsData = await statsRes.json();
+
       if (res && res.success) {
         setStats({
           atanan: res.data.atanananIslerSayisi || 0,
           aktif: res.data.aktifIslerSayisi || 0,
           parcaBekleyen: res.data.parcaBekleyenSayisi || 0,
-          onayBekleyen: res.data.onayBekleyenSayisi || 0, // MÜDÜR: Bağlantı yapıldı
-          randevu: res.data.randevuSayisi || 0
+          onayBekleyen: res.data.onayBekleyenSayisi || 0,
+          // MÜDÜR: Eğer canlı damardan veri geldiyse onu kullan (SQL'de çıkan 2 rakamı buraya düşer)
+          randevu: statsData.success ? statsData.stats.randevu : (res.data.randevuSayisi || 0)
         });
         setRecentTasks(res.data.sonIsler || []);
       }
     } catch (err) {
-      console.error("Veri çekme hatası:", err);
+      console.error("Müdürüm Dashboard veri çekme hatası:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Ekrana geri dönüldüğünde tazele
   useFocusEffect(
     useCallback(() => {
       loadDashboard();
     }, [])
   );
 
+  // MÜDÜR: 10 saniyede bir kalp atışı (Canlı Takip)
   useEffect(() => {
     loadDashboard();
+    const interval = setInterval(loadDashboard, 10000);
+    return () => clearInterval(interval);
   }, []);
 
-  // MÜDÜR: LAPTOP (WEB) VE MOBİL İÇİN ÇİFT SİLİNDİRLİ LOGOUT MOTORU
   const handleLogout = () => {
     const performLogout = () => {
-        // Web tarafında 'as any' ile '/' rotasına zorla diyoruz
         router.replace('/' as any);
     };
 
     if (Platform.OS === 'web') {
-      // Laptopta Alert.alert bazen tarayıcı tarafından engellenir, direkt soralım
       const confirmLogout = window.confirm("Sistemden çıkış yapmak istiyor musunuz?");
       if (confirmLogout) performLogout();
     } else {
-      // Cep telefonunda orijinal şık Alert
       Alert.alert("Çıkış", "Sistemden çıkış yapmak istiyor musunuz?", [
         { text: "Vazgeç", style: "cancel" },
         { text: "Çıkış", onPress: performLogout, style: "destructive" }
@@ -114,7 +120,7 @@ export default function DashboardUzman() {
             </TouchableOpacity>
              <TouchableOpacity 
                 onPress={handleLogout} 
-                style={[styles.iconBtn, { zIndex: 9999 }]} // Katmanı en üste aldık laptop basabilsin diye
+                style={[styles.iconBtn, { zIndex: 9999 }]}
              >
                <Ionicons name="exit-outline" size={28} color="#FF3B30" />
              </TouchableOpacity>
@@ -142,9 +148,8 @@ export default function DashboardUzman() {
             <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Aktif İşler</Text>
           </View>
 
-          {/* ALT SOL: PARÇA BEKLEYEN (MÜDÜR: KUTU BURADAN BÖLÜNDÜ) */}
+          {/* ALT SOL: PARÇA / ONAY BEKLEYEN */}
           <View style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%', flexDirection: 'row', alignItems: 'center', padding: 0}]}>
-            {/* SOL YARI: PARÇA BEKLEYEN */}
             <View style={{flex: 1, padding: 10, alignItems: 'flex-start'}}>
                 <Ionicons name="cube-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
                 <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain]}>
@@ -152,11 +157,7 @@ export default function DashboardUzman() {
                 </Text>
                 <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Parça Bekleyen</Text>
             </View>
-            
-            {/* MÜDÜR: ORTADAKİ DİKEY ÇİZGİ */}
             <View style={{width: 1, height: '80%', backgroundColor: isDarkMode ? '#3A3A3A' : '#DDDDDD'}} />
-
-            {/* SAĞ YARI: ONAY BEKLEYEN (MÜDÜR: BURASI YENİ) */}
             <View style={{flex: 1, padding: 10, alignItems: 'flex-start'}}>
                 <Ionicons name="time-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
                 <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, {color: '#FF9500'}]}>
@@ -166,20 +167,14 @@ export default function DashboardUzman() {
             </View>
           </View>
 
-          {/* ALT SAĞ: RANDEVULAR (MÜDÜR: ARTIK DOĞRU SAYFAYA GİDER) */}
-          <TouchableOpacity 
-            style={[styles.statBox, isDarkMode && darkStyles.statBox, {width: '48%'}]}
-            onPress={() => router.push({ 
-              pathname: '/usta_paneli'as any, 
-              params: { theme: isDarkMode ? 'dark' : 'light' } 
-            })}
-          >
-            <Ionicons name="calendar-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
-            <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, {color: '#2196F3'}]}>
-                {loading ? ".." : stats.randevu}
-            </Text>
-            <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Gorev Listem</Text>
-          </TouchableOpacity>
+          {/* ALT SAĞ: RANDEVULAR (MÜDÜR: CANLI MAVİ RAKAM) */}
+          <View style={[styles.statBox, isDarkMode && darkStyles.statBox, { width: '48%' }]}>
+              <Ionicons name="calendar-outline" size={18} color={isDarkMode ? "#AAA" : "#000"} />
+              <Text style={[styles.statNumber, isDarkMode && darkStyles.textMain, { color: '#2196F3' }]}>
+                  {loading ? ".." : stats.randevu}
+              </Text>
+              <Text style={[styles.statLabel, isDarkMode && darkStyles.textSub]}>Randevular</Text>
+          </View>
         </View>
 
         <View style={styles.actionRow}>
@@ -200,10 +195,9 @@ export default function DashboardUzman() {
               } 
             })}
           >
-            <Text style={styles.actionBtnText}>Yedek Parça </Text>
+            <Text style={styles.actionBtnText}>Yedek Parça</Text>
           </TouchableOpacity>
 
-          {/* MÜDÜR: ALTTAKİ RANDEVU BUTONU DA ARTIK GÖREV SAYFASINA GİDER */}
           <TouchableOpacity 
             style={[styles.actionBtn, isDarkMode && darkStyles.actionBtn]}
             onPress={() => router.push({ 
@@ -211,7 +205,7 @@ export default function DashboardUzman() {
               params: { theme: isDarkMode ? 'dark' : 'light' } 
             })}
           >
-            <Text style={styles.actionBtnText}>Saha Gorevleri</Text>
+            <Text style={styles.actionBtnText}>Randevular</Text>
           </TouchableOpacity>
         </View>
 
@@ -239,12 +233,10 @@ export default function DashboardUzman() {
                     </Text>
                   </View>
                 </View>
-                
                 <View style={styles.issueRow}>
                   <Ionicons name="build-outline" size={14} color={isDarkMode ? "#AAA" : "#666"} />
                   <Text style={[styles.issueText, isDarkMode && darkStyles.textSub]} numberOfLines={1}>{item.issue}</Text>
                 </View>
-
                 <View style={[styles.cardFooter, isDarkMode && darkStyles.cardFooter]}>
                     <View style={{flexDirection:'row', alignItems:'center', gap:5}}>
                       <Ionicons name="person-outline" size={14} color={isDarkMode ? "#AAA" : "#888"} />
