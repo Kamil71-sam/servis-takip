@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, ScrollView } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router'; 
@@ -17,6 +17,20 @@ export default function BankoStokOnay() {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
   const [checkingId, setCheckingId] = useState<number | null>(null);
+
+  // --- MÜDÜR: IŞIKLI BUTON İÇİN ANİMASYON MOTORU ---
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Kırmızı butonun kalp gibi atmasını sağlayan döngü
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.4, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+  // -------------------------------------------------
 
   const fetchRequests = async () => {
     try {
@@ -56,6 +70,38 @@ export default function BankoStokOnay() {
   };
 
   const groupedRequests = getGroupedData();
+
+  // --- MÜDÜR: IŞIKLI BUTONA BASILINCA ÇALIŞACAK BANKO ONAY SİSTEMİ ---
+  const handleStokOnayi = (part: any) => {
+    Alert.alert(
+      "Gelen Malzeme Kontrolü",
+      `Malzeme: ${part.part_name}\nMiktar: ${part.quantity}\n\nKargodan çıkan malzeme doğru mu? Onaylıyor musunuz?`,
+      [
+        {
+          text: "HAYIR (Hatalı)",
+          style: "destructive",
+          onPress: () => {
+            // MÜDÜR: Hayır derse hiçbir şey değişmez, ışık yanmaya devam eder.
+            Alert.alert("Bilgi", "İşlem reddedildi. Buton yanmaya devam edecek, lütfen işlemi loglayın veya ustayı uyarın.");
+          }
+        },
+        {
+          text: "EVET (Doğru)",
+          onPress: async () => {
+            try {
+              // MÜDÜR: Statüyü 'Stokta' yapıyoruz ki o Işıklı Buton bir daha görünmesin, ama ana sarı buton işlemi devam etsin.
+              await updateMaterialStatus(part.id, 'Stokta', "Banko");
+              Alert.alert("Başarılı", "Parça onayı verildi, ışık söndürüldü. Ana butondan işleme devam edebilirsiniz.");
+              fetchRequests(); // Ekranı tazele, ışık sönsün
+            } catch (err) {
+              Alert.alert("Hata", "Onay verilirken bir sorun oluştu.");
+            }
+          }
+        }
+      ]
+    );
+  };
+  // -------------------------------------------------------------------
 
   // MÜDÜR: Modal içindeki boş kutuya tıklandığında çalışacak Akıllı Şalter
   const handleCheckItem = (item: any, totalItemsInGroup: number) => {
@@ -109,6 +155,9 @@ export default function BankoStokOnay() {
           }
 
           renderItem={({ item }: { item: any }) => {
+            // MÜDÜR: ONAY BEKLEYEN PARÇALARI BULUYORUZ (Işıklı Buton İçin)
+            const onayiBekleyenler = item.items.filter((i: any) => i.status === 'Onay Bekliyor');
+
             return (
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -126,7 +175,24 @@ export default function BankoStokOnay() {
                 </Text>
 
                 <View style={styles.btnRow}>
-                  {/* MÜDÜR: SARI BUTON BURASI */}
+                  
+                  {/* --- MÜDÜR: IŞIKLI BUTONLAR (Sadece stok girişi yapılmışsa görünür) --- */}
+                  {onayiBekleyenler.length > 0 && onayiBekleyenler.map((part: any) => (
+                    <Animated.View key={`pulse-${part.id}`} style={{ opacity: pulseAnim, marginBottom: 10 }}>
+                      <TouchableOpacity 
+                        style={[styles.actionBtn, { backgroundColor: '#FF3B30' }]}
+                        onPress={() => handleStokOnayi(part)}
+                      >
+                        <Ionicons name="alert-circle" size={20} color="#FFF" />
+                        <Text style={[styles.btnText, { color: '#FFF' }]}>
+                          🚨 STOK ONAYI BEKLİYOR
+                        </Text>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  ))}
+                  {/* ------------------------------------------------------------------------ */}
+
+                  {/* MÜDÜR: ESKİ SARI BUTON BURASI (Işık sönse bile bu hep burada) */}
                   <TouchableOpacity 
                     style={[styles.actionBtn, { backgroundColor: '#FFCC00' }]}
                     onPress={() => {
@@ -139,6 +205,7 @@ export default function BankoStokOnay() {
                       {item.items.length} PARÇA GELDİ
                     </Text>
                   </TouchableOpacity>
+
                 </View>
               </View>
             );
