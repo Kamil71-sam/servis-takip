@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect  } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard, ActivityIndicator
+  Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard, ActivityIndicator, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+// Müdür: Ekran boyutlarını hedef kutusu için alıyoruz
+const { width, height } = Dimensions.get('window');
 
-// MÜDÜR: initialBarcode parametresini ekledik
+// MÜDÜR: Buraya 'initialBarcode' diye bir giriş kapısı (prop) ekledik
 export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialBarcode }: any) {
   const initialState = {
     tur: '', usta: '', barkod: '', malzeme_adi: '', marka: '', uyumlu_cihaz: '', miktar: '1',
@@ -69,11 +71,18 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
     accent: isDarkMode ? '#333' : '#1A1A1A'
   };
 
-  // --- MÜDÜR: AKILLI RADAR SORGUSU ---
+  // --- MÜDÜR: AKILLI RADAR SORGUSU (BOZULMADI AMA SAMSUNGFACİASI İÇİN DÜZELTİLDİ) ---
   const checkRadar = async (searchType: 'barkod' | 'malzeme_adi', value: string) => {
     try {
       setRadarMsg({ type: 'loading', text: 'Radar taranıyor...' });
-      const response = await fetch(`${API_URL}/api/stok/search?${searchType}=${encodeURIComponent(value)}`);
+      
+      // MÜDÜR: Samsung Galaxy saçmalığını bitiren hamle! 
+      // Sadece barkod ile arama yapıyoruz, malzeme_adi ile arama yapıp Samsung Galaxy falan getirmesini engelliyoruz.
+      const url = searchType === 'barkod' ? 
+        `${API_URL}/api/stok/search?barkod=${encodeURIComponent(value)}` : 
+        `${API_URL}/api/stok/search?barkod=XXXXX`; // Malzeme adı araması yapma!
+
+      const response = await fetch(url);
       const res = await response.json();
 
       if (res.success && res.found) {
@@ -83,9 +92,10 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
           barkod: res.data.barkod,
           malzeme_adi: res.data.malzeme_adi,
           marka: res.data.marka || prev.marka,
+          uyumlu_cihaz: res.data.uyumlu_cihaz || prev.uyumlu_cihaz, // Müdür: TV ise TV gelecek!
           alis_fiyati: res.data.alis_fiyati ? res.data.alis_fiyati.toString() : prev.alis_fiyati
         }));
-        setRadarMsg({ type: 'success', text: '✅ DİKKAT: Bu malzeme depoda zaten kayıtlı! Barkod eşleştirildi.' });
+        setRadarMsg({ type: 'success', text: `✅ DİKKAT: Bu malzeme depoda kayıtlı! Barkod: ${res.data.barkod}` });
       } else {
         // MÜDÜR: Malzeme yok! Kırmızı/Sarı alarmı yak.
         setRadarMsg({ type: 'warning', text: '🚨 YENİ ÜRÜN: Depoda eşleşme bulunamadı. Lütfen yeni barkod üretin veya okutun.' });
@@ -164,12 +174,50 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
     <Modal visible={visible} animationType="slide" transparent={true} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
         
+        {/* Müdür: Burası o meşhur kadrajın giydirildiği kamera modalı */}
         {cameraVisible ? (
-          <CameraView style={StyleSheet.absoluteFillObject} onBarcodeScanned={handleBarCodeScanned}>
-             <TouchableOpacity style={styles.camClose} onPress={() => setCameraVisible(false)}>
-                <Ionicons name="close-circle" size={50} color="#fff" />
-             </TouchableOpacity>
-          </CameraView>
+          <View style={StyleSheet.absoluteFillObject}>
+            <CameraView style={StyleSheet.absoluteFillObject} onBarcodeScanned={handleBarCodeScanned} />
+            
+            {/* --- MÜDÜR: KADRAJ TASARIMI --- */}
+            <View style={styles.scannerOverlay}>
+              {/* Üst Karartma */}
+              <View style={styles.unfocusedContainer}></View>
+              
+              {/* Orta (Odak) Satırı */}
+              <View style={styles.middleContainer}>
+                {/* Sol Karartma */}
+                <View style={styles.unfocusedContainer}></View>
+                
+                {/* Müdür: Tam ortadaki hedef kutusu */}
+                <View style={styles.focusedContainer}>
+                  {/* Kırmızı Köşe Çizgileri */}
+                  <View style={[styles.corner, styles.topLeft]} />
+                  <View style={[styles.corner, styles.topRight]} />
+                  <View style={[styles.corner, styles.bottomLeft]} />
+                  <View style={[styles.corner, styles.bottomRight]} />
+                  
+                  {/* Müdür: Hedef Altı Yazısı */}
+                  <View style={styles.radarTextRow}>
+                    <Ionicons name="scan-outline" size={18} color="#FF3B30" />
+                    <Text style={styles.radarText}>BARKOD RADARI AKTİF</Text>
+                  </View>
+                </View>
+                
+                {/* Sağ Karartma */}
+                <View style={styles.unfocusedContainer}></View>
+              </View>
+              
+              {/* Alt Karartma ve İptal Butonu */}
+              <View style={styles.unfocusedContainer}>
+                <TouchableOpacity style={styles.camCloseBottom} onPress={() => setCameraVisible(false)}>
+                  <Ionicons name="close-circle" size={60} color="#fff" />
+                  <Text style={{color:'#fff', fontWeight:'bold', marginTop:5}}>İPTAL</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {/* ------------------------------------------ */}
+          </View>
         ) : (
           <KeyboardAvoidingView 
             behavior={Platform.OS === "ios" ? "padding" : "height"} 
@@ -442,5 +490,26 @@ const styles = StyleSheet.create({
   alertBtnText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   // MÜDÜR: ALARM ETİKETİ STİLLERİ
   alarmBox: { marginHorizontal: 20, marginTop: 15, padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-  alarmText: { fontSize: 13, fontWeight: 'bold', textAlign: 'center' }
+  alarmText: { fontSize: 13, fontWeight: 'bold', textAlign: 'center' },
+
+  // --- MÜDÜR: YENİ RADAR (KADRAJ) STİLLERİ ---
+  scannerOverlay: { flex: 1, backgroundColor: 'transparent' },
+  // Odak dışı alanlar için yarı saydam siyahlık
+  unfocusedContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  // Tam ortadaki odak şeridi
+  middleContainer: { flexDirection: 'row', height: 260 },
+  // Müdür: Tam ortadaki hedef kutusu
+  focusedContainer: { width: 260, height: 260, position: 'relative' },
+  // Köşe çizgilerinin ortak stili
+  corner: { position: 'absolute', width: 40, height: 40, borderColor: '#FF3B30', borderWidth: 4 },
+  // Konumlandırma
+  topLeft: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
+  topRight: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
+  bottomLeft: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
+  bottomRight: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
+  // Müdür: Hedef altı yazı sırası
+  radarTextRow: { position: 'absolute', bottom: -40, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  radarText: { color: '#FF3B30', fontSize: 12, fontWeight: '900', marginLeft: 8 },
+  // Alt karartmadaki iptal butonu
+  camCloseBottom: { alignItems: 'center' }
 });

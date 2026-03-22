@@ -7,7 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any) {
+// MÜDÜR: onShowHistory artık dışarıdan (Ana Ekran'dan) geliyor
+export default function StokYonetimListesi({ visible, onClose, isDarkMode, onShowHistory }: any) {
   const [envanter, setEnvanter] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [arama, setArama] = useState('');
@@ -16,12 +17,15 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   const theme = {
-    bg: isDarkMode ? '#121212' : '#F4F4F4',
-    card: isDarkMode ? '#1E1E1E' : '#FFF',
-    text: isDarkMode ? '#FFF' : '#1A1A1A',
-    subText: isDarkMode ? '#AAA' : '#666',
-    border: isDarkMode ? '#333' : '#EEE',
-    primary: '#FF3B30'
+    bg: '#FFF', // 🚨 MÜDÜR: Arka Plan Süt Beyaz
+    card: '#F4F4F4', // 🚨 MÜDÜR: Kartların İçi Açık Gri
+    text: '#1A1A1A',
+    subText: '#666',
+    border: '#EEE',
+    primary: '#fc1307', // O meşhur KIRMIZI tonun
+    btnEdit: '#eee', // Düzenle butonunun açık gri rengi
+    btnDelete: '#ddd', // Sil butonunun biraz daha koyu gri rengi
+    btnHistory: '#ddd', // Tarihçe butonunun açık gri rengi
   };
 
   const fetchEnvanter = async () => {
@@ -71,9 +75,12 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...selectedItem,
+          malzeme_adi: selectedItem.malzeme_adi,
+          marka: selectedItem.marka,
+          uyumlu_cihaz: selectedItem.uyumlu_cihaz,
           miktar: parseInt(selectedItem.miktar),
-          alis_fiyati: parseFloat(selectedItem.alis_fiyati)
+          alis_fiyati: parseFloat(selectedItem.alis_fiyati),
+          barkod: selectedItem.barkod
         })
       });
       const data = await res.json();
@@ -99,7 +106,7 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose}><Ionicons name="arrow-back" size={28} color={theme.text} /></TouchableOpacity>
-          <Text style={[styles.title, { color: theme.text }]}>STOK YÖNETİM LİSTESİ</Text>
+          <Text style={[styles.title, { color: theme.text }]}>ENVANTER YÖNETİMİ</Text>
           <TouchableOpacity onPress={fetchEnvanter}><Ionicons name="refresh" size={24} color={theme.primary} /></TouchableOpacity>
         </View>
 
@@ -118,20 +125,35 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any
           <FlatList 
             data={filtrelenmişListe}
             keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={{ padding: 20 }}
+            contentContainerStyle={{ padding: 10, paddingBottom: 100 }}
             renderItem={({ item }) => (
               <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={{ flex: 1 }}>
+                {/* Sol Taraf: Bilgiler */}
+                <View style={{ flex: 1, paddingRight: 10 }}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>{item.malzeme_adi}</Text>
                   <Text style={[styles.cardSub, { color: theme.subText }]}>{item.marka || 'Markasız'} | {item.barkod}</Text>
-                  <Text style={[styles.cardStock, { color: item.miktar < 2 ? theme.primary : '#34C759' }]}>Stok: {item.miktar} Adet</Text>
+                  {item.uyumlu_cihaz && <Text style={{fontSize:11, color: theme.subText}}>Cihaz: {item.uyumlu_cihaz}</Text>}
+                  <Text style={[styles.cardStock, { color: item.miktar < 2 ? theme.primary : '#598d66' }]}>Stok: {item.miktar} Adet</Text>
                 </View>
+
+                {/* Sağ Taraf: Butonlar Column */}
                 <View style={styles.actionColumn}>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => { setSelectedItem(item); setEditModalVisible(true); }}>
-                    <Ionicons name="create" size={22} color="#FFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleSil(item)}>
-                    <Ionicons name="trash" size={22} color="#FFF" />
+                  {/* Üstte: Eski Butonlar */}
+                  <View style={styles.topActionRow}>
+                    <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.btnEdit }]} onPress={() => { setSelectedItem(item); setEditModalVisible(true); }}>
+                      <Ionicons name="create" size={22} color={theme.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.deleteBtn, { backgroundColor: theme.btnDelete }]} onPress={() => handleSil(item)}>
+                      <Ionicons name="trash" size={22} color={theme.text} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* 🚨 İŞTE O MEŞHUR SAAT BUTONU (ALTTA, GENİŞ) */}
+                  <TouchableOpacity 
+                    style={[styles.historyFullWidthBtn, { backgroundColor: theme.btnHistory }]} 
+                    onPress={() => onShowHistory(item.id, item.malzeme_adi)}
+                  >
+                    <Ionicons name="time-outline" size={20} color={theme.text} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -144,16 +166,25 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any
             <View style={[styles.editContent, { backgroundColor: theme.card }]}>
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={[styles.modalTitle, { color: theme.text }]}>KAYIT DÜZENLE</Text>
+                
                 <Text style={styles.inputLabel}>Malzeme Adı</Text>
                 <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border }]} value={selectedItem?.malzeme_adi} onChangeText={(v) => setSelectedItem({...selectedItem, malzeme_adi: v})}/>
+                
                 <Text style={styles.inputLabel}>Marka</Text>
                 <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border }]} value={selectedItem?.marka} onChangeText={(v) => setSelectedItem({...selectedItem, marka: v})}/>
+                
+                <Text style={styles.inputLabel}>Uyumlu Cihaz</Text>
+                <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border }]} value={selectedItem?.uyumlu_cihaz} onChangeText={(v) => setSelectedItem({...selectedItem, uyumlu_cihaz: v})}/>
+                
                 <Text style={styles.inputLabel}>Miktar</Text>
                 <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border }]} keyboardType="numeric" value={selectedItem?.miktar?.toString()} onChangeText={(v) => setSelectedItem({...selectedItem, miktar: v})}/>
+                
                 <Text style={styles.inputLabel}>Alış Fiyatı (₺)</Text>
                 <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border }]} keyboardType="numeric" value={selectedItem?.alis_fiyati?.toString()} onChangeText={(v) => setSelectedItem({...selectedItem, alis_fiyati: v})}/>
+                
                 <Text style={styles.inputLabel}>Barkod</Text>
-                <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: isDarkMode ? '#111' : '#f9f9f9' }]} value={selectedItem?.barkod} onChangeText={(v) => setSelectedItem({...selectedItem, barkod: v})}/>
+                <TextInput style={[styles.input, { color: theme.text, borderColor: theme.border }]} value={selectedItem?.barkod} onChangeText={(v) => setSelectedItem({...selectedItem, barkod: v})}/>
+                
                 <View style={styles.modalBtnRow}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModalVisible(false)}><Text style={styles.btnText}>İPTAL</Text></TouchableOpacity>
                   <TouchableOpacity style={styles.saveBtn} onPress={handleGuncelle}><Text style={styles.btnText}>KAYDET</Text></TouchableOpacity>
@@ -170,16 +201,18 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode }: any
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, marginTop: 10 },
-  title: { fontSize: 18, fontWeight: '900' },
+  title: { fontSize: 16, fontWeight: '900' },
   searchBox: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, padding: 12, borderRadius: 15, borderWidth: 1, marginBottom: 10 },
   searchInput: { marginLeft: 10, flex: 1, fontSize: 14 },
-  card: { flexDirection: 'row', padding: 15, borderRadius: 18, borderWidth: 1, marginBottom: 12, alignItems: 'center' },
+  card: { flexDirection: 'row', padding: 15, borderRadius: 18, borderWidth: 1, marginBottom: 12, marginHorizontal: 10, alignItems: 'center', minHeight: 110 }, // 🚨 MÜDÜR: Eni milimetrik büyüdü (marginHorizontal: 10)
   cardTitle: { fontSize: 16, fontWeight: '800' },
   cardSub: { fontSize: 12, marginTop: 4 },
   cardStock: { fontSize: 13, fontWeight: '900', marginTop: 8 },
-  actionColumn: { flexDirection: 'row' },
-  editBtn: { backgroundColor: '#007AFF', padding: 10, borderRadius: 10, marginRight: 8 },
-  deleteBtn: { backgroundColor: '#FF3B30', padding: 10, borderRadius: 10 },
+  actionColumn: { alignItems: 'flex-end', gap: 8 },
+  topActionRow: { flexDirection: 'row', gap: 8 },
+  editBtn: { padding: 10, borderRadius: 10 },
+  deleteBtn: { padding: 10, borderRadius: 10 },
+  historyFullWidthBtn: { width: '100%', height: 45, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
   editContent: { width: '90%', maxHeight: '80%', borderRadius: 25, padding: 25 },
   modalTitle: { fontSize: 18, fontWeight: '900', marginBottom: 20, textAlign: 'center' },
@@ -187,6 +220,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15 },
   modalBtnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25 },
   cancelBtn: { flex: 1, backgroundColor: '#888', padding: 15, borderRadius: 12, marginRight: 10, alignItems: 'center' },
-  saveBtn: { flex: 1, backgroundColor: '#34C759', padding: 15, borderRadius: 12, alignItems: 'center' },
+  saveBtn: { flex: 1, backgroundColor: '#36c45a', padding: 15, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#FFF', fontWeight: '900' }
 });

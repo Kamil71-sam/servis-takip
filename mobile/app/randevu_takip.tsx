@@ -7,19 +7,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router'; 
 import { getAppointments, cancelAppointment } from '../services/api'; 
 
-// MÜDÜR: Dashboard'dan gelen mirası (theme) artık tam senin örneğindeki gibi alıyoruz
 export default function RandevuTakip() {
   const router = useRouter();
   const params = useLocalSearchParams(); 
-  
-  // MÜDÜR: İşte o meşhur şalter! Örnek kodundaki gibi 'theme' parametresine bakıyoruz
   const isDarkMode = params.theme === 'dark';
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [appointments, setAppointments] = useState<any[]>([]);
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL; // MÜDÜR: Butonlar için eklendi
+  const API_URL = process.env.EXPO_PUBLIC_API_URL; 
 
   const loadData = async () => {
     try {
@@ -72,7 +69,6 @@ export default function RandevuTakip() {
     ]);
   };
 
-  // --- MÜDÜR: YENİ EKLENEN FİNANS / STATÜ MOTORU ---
   const handleFinanceAction = (id: number, action: 'yes' | 'no') => {
     Alert.alert(
       "İşlem Onayı",
@@ -93,7 +89,7 @@ export default function RandevuTakip() {
               const result = await res.json();
               if(result.success) {
                 Alert.alert("Başarılı", action === 'yes' ? "İş kapatıldı (Gelir eklendi)." : "İşlem beklemeye alındı.");
-                loadData(); // İşlem bitince listeyi yenile
+                loadData(); 
               } else {
                 Alert.alert("Hata", "İşlem kaydedilemedi.");
               }
@@ -107,16 +103,20 @@ export default function RandevuTakip() {
   };
 
 const renderRandevu = ({ item }: any) => {
-    // MÜDÜR: Çiftleme yapmayan temizlik motoru
+    // --- MÜDÜR: İŞTE O KRİTİK TEMİZLİK VANASI! ---
+    // Eğer iş 'Teslim Edildi' ise bu ekranın listesine hiç sokmuyoruz, yığılmayı önlüyoruz.
+    if (item.status === 'Teslim Edildi' || item.status === 'teslim edildi') {
+        return null;
+    }
+
     const clean = (str: string) => {
         if (!str) return "";
         return str.replace(/[📍🔧📝]/g, '').replace(/ADRES:|CİHAZ:|NOT:/gi, '').trim();
     };
 
-    // MÜDÜR: SAAT DİLİMİ BOMBASINI İMHA EDEN ÇEVİRİCİ
     const formatDate = (dateString: string) => {
         if (!dateString) return "";
-        const d = new Date(dateString); // Gelen veriyi Türkiye saatine çevirir
+        const d = new Date(dateString);
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
@@ -129,12 +129,10 @@ const renderRandevu = ({ item }: any) => {
 
     const isParsed = !!dAdres || !!dCihaz;
 
-    // MÜDÜR: STATÜ KONTROLLERİ (Hangi butonlar çıkacak ona karar verir)
     const isCompleted = item.status === 'Tamamlandı' || item.status === 'tamamlandı';
     const isPending = item.status === 'İşlem Bekliyor';
 
     return (
-    // MÜDÜR: Senin isteğine göre 'borderWidth' tamamen SİLİNDİ, sadece derinlik ve gölge var!
     <View style={[styles.card, isDarkMode && darkStyles.card]}>
       <View style={styles.cardHeader}>
         <View style={styles.badge}>
@@ -143,7 +141,6 @@ const renderRandevu = ({ item }: any) => {
 
         <View style={{ alignItems: 'flex-end' }}>
             <Text style={[styles.dateText, isDarkMode && darkStyles.textSub]}>
-              {/* MÜDÜR: Bodoslama kesmek yerine artık akıllı çeviriciyi kullanıyoruz */}
               {item.appointment_date ? formatDate(item.appointment_date) : ''} 
               {item.appointment_time ? ` | ${item.appointment_time}` : ''}
             </Text>
@@ -187,7 +184,6 @@ const renderRandevu = ({ item }: any) => {
           )}
       </View>
 
-      {/* --- MÜDÜR: 1. SENARYO -> USTA İŞİ YENİ BİTİRDİYSE (TAMAMLANDI) --- */}
       {isCompleted && (
         <View style={styles.financeBox}>
           <Text style={styles.financeText}>💰 Randevu ücreti mali işlemlere gelir olarak kayıt edilsin mi?</Text>
@@ -202,7 +198,6 @@ const renderRandevu = ({ item }: any) => {
         </View>
       )}
 
-      {/* --- MÜDÜR: 2. SENARYO -> BANKO 'HAYIR' DEDİYSE (İŞLEM BEKLİYOR) --- */}
       {isPending && (
         <View style={styles.pendingBox}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
@@ -215,7 +210,6 @@ const renderRandevu = ({ item }: any) => {
         </View>
       )}
 
-      {/* --- MÜDÜR: 3. SENARYO -> NORMAL AKTİF RANDEVU (ARA / İPTAL) --- */}
       {(!isCompleted && !isPending) && (
         <View style={styles.buttonRow}>
           <TouchableOpacity 
@@ -241,7 +235,6 @@ const renderRandevu = ({ item }: any) => {
 };
 
   return (
-    // MÜDÜR: Örnek kodundaki SafeAreaView ve StatusBar senkronu burada
     <SafeAreaView style={[styles.container, isDarkMode && darkStyles.container]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
@@ -276,14 +269,12 @@ const renderRandevu = ({ item }: any) => {
   );
 }
 
-// --- MÜDÜR: STİLLER SENİN KODUNDAKİ GİBİ BİREBİR KORUNDU ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 55, marginBottom: 15 },
   title: { fontSize: 26, fontWeight: '900', lineHeight: 26, color: '#1a1a1a' },
   subTitle: { fontSize: 14, fontWeight: '700', letterSpacing: 1 },
   exitBtn: { backgroundColor: '#FF3B30', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  // MÜDÜR: ÇİZGİ (borderWidth) YOK! SADECE GÖLGE VE DERİNLİK VAR.
   card: { padding: 24, borderRadius: 20, marginBottom: 15, elevation: 4, minHeight: 180, backgroundColor: '#ffffff' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' },
   badge: { backgroundColor: '#FF3B30', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
@@ -297,8 +288,6 @@ const styles = StyleSheet.create({
   cancelBtn: { backgroundColor: '#8E8E93' },
   btnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   emptyText: { textAlign: 'center', marginTop: 100, fontSize: 16, color: '#666666' },
-
-  // MÜDÜR: YENİ EKLENEN KUTU STİLLERİ (Şekli Bozulmadan Entegre Edildi)
   financeBox: { backgroundColor: '#E8F5E9', padding: 15, borderRadius: 12, marginTop: 10 },
   financeText: { color: '#2E7D32', fontSize: 13, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
   pendingBox: { backgroundColor: '#FFF8E1', padding: 15, borderRadius: 12, marginTop: 10 },
@@ -308,7 +297,6 @@ const styles = StyleSheet.create({
 const darkStyles = StyleSheet.create({
   container: { backgroundColor: '#121212' },
   header: { backgroundColor: '#121212', borderBottomColor: '#2C2C2C' },
-  // MÜDÜR: GECE MODUNDA DA ÇİZGİ YOK.
   card: { backgroundColor: '#1e1e1e' },
   textMain: { color: '#ffffff' },
   textSub: { color: '#aaaaaa' }
