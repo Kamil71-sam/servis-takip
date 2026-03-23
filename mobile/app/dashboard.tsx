@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
   ScrollView, StatusBar, Alert, Platform 
@@ -6,6 +6,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 // --- BÖLÜMLERİN İTHALAT MÜHÜRLERİ ---
 import YeniMusteriFormu from '../components/YeniMusteriFormu'; 
@@ -38,7 +39,6 @@ export default function DashboardScreen() {
   const [isMusteriSubMenuOpen, setIsMusteriSubMenuOpen] = useState(false);
   const [isListeSubMenuOpen, setIsListeSubMenuOpen] = useState(false); 
   const [isRandevuSubMenuOpen, setIsRandevuSubMenuOpen] = useState(false); 
-  // MÜDÜR: Envanter menüsü için yeni kilit eklendi
   const [isEnvanterSubMenuOpen, setIsEnvanterSubMenuOpen] = useState(false); 
 
   const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; 
@@ -73,7 +73,6 @@ export default function DashboardScreen() {
     }
   };
 
-  // MÜDÜR: Envanter menüsünü açıp diğerlerini kapatan motor
   const toggleEnvanterMenu = () => {
     const nextState = !isEnvanterSubMenuOpen;
     setIsEnvanterSubMenuOpen(nextState);
@@ -84,41 +83,42 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
-      try {
-        const srvData = await getServices();
-        const bekleyenler = (srvData || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
-        setOnayBekleyenSayisi(bekleyenler.length);
+  const fetchDashboardStats = async () => {
+    try {
+      const srvData = await getServices();
+      const bekleyenler = (srvData || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
+      setOnayBekleyenSayisi(bekleyenler.length);
 
-        const matRes = await getAllMaterialRequests();
-        if (matRes && matRes.success) {
-          const talepler = (matRes.data || []).filter((m: any) => m.status === 'Beklemede');
-          setParcaBekleyenSayisi(talepler.length);
-        }
-
-        const response = await fetch('http://192.168.1.41:3000/api/operation/pending-confirmations');
-        const teyitData = await response.json();
-        if (teyitData.success) {
-          setTeyitBekleyenSayisi(teyitData.data.length);
-        }
-
-      } catch (e) { 
-        console.log("Dashboard motoru iletişim bekliyor..."); 
+      const matRes = await getAllMaterialRequests();
+      if (matRes && matRes.success) {
+        const talepler = (matRes.data || []).filter((m: any) => m.status === 'Beklemede');
+        setParcaBekleyenSayisi(talepler.length);
       }
-    };
 
-    fetchDashboardStats();
-    const interval = setInterval(fetchDashboardStats, 5000); 
+      const response = await fetch('http://192.168.1.41:3000/api/operation/pending-confirmations');
+      const teyitData = await response.json();
+      if (teyitData.success) {
+        setTeyitBekleyenSayisi(teyitData.data.length);
+      }
+    } catch (e) { 
+      console.log("Dashboard motoru iletişim bekliyor..."); 
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardStats();
+    }, [])
+  );
+
+  useEffect(() => {
+    const interval = setInterval(fetchDashboardStats, 10000); 
     return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   };
 
   return (
@@ -132,10 +132,7 @@ export default function DashboardScreen() {
             <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
               <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
             </TouchableOpacity>
-            <View style={styles.topWeather}>
-              <Ionicons name={isDarkMode ? "cloudy" : "sunny"} size={18} color={isDarkMode ? "#aaa" : "#FFA500"} />
-              <Text style={[styles.topWeatherText, isDarkMode && styles.darkText]}> 18°C</Text>
-            </View>
+            {/* HAVA DURUMU KÖKÜNDEN SÖKÜLDÜ */}
           </View>
           <View style={styles.topActions}>
             <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={{ marginRight: 25 }}>
@@ -172,10 +169,7 @@ export default function DashboardScreen() {
             activeOpacity={0.9} 
             onPress={() => router.push({ 
               pathname: '/servisler', 
-              params: { 
-                theme: isDarkMode ? 'dark' : 'light',
-                filterMode: 'onlyOnay'
-              } 
+              params: { theme: isDarkMode ? 'dark' : 'light', filterMode: 'onlyOnay' } 
             })}
           >
             <Ionicons name={onayBekleyenSayisi > 0 ? "warning" : "checkmark-circle"} size={22} color="#fff" />
@@ -192,10 +186,7 @@ export default function DashboardScreen() {
             activeOpacity={0.9} 
             onPress={() => router.push({ 
               pathname: '/banko_stok_onay', 
-              params: { 
-                theme: isDarkMode ? 'dark' : 'light',
-                filterMode: 'onlyStok' 
-              } 
+              params: { theme: isDarkMode ? 'dark' : 'light', filterMode: 'onlyStok' } 
             })}
           >
             <Ionicons name="cube-outline" size={22} color="#fff" />
@@ -209,7 +200,7 @@ export default function DashboardScreen() {
 
           {teyitBekleyenSayisi >= 0 && (
             <TouchableOpacity 
-              style={[styles.alertBanner, { backgroundColor: '#6558dd', marginTop: 12, height: 56,  }]} 
+              style={[styles.alertBanner, { backgroundColor: '#6558dd', marginTop: 12, height: 56 }]} 
               activeOpacity={0.9} 
               onPress={() => router.push({ 
                 pathname: '/randevu_takip', 
@@ -224,7 +215,6 @@ export default function DashboardScreen() {
               <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
             </TouchableOpacity>
           )}
-
         </ScrollView>
 
         {isMenuOpen && (
@@ -233,7 +223,6 @@ export default function DashboardScreen() {
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
               <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
               <ScrollView showsVerticalScrollIndicator={false}>
-                
                 <TouchableOpacity style={styles.menuItem} onPress={toggleMusteriMenu}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="people-outline" size={24} color={D_COLOR} />
@@ -291,10 +280,7 @@ export default function DashboardScreen() {
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Kayıt Oluşturma</Text>
                     </TouchableOpacity>
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
-                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
-                        setIsMenuOpen(false); 
-                        router.push({ pathname: '/servisler', params: { theme: isDarkMode ? 'dark' : 'light' } }); 
-                    }}>
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push({ pathname: '/servisler', params: { theme: isDarkMode ? 'dark' : 'light' } }); }}>
                       <Ionicons name="list-circle" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Kayıt Listeleme</Text>
                     </TouchableOpacity>
@@ -323,7 +309,6 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                {/* --- MÜDÜR: YENİ ENVANTER İŞLEMLERİ ASANSÖR MENÜSÜ --- */}
                 <TouchableOpacity style={styles.menuItem} onPress={toggleEnvanterMenu}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="file-tray-full-outline" size={24} color={D_COLOR} />
@@ -334,8 +319,6 @@ export default function DashboardScreen() {
 
                 {isEnvanterSubMenuOpen && (
                   <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
-                    
-                    {/* PARÇA TAKİBİ (Eski tekli buton buraya taşındı, rozetiyle birlikte) */}
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push('/banko_stok_onay'); }}>
                       <Ionicons name="cube-outline" size={20} color={parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR} style={{ marginRight: 15 }} />
                       <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -347,40 +330,19 @@ export default function DashboardScreen() {
                         )}
                       </View>
                     </TouchableOpacity>
-                    
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
-                    
-                    {/* STOK İŞLEMLERİ (Yeni eklenen bölüm) */}
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { setStokVisible(true); setIsMenuOpen(false); }}>
                       <Ionicons name="layers-outline" size={20} color={D_COLOR} style={{ marginRight: 15 }} />
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Stok İşlemleri</Text>
                     </TouchableOpacity>
-
                   </View>
                 )}
-                {/* -------------------------------------------------------- */}
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMaliVisible(true); setIsMenuOpen(false); }}>
                   <Ionicons name="wallet-outline" size={24} color={D_COLOR} />
                   <Text style={[styles.menuItemText, { color: D_COLOR }]}>Mali İşlemler</Text>
                 </TouchableOpacity>
               </ScrollView>
-              
-              <View style={styles.fixedInfoArea}>
-                <View style={[styles.infoDivider, isDarkMode && styles.darkBorder]} />
-                <View style={styles.fixedInfoRow}>
-                  <Ionicons name="alert-circle" size={18} color={onayBekleyenSayisi > 0 ? "#FF3B30" : "#34C759"} />
-                  <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>
-                    Onay Bekleyen İş: {onayBekleyenSayisi}
-                  </Text>
-                </View>
-                <View style={styles.fixedInfoRow}>
-                  <Ionicons name="cart-outline" size={18} color={parcaBekleyenSayisi > 0 ? "#FF9500" : "#34C759"} />
-                  <Text style={[styles.fixedInfoText, isDarkMode && styles.darkText]}>
-                    Parça Bekleyen: {parcaBekleyenSayisi}
-                  </Text>
-                </View>
-              </View>
             </View>
           </View>
         )}
@@ -400,8 +362,6 @@ const styles = StyleSheet.create({
   darkContainer: { backgroundColor: '#121212' },
   darkBorder: { borderColor: '#333' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 60, borderBottomWidth: 1, borderColor: '#eee' },
-  topWeather: { marginLeft: 15, flexDirection: 'row', alignItems: 'center' },
-  topWeatherText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   topActions: { flexDirection: 'row', alignItems: 'center' },
   scrollContent: { padding: 25 },
   headerSection: { marginBottom: 20, alignItems: 'center' },
@@ -414,7 +374,6 @@ const styles = StyleSheet.create({
   actionText: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginLeft: 10 },
   alertBanner: { height: 55, borderRadius: 15, flexDirection: 'row', paddingHorizontal: 15, alignItems: 'center', marginTop: 12, elevation: 4 },
   alertTitle: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  alertText: { color: '#fff', fontWeight: '600', fontSize: 12, opacity: 0.9 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, flexDirection: 'row' },
   menuContainer: { width: '75%', height: '100%', backgroundColor: '#fff', paddingVertical: 60, paddingHorizontal: 0 },
   menuTitle: { fontSize: 20, fontWeight: '900', marginBottom: 30, paddingHorizontal: 30 },
@@ -425,9 +384,5 @@ const styles = StyleSheet.create({
   subMenuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingLeft: 45 },
   subMenuItemText: { fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
   subMenuDivider: { height: 1, backgroundColor: '#eee', marginLeft: 45 },
-  fixedInfoArea: { position: 'absolute', bottom: 30, left: 30, right: 30 },
-  infoDivider: { height: 1, backgroundColor: '#eee', marginBottom: 15 },
-  fixedInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  fixedInfoText: { marginLeft: 10, fontSize: 14, color: '#666', fontWeight: 'bold' },
   darkText: { color: '#fff' }
 });
