@@ -4,8 +4,11 @@ import {
   Modal, ScrollView, SafeAreaView, Platform, TextInput, Alert, ActivityIndicator 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ParaGirisiFormu from './ParaGirisiFormu';
+import { useRouter } from 'expo-router'; // MÜDÜR: Rota motoru eklendi
 import ParaCikisiFormu from './ParaCikisiFormu';
+import { useFocusEffect } from 'expo-router'; 
+import { useCallback } from 'react';
+
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -74,7 +77,7 @@ const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => 
     subText: isDarkMode ? '#aaa' : '#666',
     border: isDarkMode ? '#333' : '#eee',
     activeBg: isDarkMode ? '#333' : '#1A1A1A',
-    inputBg: isDarkMode ? '#2c2c2c' : '#f9f9f9',
+    inputBg: isDarkMode ? '#2c2c2c' : '#f2f2f2',
   };
 
   const handleUygula = () => {
@@ -150,7 +153,6 @@ const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => 
   );
 };
 
-// --- MÜDÜR: KÜÇÜK SATIRA TIKLAYINCA AÇILAN DETAY (TEKİL KART) ---
 const IslemDetayModal = ({ visible, islem, onClose, isDarkMode }: any) => {
   if (!visible || !islem) return null;
   const theme = { bg: isDarkMode ? '#1e1e1e' : '#fff', text: isDarkMode ? '#fff' : '#1A1A1A', subText: isDarkMode ? '#aaa' : '#666', border: isDarkMode ? '#333' : '#eee' };
@@ -188,7 +190,6 @@ const IslemDetayModal = ({ visible, islem, onClose, isDarkMode }: any) => {
   );
 };
 
-// --- MÜDÜR: YENİ TAM EKRAN DETAYLI LİSTE ASANSÖRÜ (MAX 3CM KARTLAR) ---
 const DetayliListeModal = ({ visible, islemler, onClose, isDarkMode }: any) => {
   const theme = { bg: isDarkMode ? '#121212' : '#f4f6f8', cardBg: isDarkMode ? '#1e1e1e' : '#fff', border: isDarkMode ? '#333' : '#eee', text: isDarkMode ? '#fff' : '#1A1A1A', subText: isDarkMode ? '#aaa' : '#666' };
 
@@ -238,7 +239,7 @@ const DetayliListeModal = ({ visible, islemler, onClose, isDarkMode }: any) => {
 };
 
 export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: any) {
-  const [entryVisible, setEntryVisible] = useState(false);
+  const router = useRouter(); // MÜDÜR: Vana açıldı
   const [exitVisible, setExitVisible] = useState(false); 
   const [detayliListeVisible, setDetayliListeVisible] = useState(false); 
   const [detayModalVisible, setDetayModalVisible] = useState(false);
@@ -248,10 +249,17 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
   const [ciktiModalVisible, setCiktiModalVisible] = useState(false);
   const [aktifFiltreMetni, setAktifFiltreMetni] = useState('Tüm Nakit Hareketleri');
 
-  // MÜDÜR: İŞTE O TYPESCRIPT HATASI VEREN YERİ TEMİZLEDİK, GERÇEK VERİYE BAĞLADIK!
   const [islemler, setIslemler] = useState<any[]>([]);
   const [ozet, setOzet] = useState({ toplam_giris: 0, toplam_cikis: 0, net_bakiye: 0 });
   const [loading, setLoading] = useState(false);
+
+// --- MÜDÜRÜN RADARI: SAYFAYA GERİ DÖNÜNCE LİSTEYİ TAZELE ---
+  useFocusEffect(
+    useCallback(() => {
+      fetchKasaHareketleri();
+    }, [])
+  );
+
 
   const fetchKasaHareketleri = async () => {
     setLoading(true);
@@ -269,12 +277,7 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
     }
   };
 
-  useEffect(() => {
-    if (visible && !entryVisible && !exitVisible) {
-      fetchKasaHareketleri();
-    }
-  }, [visible, entryVisible, exitVisible]);
-
+  
   const handleFiltreUygula = (ozetMetni: string) => {
     setAktifFiltreMetni(ozetMetni);
     setFilterModalVisible(false);
@@ -306,10 +309,8 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             <TouchableOpacity onPress={onClose} activeOpacity={0.7}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
           </View>
 
-          {/* MÜDÜR: Alt Boşluk 0.5 cm Hedefi İçin paddingBottom: 30 Yapıldı */}
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
             
-            {/* MÜDÜR: KARTIN BOYU FERAHALTILDI! */}
             <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
               <Text style={[styles.summaryLabel, { color: theme.subText }]}>NET KASA DURUMU</Text>
               <Text style={[styles.netKasaText, { color: theme.textColor }]}>{formatMoney(ozet.net_bakiye)} ₺</Text>
@@ -321,7 +322,11 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             </View>
 
             <View style={styles.actionRow}>
-              <TouchableOpacity style={[styles.actionBtnSolid, { backgroundColor: theme.girisBtnBg }]} onPress={() => setEntryVisible(true)}>
+              {/* MÜDÜR: DOSYA ADI paragirisiformu.tsx OLDUĞU İÇİN YOLU BUNA GÖRE MÜHÜRLEDİM! */}
+              <TouchableOpacity 
+                style={[styles.actionBtnSolid, { backgroundColor: theme.girisBtnBg }]} 
+                onPress={() => router.push("/paragirisiformu")} 
+              >
                 <View style={[styles.iconCircleSolid, { backgroundColor: 'rgba(255,255,255,0.1)' }]}><Ionicons name="arrow-down" size={26} color="#fff" /></View>
                 <Text style={styles.actionBtnTextSolid}>PARA GİRİŞİ</Text>
               </TouchableOpacity>
@@ -331,7 +336,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               </TouchableOpacity>
             </View>
 
-            {/* MÜDÜR: BAŞLIK "GÜNCEL HAREKETLER" OLDU */}
             <View style={styles.listHeaderRow}>
               <Text style={[styles.sectionTitleLeft, { color: theme.textColor }]}>GÜNCEL HAREKETLER</Text>
               <TouchableOpacity style={styles.detayliListeBtn} onPress={() => setDetayliListeVisible(true)}>
@@ -344,7 +348,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               {loading ? ( <ActivityIndicator color="#FF3B30" style={{ padding: 30 }} /> ) 
               : islemler.length === 0 ? ( <Text style={{ textAlign: 'center', padding: 20, color: theme.subText, fontWeight: 'bold' }}>Kasa hareketi yok.</Text> ) 
               : (
-                // MÜDÜR: TÜM LİSTE GÖSTERİLİYOR EKRAN DOLSUN DİYE
                 islemler.map((islem, index) => (
                   <TouchableOpacity 
                     key={islem.id} 
@@ -353,7 +356,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
                     activeOpacity={0.7}
                   >
                     <View style={styles.miniListLeft}>
-                      {/* MÜDÜR: İSTEDİĞİN O GRİ/KIRMIZI KUTU İÇİNDEKİ SİYAH/BEYAZ İKONLAR! YEŞİL OK YOK! */}
                       <View style={[styles.listIconBox, { backgroundColor: islem.islem_yonu === 'GİRİŞ' ? theme.btnBg : '#FFEBEE' }]}>
                         <Ionicons name={islem.islem_yonu === 'GİRİŞ' ? "add" : "remove"} size={20} color={islem.islem_yonu === 'GİRİŞ' ? theme.textColor : '#FF3B30'} />
                       </View>
@@ -368,7 +370,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             </View>
           </ScrollView>
 
-          <ParaGirisiFormu visible={entryVisible} onClose={() => setEntryVisible(false)} isDarkMode={isDarkMode} />
           <ParaCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} />
           <IslemDetayModal visible={detayModalVisible} islem={seciliIslem} onClose={() => setDetayModalVisible(false)} isDarkMode={isDarkMode} />
           <DetayliListeModal visible={detayliListeVisible} islemler={islemler} onClose={() => setDetayliListeVisible(false)} isDarkMode={isDarkMode} />
@@ -387,8 +388,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 50 : 20, marginBottom: 15 },
   titleBadge: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   title: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  
-  // MÜDÜR: KART PADDING'İ VE MARGIN'İ FERAHATILDI!
   summaryCard: { borderRadius: 20, padding: 18, borderWidth: 1, elevation: 5, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, marginBottom: 15 },
   summaryLabel: { fontSize: 11, fontWeight: 'bold', textAlign: 'center', letterSpacing: 1 },
   netKasaText: { fontSize: 34, fontWeight: '900', textAlign: 'center', marginVertical: 8 },
@@ -398,27 +397,20 @@ const styles = StyleSheet.create({
   teraziColRight: { flex: 1, alignItems: 'flex-end' },
   teraziLabel: { fontSize: 10, fontWeight: 'bold', marginBottom: 3 },
   teraziValue: { fontSize: 16, fontWeight: '900' },
-
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   actionBtnSolid: { width: '48%', paddingVertical: 15, borderRadius: 20, alignItems: 'center', elevation: 6 },
   iconCircleSolid: { width: 45, height: 45, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   actionBtnTextSolid: { fontSize: 14, fontWeight: '900', color: '#fff' },
-
-  // MÜDÜR: BAŞLIK VE BUTON BAŞA BAŞ HİZALANDI
   listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 5 },
   sectionTitleLeft: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
   detayliListeBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   detayliListeBtnText: { color: '#fff', fontSize: 11, fontWeight: 'bold', marginRight: 4 },
-
   listContainer: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 15, elevation: 2 },
-  
-  // MÜDÜR: GRİ KUTULU İKONLAR İÇİN STİL
   miniListItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
   miniListLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 10, paddingLeft: 0 },
   listIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   miniListTitle: { fontSize: 14, fontWeight: '700' },
   miniListAmount: { fontSize: 15, fontWeight: '900' },
-
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   detayModalContent: { width: '90%', borderRadius: 25, padding: 25, elevation: 20 },
   detayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 },
@@ -432,7 +424,6 @@ const styles = StyleSheet.create({
   detayLabel: { fontSize: 13, fontWeight: 'bold', color: '#888', flex: 1 },
   detayValue: { fontSize: 14, fontWeight: '600', flex: 1.5, textAlign: 'right' },
   detayAciklamaKutu: { width: '100%', padding: 15, borderRadius: 12, minHeight: 80 },
-
   tamListeKart: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10, elevation: 1 },
   tamListeKartUst: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   tamListeKategori: { fontSize: 15, fontWeight: '800', flex: 1 },
@@ -443,7 +434,6 @@ const styles = StyleSheet.create({
   tamListeKartAlt: { borderTopWidth: 1, paddingTop: 6, marginTop: 2 },
   tamListeDetayMetin: { fontSize: 12, fontWeight: '600' },
   tamListeNotMetin: { fontSize: 11, fontStyle: 'italic', marginTop: 2 },
-
   filterPanelContent: { width: '90%', borderRadius: 25, padding: 25, elevation: 20 },
   filterTabsRow: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, marginBottom: 15 },
   filterTab: { flex: 1, alignItems: 'center', paddingVertical: 15, borderBottomWidth: 3, borderBottomColor: 'transparent' },
@@ -455,7 +445,6 @@ const styles = StyleSheet.create({
   rangeHalfInput: { width: '48%', borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: '500', textAlign: 'center' },
   applyBtn: { width: '100%', paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: 10 },
   applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-
   ciktiModalContent: { width: '85%', borderRadius: 25, padding: 25, alignItems: 'center', elevation: 20 },
   ciktiIconBox: { width: 70, height: 70, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   ciktiTitle: { fontSize: 18, fontWeight: '900', marginBottom: 10 },

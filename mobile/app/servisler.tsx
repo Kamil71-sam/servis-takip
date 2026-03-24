@@ -10,19 +10,29 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getServices, updateService } from '../services/api';
 
 export default function ServisListesi() {
+
   const router = useRouter();
   const params = useLocalSearchParams();
   const isDarkMode = params.theme === 'dark';
-  const filterMode = params.filterMode; // MÜDÜR: Dashboard'dan gelen sis farı komutu
+  const filterMode = params.filterMode; 
 
   const [servisler, setServisler] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, set_search] = useState('');
   
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
+  
+  // MÜDÜR: TÜM GİRİŞ ALANLARI BURADA TANIMLANDI
   const [editForm, setEditForm] = useState({
-    issue_text: '', status: '', atanan_usta: '', offer_price: '', musteri_notu: ''
+    issue_text: '', 
+    status: '', 
+    atanan_usta: '', 
+    offer_price: '', 
+    musteri_notu: '',
+    marka: '',
+    model: '',
+    seri_no: ''
   });
 
   const [statusModalVisible, setStatusModalVisible] = useState(false);
@@ -63,12 +73,17 @@ export default function ServisListesi() {
 
   const handleEditPress = (item: any) => {
     setSelectedService(item);
+    // MÜDÜR: PG VERİTABANI ÇIKTISINA (marka_model, seri_no_text) GÖRE MÜHÜRLEDİK
     setEditForm({
-      issue_text: item.ariza || '',
-      status: item.durum || 'Yeni Kayıt',
-      atanan_usta: item.usta || '',
+      issue_text: item.ariza || item.issue_text || '',
+      status: item.durum || item.status || 'Yeni Kayıt',
+      atanan_usta: item.usta || item.atanan_usta || '',
       offer_price: item.offer_price?.toString() || item.price?.toString() || '',
-      musteri_notu: item.eklenen_notlar || ''
+      musteri_notu: item.eklenen_notlar || item.musteri_notu || '',
+      // MÜDÜR: PG'DEN GELEN BİRLEŞİK METNİ YAKALIYORUZ
+      marka: item.marka_model || item.marka || '',
+      model: item.model || '',
+      seri_no: item.seri_no_text || item.seri_no || ''
     });
     setModalVisible(true);
   };
@@ -86,25 +101,46 @@ export default function ServisListesi() {
 
   const handleStatusChange = async (newStatus: string, serviceId?: number) => {
     const id = serviceId || selectedForStatus?.id;
+    const item = selectedForStatus; 
     if (!id) return;
 
-    const isArchive = newStatus === 'Teslim Edildi' || newStatus === 'İptal Edildi';
+    if (newStatus === 'Teslim Edildi') {
+      const ustaFiyati = Number(item?.offer_price || item?.price || 0);
+      
+      if (ustaFiyati <= 0) {
+        Alert.alert(
+          "DUR MÜDÜRÜM!", 
+          "Bu cihazın usta fiyatı (maliyet) girilmemiş. Fiyatı olmayan işi teslim edemezsin!",
+          [{ text: "ANLAŞILDI", style: "cancel" }]
+        );
+        return;
+      }
 
-    if (isArchive) {
       Alert.alert(
-        "KAYIT ARŞİVLENİYOR",
-        `${newStatus} işlemi geri alınamaz ve aktif listeden kalkar. Devam etmek istiyor musunuz?`,
+        "ÖDEME EKRANINA AKTARIM",
+        "Cihaz teslim ediliyor. Ödeme ekranına yönlendirileceksiniz. Onaylıyor musunuz?",
         [
           { text: "Vazgeç", style: "cancel" },
           { 
-            text: "Evet, Onayla", 
+            text: "Onayla", 
             onPress: async () => {
               try {
                 await updateService(id, { status: newStatus });
                 setStatusModalVisible(false);
                 fetchServisler();
+
+                router.push({
+                  pathname: "/paragirisiformu",
+                  params: { 
+                    servis_id: id,
+                    servis_no: item?.plaka || item?.servis_no,
+                    usta_fiyati: ustaFiyati,
+                    islem_turu: 'Tamir Ücreti Tahsili',
+                    musteri: item?.musteri_adi || 'İsimsiz'
+                  }
+                });
               } catch (error) {
-                Alert.alert("Hata", "İşlem başarısız.");
+                Alert.alert("Hata", "Statü güncellenemedi.");
               }
             } 
           }
@@ -116,7 +152,7 @@ export default function ServisListesi() {
         setStatusModalVisible(false);
         fetchServisler();
       } catch (error) {
-        Alert.alert("Hata", "Güncellenemedi.");
+        Alert.alert("Hata", "Güncelleme yapılamadı.");
       }
     }
   };
@@ -136,6 +172,8 @@ export default function ServisListesi() {
     if (status === 'Hazır') return theme.success;
     return theme.antrasit;
   };
+
+  const setSearch = (t: string) => { set_search(t); };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -161,20 +199,17 @@ export default function ServisListesi() {
 
       {loading ? ( <ActivityIndicator color={theme.primary} style={{ marginTop: 20 }} /> ) : (
         <FlatList
-          // MÜDÜR: ASANSÖR SİSTEMİ BURAYA KURULDU
           data={[...filtered].sort((a, b) => {
             if (filterMode === 'onlyOnay') {
               const aTarget = a.durum === 'Onay Bekliyor' || a.status === 'Onay Bekliyor';
               const bTarget = b.durum === 'Onay Bekliyor' || b.status === 'Onay Bekliyor';
-              
-              if (aTarget && !bTarget) return -1; // Onay bekleyenleri en üste at
+              if (aTarget && !bTarget) return -1;
               if (!aTarget && bTarget) return 1;
             }
-            return 0; // Filtre yoksa sırayı elleme
+            return 0;
           })}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => {
-            // MÜDÜR: Vurgu (Sis Farı) ayarı tam burada
             const isDimmed = filterMode === 'onlyOnay' && (item.durum !== 'Onay Bekliyor' && item.status !== 'Onay Bekliyor');
 
             return (
@@ -182,9 +217,9 @@ export default function ServisListesi() {
                 style={[
                   styles.card, 
                   { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
-                  isDimmed && { opacity: 0.2 } // SÖNÜK OLSUN
+                  isDimmed && { opacity: 0.2 } 
                 ]}
-                pointerEvents={isDimmed ? 'none' : 'auto'} // MÜDAHALE EDİLEMESİN
+                pointerEvents={isDimmed ? 'none' : 'auto'}
               >
                 <View style={styles.cardMain}>
                   <Text style={[styles.name, { color: theme.textColor }]}>{(item.musteri_adi || "İSİMSİZ").toUpperCase()}</Text>
@@ -205,18 +240,8 @@ export default function ServisListesi() {
                     <Ionicons name="calendar-outline" size={14} color={theme.subText} />
                     <Text style={[styles.cardText, { color: theme.subText }]}> {item.tarih || '-'}</Text>
                   </View>
-
-                  {(item.offer_price > 0 || item.price > 0) && (
-                    <View style={styles.priceContainer}>
-                      <Ionicons name="wallet-outline" size={14} color={theme.primary} />
-                      <Text style={[styles.priceText, { color: theme.textColor }]}>
-                        Fiyat Teklifi: <Text style={{fontWeight: '900'}}>{item.offer_price || item.price} TL</Text>
-                      </Text>
-                    </View>
-                  )}
                 </View>
 
-                {/* MÜDÜR: Yeşil telefon faaliyeti artık "Hazır" durumunda da canlı! */}
                 {((item.durum === 'Onay Bekliyor' || item.status === 'Onay Bekliyor') || 
                    (item.durum === 'Hazır' || item.status === 'Hazır')) && (
                   <TouchableOpacity 
@@ -236,7 +261,7 @@ export default function ServisListesi() {
                   <TouchableOpacity 
                     style={styles.actionRow} 
                     onPress={() => handleEditPress(item)}
-                    disabled={isDimmed} // Sönükse tıklanmasın
+                    disabled={isDimmed}
                   >
                     <Text style={[styles.actionLabel, { color: theme.antrasit }]}>Düzenle</Text>
                     <Ionicons name="create" size={20} color={theme.antrasit} />
@@ -246,7 +271,7 @@ export default function ServisListesi() {
                   <TouchableOpacity 
                     style={styles.actionRow} 
                     onPress={() => { setSelectedForStatus(item); setStatusModalVisible(true); }}
-                    disabled={isDimmed} // Sönükse tıklanmasın
+                    disabled={isDimmed}
                   >
                     <Text style={[styles.actionLabel, { color: theme.info }]}>Durum</Text>
                     <Ionicons name="swap-horizontal" size={20} color={theme.info} />
@@ -268,7 +293,7 @@ export default function ServisListesi() {
               <View style={[styles.deviceBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }]}>
                 <Text style={styles.deviceLabel}>DÜZENLENEN CİHAZ</Text>
                 <Text style={[styles.deviceText, { color: theme.textColor }]}>
-                  {selectedService?.cihaz_tipi} - {selectedService?.marka_model}
+                  {selectedService?.marka_model || 'Bilinmeyen Cihaz'}
                 </Text>
               </View>
 
@@ -285,9 +310,27 @@ export default function ServisListesi() {
               </View>
 
               <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>cihaz künyesi (Marka/Model)</Text>
+                <TextInput style={[styles.modalInput, { color: theme.textColor, borderColor: theme.borderColor }]}
+                  value={editForm.marka} onChangeText={(t) => setEditForm({...editForm, marka: t})} />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>seri no</Text>
+                <TextInput style={[styles.modalInput, { color: theme.textColor, borderColor: theme.borderColor }]}
+                  value={editForm.seri_no} onChangeText={(t) => setEditForm({...editForm, seri_no: t})} />
+              </View>
+
+              <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>atanan usta</Text>
                 <TextInput style={[styles.modalInput, { color: theme.textColor, borderColor: theme.borderColor }]}
                   value={editForm.atanan_usta} onChangeText={(t) => setEditForm({...editForm, atanan_usta: t})} />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>usta teklifi / maliyet (₺)</Text>
+                <TextInput style={[styles.modalInput, { color: theme.textColor, borderColor: theme.borderColor }]}
+                  value={editForm.offer_price} onChangeText={(t) => setEditForm({...editForm, offer_price: t})} keyboardType="numeric" />
               </View>
 
               <View style={styles.modalButtons}>
@@ -312,11 +355,7 @@ export default function ServisListesi() {
               <Text style={[styles.statusSubTitle, { color: theme.subText }]}>{selectedForStatus?.marka_model}</Text>
             </View>
 
-            <ScrollView 
-              style={{ flexShrink: 1 }} 
-              contentContainerStyle={{ paddingVertical: 5 }} 
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
               {[
                 { label: 'Yeni Kayıt', color: theme.primary },
                 { label: 'Onay Bekliyor', color: '#1A1A1A' },
@@ -358,7 +397,7 @@ export default function ServisListesi() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 15 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 12 },
   title: { fontSize: 20, fontWeight: '700' },
   searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, height: 45, borderRadius: 10, marginBottom: 15, borderWidth: 1 },
   input: { flex: 1, marginLeft: 6, fontSize: 15 },
@@ -384,52 +423,26 @@ const styles = StyleSheet.create({
   modalInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 },
   btn: { flex: 0.48, height: 48, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  
-  // MÜDÜR: HAFIZADAKİ YEŞİL KUYU AYARLARI
   squareCallButton: {
     width: 50,
     height: 50,
     backgroundColor: '#34C759', 
     borderRadius: 10,
-    paddingTop: 8, // MÜDÜR: İKONU AŞAĞI İTEN AYAR
+    paddingTop: 8,
     alignItems: 'center',
     marginRight: 10,
     elevation: 3,
-    transform: [
-      { translateX: 12 }, // MÜDÜR: SAĞA KAKTIRMA
-      { translateY: 8 }   // MÜDÜR: AŞAĞI KAKTIRMA
-    ]
+    transform: [{ translateX: 12 }, { translateY: 8 }]
   },
-  squareCallText: {
-    color: '#FFF',
-    fontWeight: '900',
-    fontSize: 11,
-    marginTop: 2,
-    marginLeft: 3,
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 0.5,
-    borderTopColor: '#EEE',
-  },
-  priceText: {
-    marginLeft: 5,
-    fontSize: 13,
-  },
-  statusModalContent: { 
-    borderTopLeftRadius: 25, 
-    borderTopRightRadius: 25, 
-    paddingTop: 15, 
-    paddingHorizontal: 20, 
-    paddingBottom: Platform.OS === 'ios' ? 40 : 25, 
-    maxHeight: '90%' 
-  },
+  squareCallText: { color: '#FFF', fontWeight: '900', fontSize: 11, marginTop: 2, marginLeft: 3 },
+  statusModalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingTop: 15, paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 25, maxHeight: '90%' },
   statusSubTitle: { fontSize: 12, textAlign: 'center', fontWeight: 'bold', marginBottom: 10 },
   statusOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 }, 
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   statusOptionText: { flex: 1, fontSize: 15, fontWeight: '500' },
-  closeModalBtn: { marginTop: 15, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }
-});
+  closeModalBtn: { marginTop: 15, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  priceContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: '#EEE' },
+  priceText: { marginLeft: 5, fontSize: 13 }
+}); 
+  
+

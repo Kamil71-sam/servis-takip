@@ -133,18 +133,7 @@ export const getCustomerDevices = async (id: number, type: string = 'bireysel') 
   }
 };
 
-export const createDevice = async (deviceData: { 
-    customer_id?: number | null; 
-    firm_id?: number | null;
-    customer_type?: string;
-    brand: string; 
-    model: string; 
-    serial_no: string; 
-    cihaz_turu?: string; 
-    auto_focus?: string; 
-    garanti_durumu?: string; 
-    muster_notu?: string;
-}) => {
+export const createDevice = async (deviceData: any) => {
   try {
     const response = await fetch(`${API_URL}/devices`, {
       method: 'POST',
@@ -158,18 +147,7 @@ export const createDevice = async (deviceData: {
   }
 };
 
-
-
-
-
-export const createServiceRecord = async (serviceData: { 
-    device_id: number; 
-    customer_id?: number | null; 
-    firm_id?: number | null; // MÜDÜR: FIRMA BORUSU EKLENDİ!
-    issue_text: string; 
-    atanan_usta?: string; 
-    musteri_notu?: string;
-}) => {
+export const createServiceRecord = async (serviceData: any) => {
   try {
     const response = await fetch(`${API_URL}/services`, {
       method: 'POST',
@@ -182,41 +160,6 @@ export const createServiceRecord = async (serviceData: {
     throw error;
   }
 };
-
-
-
-
-
-/*
-
-// MÜDÜR: Buradaki tek hatayı bitiren güncelleme!
-export const createServiceRecord = async (serviceData: { 
-    device_id: number; 
-    customer_id?: number | null; // Boru buraya eklendi!
-    issue_text: string; 
-    atanan_usta?: string; 
-    musteri_notu?: string;
-}) => {
-  try {
-    const response = await fetch(`${API_URL}/services`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serviceData),
-    });
-    return await response.json();
-  } catch (error) {
-    console.error("Servis açılırken hata:", error);
-    throw error;
-  }
-};
-
-*/
-
-
-
-
-
-
 
 // --- MÜDÜR: SERVİS GÜNCELLEME ---
 export const updateService = async (id: number, data: any) => {
@@ -247,22 +190,48 @@ export const deleteService = async (id: number) => {
   }
 };
 
+// --- RANDEVU İŞLEMLERİ ---
 
 export const getAppointments = async () => {
   try {
-    // MÜDÜR: Tarayıcıda çalışan adresin aynısını buraya çakıyoruz
     const response = await fetch(`${API_URL}/api/appointments/liste/aktif`);
-    
     if (!response.ok) throw new Error("Randevu listesi alınamadı");
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error("Randevular çekilirken hata:", error);
     return [];
   }
 };
 
+// MÜDÜR: RANDEVU EKLEME BORUSU BURADA!
+export const createAppointment = async (appointmentData: any) => {
+  try {
+    const response = await fetch(`${API_URL}/api/appointments/ekle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(appointmentData),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Randevu oluşturulamadı");
+    return result;
+  } catch (error) {
+    console.error("Randevu ekleme hatası:", error);
+    throw error;
+  }
+};
 
+// MÜDÜR: ÇAKIŞMA KONTROLÜ (İptal olanları boş sayar)
+export const checkAppointmentCollision = async (date: string, time: string) => {
+  try {
+    const response = await fetch(`${API_URL}/api/appointments/check-conflict?date=${date}&time=${time}`);
+    if (!response.ok) throw new Error("Çakışma kontrolü başarısız");
+    const result = await response.json();
+    return result.isOccupied; // Backend'den true/false gelir
+  } catch (error) {
+    console.error("Çakışma kontrolü hatası:", error);
+    return false;
+  }
+};
 
 export const cancelAppointment = async (id: number) => {
   try {
@@ -270,15 +239,12 @@ export const cancelAppointment = async (id: number) => {
       method: "PUT",
       headers: { "Content-Type": "application/json" }
     });
-
-    const text = await response.text(); // Önce ham metni al (Hata sayfasını görmek için)
-    
+    const text = await response.text();
     try {
-        const result = JSON.parse(text); // Sonra JSON'a çevirmeyi dene
+        const result = JSON.parse(text);
         if (!response.ok) throw new Error(result.error || "Sunucu hatası");
         return result;
     } catch (e) {
-        // Eğer JSON değilse, gelen ham metni terminalde gör
         console.error("Backend'den garip bir şey geldi:", text);
         throw new Error("Sunucudan geçersiz yanıt geldi.");
     }
@@ -286,4 +252,3 @@ export const cancelAppointment = async (id: number) => {
     throw error;
   }
 };
-
