@@ -56,9 +56,49 @@ export default function ParaGirisiFormuV2() {
   const [isRecordFound, setIsRecordFound] = useState(!!params.servis_id);
   const [modalState, setModalState] = useState<'tur' | null>(null);
 
-  /**
-   * SERVİS MODÜLÜNDEN GELEN VERİLERİN ENTEGRASYONU (BUDANMADI)
+
+   /**
+   * SERVİS MODÜLÜNDEN GELEN VERİLERİN ENTEGRASYONU (ZIRH GİYDİRİLDİ)
    */
+  useEffect(() => {
+    if (params.servis_id && params.usta_fiyati) {
+        const ustaFiyati = Number(params.usta_fiyati);
+        const gelenTur = (params.islem_turu as string) || 'Tamir Ücreti Tahsili';
+
+        // --- MÜDÜRÜN ÇİFTE VERGİ KALKANI BURAYA GERİ GELDİ ---
+        const ham = gelenTur.includes('Randevu') ? (ustaFiyati / 1.5) : ustaFiyati;
+        const hesaplanan = gelenTur.includes('Randevu') ? ustaFiyati : calculateNihaiFiyat(ustaFiyati, 0);
+        
+        const mockRes: SQLDeviceData = {
+            kayitNumarasi: params.servis_no as string,
+            musteriFirmaAdi: params.musteri as string || 'Müşteri',
+            cihazTuru: gelenTur.includes('Randevu') ? 'Randevu İşlemi' : 'Cihaz',
+            marka: '', model: '', seriNo: '', garantiDurumu: '', musteriNotu: '',
+            atananUsta: '', arizaNotu: '', durum: '', kayitTarihi: '',
+            ustaTeklifi: ham
+        };
+
+        setF(prev => ({ 
+            ...prev, 
+            tur: gelenTur,
+            tutar: hesaplanan.toString(), // <-- ARTIK KDV BİNMEYECEK
+            aciklama: `${params.servis_no} nolu işlem tahsilatı.`,
+            cihazData: mockRes,
+            servis_id: Number(params.servis_id),
+            kayitNo: (params.servis_no as string) || ''
+        }));
+        setIsRecordFound(true);
+    }
+  }, [params.servis_id]); 
+
+
+
+
+
+
+    /*
+   * SERVİS MODÜLÜNDEN GELEN VERİLERİN ENTEGRASYONU (BUDANMADI)
+   
   useEffect(() => {
     if (params.servis_id && params.usta_fiyati) {
         const ustaFiyati = Number(params.usta_fiyati);
@@ -86,6 +126,12 @@ export default function ParaGirisiFormuV2() {
     }
   }, [params.servis_id]);
 
+*/
+
+
+
+
+
   const theme = {
     bg: isDarkMode ? '#121212' : '#fff',
     cardBg: isDarkMode ? '#1e1e1e' : '#f9f9f9',
@@ -96,11 +142,94 @@ export default function ParaGirisiFormuV2() {
     accentColor: '#FF3B30'
   };
 
-  /**
-   * VERİTABANI ÜZERİNDEN MANUEL KAYIT SORGULAMA (V2 HATTINA ÇEKİLDİ)
+
+
+/**
+   * VERİTABANI ÜZERİNDEN MANUEL KAYIT SORGULAMA (ZIRHLI V2 VE RANDEVU MAKASI)
    */
   const handleSearchRecord = async () => {
     if (!f.kayitNo) return;
+    
+    console.log("Seçilen Tür:", f.tur); // İspiyoncu logumuz
+    setIsSearching(true);
+    
+    try {
+        // --- MÜDÜRÜN AKILLI MAKASI ---
+        // Eğer Randevu seçiliyse yeni radara, değilse eski tamir radarına git!
+        const searchUrl = f.tur.includes('Randevu')
+            ? `${API_BASE_URL}/api/kasa/search-randevu?servis_no=${f.kayitNo}`
+            : `${API_BASE_URL}/api/kasa_v2/search-v2?servis_no=${f.kayitNo}`;
+
+        // MÜDÜR: Artık sabit adrese değil, yukarıdaki makasın seçtiği adrese gidiyoruz!
+        const response = await fetch(searchUrl);
+        const resData = await response.json();
+        
+        console.log("CEVAP GELDİ Mİ?:", resData); 
+
+        if (resData.success && resData.found) {
+            const dev = resData.device;
+            const ustaFiyati = Number(dev.fiyatTeklifi) || 0;
+
+            // --- MÜDÜRÜN KİLİDİ ---
+            if (ustaFiyati <= 0) {
+                Alert.alert("DUR!", "Bu cihazın/randevunun ücreti 0 veya boş görünüyor. Lütfen önce ustaya fiyat girişi yaptırın.");
+                setIsRecordFound(false); 
+                return; 
+            }
+
+            // MÜDÜR: RANDEVUYSA KDV ÇIKAR (1.5'e böl), TAMİRSE OLDUĞU GİBİ AL
+            const hamFiyat = f.tur.includes('Randevu') ? (ustaFiyati / 1.5) : ustaFiyati;
+
+            const v2ResData: SQLDeviceData = {
+                kayitNumarasi: dev.servis_no || dev["Kayıt Numarası"],
+                musteriFirmaAdi: dev.musteri_adi || dev["Müşteri Firma Adı"] || 'Belirtilmemiş',
+                cihazTuru: dev.cihaz_turu || (f.tur.includes('Randevu') ? 'Randevu İşlemi' : 'Cihaz'),
+                marka: dev.marka || '', model: dev.model || '', seriNo: dev.seri_no || '',
+                garantiDurumu: '', musteriNotu: '', atananUsta: '', arizaNotu: '',
+                durum: dev.status || 'Hazır', kayitTarihi: '',
+                ustaTeklifi: hamFiyat // Formun iskontosu bozulmasın diye ham fiyatı yolladık
+            };
+
+            // MÜDÜR: Randevuysa ustanın rakamını direkt ekrana bas, tamirse hesaplama motoruna sok
+            const hesaplanan = f.tur.includes('Randevu') ? ustaFiyati : calculateNihaiFiyat(ustaFiyati, 0);
+
+            setF({ 
+              ...f, 
+              cihazData: v2ResData, 
+              iskonto: '0', 
+              tutar: hesaplanan.toString(), 
+              servis_id: dev.id, 
+              aciklama: `${v2ResData.kayitNumarasi} nolu işlem tahsilatı.` 
+            });
+            setIsRecordFound(true);
+        } else {
+            Alert.alert("BİLGİ", "Girilen numarada uygun bir kayıt bulunamadı.");
+            setIsRecordFound(false);
+        }
+    } catch (e) { 
+      Alert.alert("BAĞLANTI HATASI", "Sorgulama hattında bir sorun oluştu."); 
+    } finally { 
+      setIsSearching(false); 
+    }
+  };
+
+
+
+
+
+
+
+
+/*
+
+
+   * VERİTABANI ÜZERİNDEN MANUEL KAYIT SORGULAMA (V2 HATTINA ÇEKİLDİ)
+  
+  const handleSearchRecord = async () => {
+    if (!f.kayitNo) return;
+
+   // MÜDÜR: TELEFON ŞU AN HANGİ KAPIYA GİTMEYE ÇALIŞIYOR? BUNU TERMİNALE YAZDIR!
+    console.log("Seçilen Tür:", f.tur);
     setIsSearching(true);
     try {
         // MÜDÜR: BURAYI YENİ KASA_V2 HATTINA BAĞLADIM (Bozmadan Güçlendirildi)
@@ -163,9 +292,67 @@ export default function ParaGirisiFormuV2() {
     }
   };
 
+
+* /
+
 /**
    * ASIL KAYIT İŞLEMİ (Sadece Onay Verilirse Çalışır)
    */
+  const executeSave = async (ozelMesaj: string) => { 
+    setIsSaving(true);
+    try {
+      // --- MÜDÜRÜN İZOLE KAPISI GERİ GELDİ ---
+      // Randevuysa direkt tahsilat/temizlik kapısına gider, değilse eski tamir kapılarına!
+      const url = f.tur.includes('Randevu') 
+          ? `${API_BASE_URL}/api/tahsilat/banko-tahsilat` 
+          : (f.servis_id ? `${API_BASE_URL}/api/tahsilat/process` : `${API_BASE_URL}/api/kasa/add`);
+      
+      const payload = f.servis_id ? {
+          id: f.servis_id,
+          servis_no: f.kayitNo,
+          kategori: f.tur,
+          tutar: parseFloat(f.tutar),
+          aciklama: f.aciklama,
+          islem_yapan: 'Banko',
+          new_status: 'Teslim Edildi' // <-- Bu komut backend'i tetikleyecek
+      } : {
+          islem_yonu: 'GİRİŞ',
+          kategori: f.tur,
+          tutar: parseFloat(f.tutar),
+          aciklama: f.aciklama,
+          islem_yapan: 'Admin',
+          servis_no: f.kayitNo || null
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const resData = await response.json();
+      
+      if (resData.success) {
+        Alert.alert("İŞLEM BAŞARILI", ozelMesaj, [
+          { text: "TAMAM", onPress: () => router.back() }
+        ]);
+      } else {
+        Alert.alert("HATA", resData.error);
+      }
+    } catch (e) { 
+      Alert.alert("SUNUCU HATASI", "Veri iletimi başarısız."); 
+    } finally { 
+      setIsSaving(false); 
+    }
+  };
+
+
+
+
+
+/**
+   * ASIL KAYIT İŞLEMİ (Sadece Onay Verilirse Çalışır)
+   
   const executeSave = async (ozelMesaj: string) => { 
     setIsSaving(true);
     try {
@@ -213,8 +400,6 @@ export default function ParaGirisiFormuV2() {
 
 
 
-
-   /* 
   
   // Parantez içine 'ozelMesaj' kelimesini ekledik:
 const executeSave = async (ozelMesaj: string) => {  
