@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Müdürün Expo Başlatıcısı",
+      "type": "shell",
+      "command": "cd mobile; npx expo start -c",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      }
+    },
+    {
+      "type": "cmake",
+      "label": "CMake: derleme",
+      "command": "build",
+      "targets": [
+        "all"
+      ],
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "CMake şablonu derleme görevi"
+    }
+  ]
+}
