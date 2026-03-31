@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  Modal, ScrollView, SafeAreaView, Platform, TextInput, Alert, ActivityIndicator 
+  Modal, ScrollView, SafeAreaView, Platform, TextInput, Alert, ActivityIndicator,
+  DeviceEventEmitter, // <--- BURAYA EKLE
+  RefreshControl    // <--- AŞAĞI ÇEKİP YENİLEME İÇİN BURAYA DA EKLE
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; // MÜDÜR: Rota motoru eklendi
 import ParaCikisiFormu from './ParaCikisiFormu';
@@ -239,6 +242,7 @@ const DetayliListeModal = ({ visible, islemler, onClose, isDarkMode }: any) => {
 };
 
 export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: any) {
+  
   const router = useRouter(); // MÜDÜR: Vana açıldı
   const [exitVisible, setExitVisible] = useState(false); 
   const [detayliListeVisible, setDetayliListeVisible] = useState(false); 
@@ -259,6 +263,18 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
       fetchKasaHareketleri();
     }, [])
   );
+
+    // --- 🚨 YENİ EKLE: BAŞKA EKRANDAN GELEN "YENİLE" SİNYALİNİ DİNLE ---
+  useEffect(() => {
+    const listener = DeviceEventEmitter.addListener('kasaYenile', () => {
+      console.log("Müdürüm sinyal geldi, kasa listesi tazeleniyor!");
+      fetchKasaHareketleri();
+    });
+    return () => listener.remove(); // Sayfa kapanınca kulaklığı çıkar
+  }, []);
+
+
+
 
 
   const fetchKasaHareketleri = async () => {
@@ -309,9 +325,26 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             <TouchableOpacity onPress={onClose} activeOpacity={0.7}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ paddingBottom: 30 }}
+            refreshControl={
+              <RefreshControl 
+                refreshing={loading} 
+                onRefresh={fetchKasaHareketleri} 
+                colors={['#FF3B30']} 
+              />
+            }
+          >
+
+
+
+          {/*<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>*/}
             
             <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+              
+              
               <Text style={[styles.summaryLabel, { color: theme.subText }]}>NET KASA DURUMU</Text>
               <Text style={[styles.netKasaText, { color: theme.textColor }]}>{formatMoney(ozet.net_bakiye)} ₺</Text>
               <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />

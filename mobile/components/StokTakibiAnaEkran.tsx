@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  ScrollView, SafeAreaView, Modal, ActivityIndicator, Alert, Dimensions, Switch
+  ScrollView, SafeAreaView, Modal, ActivityIndicator, Alert, Dimensions,DeviceEventEmitter
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera'; 
-import { useFocusEffect } from '@react-navigation/native'; 
 
 import StokGirisiFormu from './StokGirisiFormu'; 
 import StokCikisiFormu from './StokCikisiFormu';
@@ -74,12 +73,16 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
   const [cameraVisible, setCameraVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'success' });
 
-  // --- MÜDÜR: İSKONTO VE GEÇMİŞ MOTORU ---
+  // --- İSKONTO VE GEÇMİŞ MOTORU ---
   const [discountRate, setDiscountRate] = useState(0); 
   const [discountModalVisible, setDiscountModalVisible] = useState(false);
-  const [historyVisible, setHistoryVisible] = useState(false); // Geçmiş Modalı
-  const [historyData, setHistoryData] = useState<any[]>([]); // Geçmiş Verileri
+  const [historyVisible, setHistoryVisible] = useState(false); 
+  const [historyData, setHistoryData] = useState<any[]>([]); 
   const [selectedItemName, setSelectedItemName] = useState('');
+
+  // --- ÖZEL TARAMA SONUCU MODALI ---
+  const [scanModalVisible, setScanModalVisible] = useState(false);
+  const [scannedItem, setScannedItem] = useState<any>(null);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [envanterDB, setEnvanterDB] = useState<any[]>([]);
@@ -106,7 +109,6 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
     finally { setLoading(false); }
   };
 
-  // --- MÜDÜR: FİYAT GEÇMİŞİNİ ÇEKEN FONKSİYON ---
   const fetchHistory = async (id: number, name: string) => {
     setSelectedItemName(name);
     try {
@@ -116,9 +118,11 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
         setHistoryData(res.data);
         setHistoryVisible(true);
       } else {
-        Alert.alert("Bilgi", "Bu ürünün henüz fiyat geçmişi yok.");
+        setAlertConfig({ visible: true, title: "Bilgi", message: "Bu ürünün henüz fiyat geçmişi yok.", type: 'success' });
       }
-    } catch (e) { Alert.alert("Hata", "Geçmiş verileri alınamadı."); }
+    } catch (e) { 
+        setAlertConfig({ visible: true, title: "Hata", message: "Geçmiş verileri alınamadı.", type: 'error' }); 
+    }
   };
 
   useEffect(() => {
@@ -131,32 +135,62 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
 
   if (!visible) return null;
 
-  const handleSmartScan = async ({ data }: any) => {
+
+
+const handleSmartScan = async ({ data }: any) => {
     setCameraVisible(false);
     setScannedBarcode(data); 
     try {
       const response = await fetch(`${API_URL}/api/stok/search?barkod=${data}`);
       const res = await response.json();
+      
       if (res.success && res.found) {
-        const item = res.data;
-        Alert.alert(
-          discountRate > 0 ? `🏷️ %${discountRate} İSKONTO AKTİF` : "📦 ÜRÜN BULUNDU",
-          `Malzeme: ${item.malzeme_adi}\nDepodaki Miktar: ${item.miktar}`,
-          [
-            { text: "İPTAL", style: "cancel" },
-            { text: "GEÇMİŞ", onPress: () => fetchHistory(item.id, item.malzeme_adi) }, // MÜDÜR: Radardan geçmişe bak
-            { text: "[-1] SAT", onPress: () => quickAction(item.id, data, 'sell') },
-            { text: "[+1] EKLE", onPress: () => quickAction(item.id, data, 'add') }
-          ]
-        );
+        
+        // 🚨 İŞTE BÜTÜN DÜĞÜMÜ ÇÖZEN SATIR: Kutuysa aç, değilse olduğu gibi al
+        const gercekItem = Array.isArray(res.data) ? res.data[0] : res.data;
+        
+        setScannedItem(gercekItem); // Artık kutuyu değil, direkt 20 adet olan ürünü verdik
+        setScanModalVisible(true);
+        
       } else {
         Alert.alert("🚨 KAYITSIZ", "Kayıt açılsın mı?", [
           { text: "HAYIR", style: "cancel" },
           { text: "EVET", onPress: () => setStokGirisVisible(true) }
         ]);
       }
-    } catch (e) { Alert.alert("Hata", "Radar taraması başarısız."); }
+    } catch (e) { 
+        setAlertConfig({ visible: true, title: "Hata", message: "Radar taraması başarısız.", type: 'error' }); 
+    }
   };
+
+
+
+/*
+  const handleSmartScan = async ({ data }: any) => {
+    setCameraVisible(false);
+    setScannedBarcode(data); 
+    try {
+      const response = await fetch(`${API_URL}/api/stok/search?barkod=${data}`);
+      const res = await response.json();
+      
+      if (res.success && res.found) {
+        setScannedItem(res.data);
+        setScanModalVisible(true);
+      } else {
+        Alert.alert("🚨 KAYITSIZ", "Kayıt açılsın mı?", [
+          { text: "HAYIR", style: "cancel" },
+          { text: "EVET", onPress: () => setStokGirisVisible(true) }
+        ]);
+      }
+    } catch (e) { 
+        setAlertConfig({ visible: true, title: "Hata", message: "Radar taraması başarısız.", type: 'error' }); 
+    }
+  };
+*/
+
+
+
+
 
   const quickAction = async (id: number, barkod: string, type: 'add' | 'sell') => {
     setLoading(true);
@@ -174,9 +208,17 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
       const resData = await res.json();
       if (resData.success) {
         fetchEnvanter();
-        Alert.alert("Başarılı", resData.message || "Stok güncellendi.");
+
+        // --- 🚨 İŞTE ATEŞLEME MEKANİZMASI: KASAYA HABER VERİYORUZ ---
+        DeviceEventEmitter.emit('kasaYenile');
+
+
+
+        setAlertConfig({ visible: true, title: "Başarılı", message: resData.message || "Stok güncellendi.", type: 'success' });
       }
-    } catch (e) { Alert.alert("Hata", "İşlem yapılamadı."); }
+    } catch (e) { 
+        setAlertConfig({ visible: true, title: "Hata", message: "İşlem yapılamadı.", type: 'error' }); 
+    }
     finally { setLoading(false); }
   };
 
@@ -194,7 +236,7 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
                 <View style={styles.focusedContainer}>
                   <View style={[styles.corner, styles.topLeft]} /><View style={[styles.corner, styles.topRight]} />
                   <View style={[styles.corner, styles.bottomLeft]} /><View style={[styles.corner, styles.bottomRight]} />
-                  <View style={styles.radarTextRow}><Ionicons name="scan-outline" size={18} color="#FF3B30" /><Text style={styles.radarText}>BARKOD RADARI AKTİF</Text></View>
+                  <View style={styles.radarTextRow}><Ionicons name="scan-outline" size={18} color="#FF3B30" /><Text style={styles.radarText}>HIZLI İŞLEMLER AKTİF</Text></View>
                 </View>
                 <View style={styles.unfocusedContainer}></View>
               </View>
@@ -217,26 +259,31 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
             <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color={theme.primary} /></TouchableOpacity>
           </View>
 
-          <View style={styles.radarActionContainer}>
-            <TouchableOpacity 
-              style={[styles.barcodeBox, { backgroundColor: theme.barcodeBg, borderColor: theme.primary, borderWidth: 1.5, flex: 2 }]} 
-              onPress={async () => {
-                if (!permission?.granted) await requestPermission();
-                setCameraVisible(true);
-              }}
-            >
-              <Ionicons name="barcode-outline" size={32} color="#fff" />
-              <Text style={styles.barcodeTitle}>RADAR</Text>
-              <Ionicons name="scan" size={24} color={theme.primary} />
-            </TouchableOpacity>
+          {/* ÇERÇEVELİ HIZLI TARAMA BÖLGESİ */}
+          <View style={[styles.framedContainer, { borderColor: theme.borderColor, backgroundColor: theme.cardBg }]}>
+            <Text style={[styles.frameTitle, { color: theme.subText }]}>HIZLI TARAMA BÖLGESİ</Text>
+            
+            <View style={styles.radarActionContainer}>
+              <TouchableOpacity 
+                style={[styles.barcodeBox, { backgroundColor: theme.barcodeBg, borderColor: theme.primary, borderWidth: 1.5, flex: 2 }]} 
+                onPress={async () => {
+                  if (!permission?.granted) await requestPermission();
+                  setCameraVisible(true);
+                }}
+              >
+                <Ionicons name="barcode-outline" size={26} color="#fff" />
+                <Text style={styles.barcodeTitle}>HIZLI İŞLEMLER</Text>
+                <Ionicons name="scan" size={20} color={theme.primary} />
+              </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.discountBox, { backgroundColor: discountRate > 0 ? '#FF3B30' : theme.cardBg, borderColor: discountRate > 0 ? '#FF3B30' : theme.borderColor }]} 
-              onPress={openDiscountPrompt}
-            >
-              <Text style={[styles.discountIcon, { color: discountRate > 0 ? '#fff' : theme.textColor }]}>%</Text>
-              <Text style={[styles.discountText, { color: discountRate > 0 ? '#fff' : theme.subText }]}>{discountRate > 0 ? `%${discountRate}` : 'İNDİRİM'}</Text>
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.discountBox, { backgroundColor: discountRate > 0 ? '#FF3B30' : theme.bg, borderColor: discountRate > 0 ? '#FF3B30' : theme.borderColor }]} 
+                onPress={openDiscountPrompt}
+              >
+                <Text style={[styles.discountIcon, { color: discountRate > 0 ? '#fff' : theme.textColor }]}>%</Text>
+                <Text style={[styles.discountText, { color: discountRate > 0 ? '#fff' : theme.subText }]}>{discountRate > 0 ? `%${discountRate}` : 'İNDİRİM'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={[styles.actionRow, { marginHorizontal: 15 }]}>
@@ -265,7 +312,7 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
               sonIkiHareket.map((item) => (
                 <TouchableOpacity 
                   key={item.id} 
-                  activeOpacity={1} // MÜDÜR: Basınca hiçbir şey olmaz (İlan Panosu)
+                  activeOpacity={1} 
                   style={[styles.listItem, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
                 >
                   <View style={styles.listIconBox}><Ionicons name="cube" size={24} color={theme.subText} /></View>
@@ -282,14 +329,10 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
           <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} onSelect={(m: string) => { setAktifFiltre(m); setFilterVisible(false); }} isDarkMode={isDarkMode} />
           <StokGirisiFormu visible={stokGirisVisible} onClose={() => setStokGirisVisible(false)} isDarkMode={isDarkMode} initialBarcode={scannedBarcode} />
           <StokCikisiFormu visible={stokCikisVisible} onClose={() => setStokCikisVisible(false)} isDarkMode={isDarkMode} externalDiscount={discountRate} />
-          <StokYonetimListesi 
-            visible={envanterYonetimVisible} 
-            onClose={() => setEnvanterYonetimVisible(false)} 
-            isDarkMode={isDarkMode} 
-            onShowHistory={fetchHistory} // MÜDÜR: Envanter listesinden tarihçe tetikleme
-          />
+          <StokYonetimListesi visible={envanterYonetimVisible} onClose={() => setEnvanterYonetimVisible(false)} isDarkMode={isDarkMode} onShowHistory={fetchHistory} />
           <HandsomeAlert visible={alertConfig.visible} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, visible: false })} isDarkMode={isDarkMode} />
 
+          {/* İNDİRİM MODALI */}
           <Modal visible={discountModalVisible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
               <View style={[styles.alertContent, { backgroundColor: isDarkMode ? '#1b1b1b' : '#fff' }]}>
@@ -307,6 +350,7 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
             </View>
           </Modal>
 
+          {/* TARİHÇE MODALI */}
           <Modal visible={historyVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}>
               <View style={[styles.alertContent, { backgroundColor: isDarkMode ? '#1b1b1b' : '#fff', height: '70%', width: '90%' }]}>
@@ -335,6 +379,56 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
             </View>
           </Modal>
 
+          {/* 4 BUTONLU ÖZEL TARAMA SONUCU MODALI */}
+          <Modal visible={scanModalVisible} transparent animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={[styles.alertContent, { backgroundColor: isDarkMode ? '#1b1b1b' : '#fff', padding: 25, width: '90%' }]}>
+                
+                <View style={{alignItems: 'center', marginBottom: 15}}>
+                  <Ionicons name="cube" size={50} color={theme.primary} />
+                  <Text style={{fontSize: 18, fontWeight: '900', color: theme.textColor, textAlign: 'center', marginTop: 10}}>
+                    {discountRate > 0 ? `🏷️ %${discountRate} İSKONTO AKTİF` : "📦 ÜRÜN BULUNDU"}
+                  </Text>
+                </View>
+
+                <View style={{backgroundColor: isDarkMode ? '#333' : '#f5f5f5', padding: 15, borderRadius: 15, width: '100%', marginBottom: 25}}>
+                  <Text style={{fontSize: 17, color: theme.textColor, fontWeight: '800', textAlign: 'center'}}>{scannedItem?.malzeme_adi}</Text>
+                  <Text style={{fontSize: 14, color: theme.subText, textAlign: 'center', marginTop: 8}}>
+                    Depodaki Miktar: <Text style={{fontWeight: '900', color: Number(scannedItem?.miktar) < 2 ? '#FF3B30' : theme.textColor}}>
+                      {scannedItem != null ? String(scannedItem.miktar) : '0'}
+                    </Text>
+                  </Text>
+                </View>
+
+                {/* Butonlar: 2x2 Grid Yapısı */}
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 12}}>
+                   <TouchableOpacity style={[styles.scanActionBtn, {backgroundColor: '#34C759'}]} onPress={() => { setScanModalVisible(false); quickAction(scannedItem?.id, scannedBarcode, 'add'); }}>
+                      <Ionicons name="add-circle" size={22} color="#fff" />
+                      <Text style={styles.scanActionBtnText}>+1 EKLE</Text>
+                   </TouchableOpacity>
+
+                   <TouchableOpacity style={[styles.scanActionBtn, {backgroundColor: '#FF3B30'}]} onPress={() => { setScanModalVisible(false); quickAction(scannedItem?.id, scannedBarcode, 'sell'); }}>
+                      <Ionicons name="remove-circle" size={22} color="#fff" />
+                      <Text style={styles.scanActionBtnText}>-1 SAT</Text>
+                   </TouchableOpacity>
+                </View>
+
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '100%'}}>
+                   <TouchableOpacity style={[styles.scanActionBtn, {backgroundColor: '#5c5453'}]} onPress={() => { setScanModalVisible(false); fetchHistory(scannedItem?.id, scannedItem?.malzeme_adi); }}>
+                      <Ionicons name="time" size={22} color="#fff" />
+                      <Text style={styles.scanActionBtnText}>GEÇMİŞ</Text>
+                   </TouchableOpacity>
+
+                   <TouchableOpacity style={[styles.scanActionBtn, {backgroundColor: '#1A1A1A'}]} onPress={() => setScanModalVisible(false)}>
+                      <Ionicons name="close" size={22} color="#fff" />
+                      <Text style={styles.scanActionBtnText}>İPTAL</Text>
+                   </TouchableOpacity>
+                </View>
+
+              </View>
+            </View>
+          </Modal>
+
         </SafeAreaView>
         )}
       </View>
@@ -344,15 +438,20 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 50, marginBottom: 25, paddingHorizontal: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 50, marginBottom: 15, paddingHorizontal: 20 },
   headerTitle: { fontSize: 26, fontWeight: '900' },
   headerSub: { fontSize: 13, fontWeight: '600', opacity: 0.6 },
-  radarActionContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 20, gap: 10 },
-  barcodeBox: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 24, justifyContent: 'space-around' },
-  barcodeTitle: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  discountBox: { flex: 1, borderRadius: 24, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', elevation: 4 },
-  discountIcon: { fontSize: 22, fontWeight: '900' },
+  
+  framedContainer: { marginHorizontal: 20, marginBottom: 20, padding: 15, borderRadius: 24, borderWidth: 1.5, elevation: 2 },
+  frameTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 15, textAlign: 'center' },
+  radarActionContainer: { flexDirection: 'row', gap: 10 },
+  
+  barcodeBox: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 18, justifyContent: 'space-around' },
+  barcodeTitle: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  discountBox: { flex: 1, borderRadius: 18, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  discountIcon: { fontSize: 20, fontWeight: '900' },
   discountText: { fontSize: 10, fontWeight: '800', marginTop: 2 },
+  
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
   mainActionBox: { flex: 1, height: 110, borderRadius: 25, padding: 20, marginHorizontal: 5, justifyContent: 'center', alignItems: 'center', elevation: 8 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
@@ -389,5 +488,8 @@ const styles = StyleSheet.create({
   bottomRight: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
   radarTextRow: { position: 'absolute', bottom: -40, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   radarText: { color: '#e62929', fontSize: 12, fontWeight: '900', marginLeft: 8 },
-  camCloseBottom: { alignItems: 'center' }
+  camCloseBottom: { alignItems: 'center' },
+  
+  scanActionBtn: { flex: 0.48, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, elevation: 3 },
+  scanActionBtnText: { color: '#fff', fontWeight: '900', fontSize: 13 }
 });
