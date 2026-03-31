@@ -192,6 +192,100 @@ const handleSmartScan = async ({ data }: any) => {
 
 
 
+// --- 🚨 1. MÜDÜRÜN KAPI GÜVENLİĞİ (ONAY ALMADAN KASAYA DOKUNMAZ) ---
+  const quickAction = async (id: number, barkod: string, type: 'add' | 'sell') => {
+    if (type === 'add') {
+      const kayitliFiyat = scannedItem?.alis_fiyati || 0;
+      
+      Alert.alert(
+        "Stok Alım Onayı",
+        `📦 ${scannedItem?.malzeme_adi || 'Ürün'}\n💰 Kayıtlı Alış Fiyatı: ${kayitliFiyat} ₺\n\nBu tutar KASADAN ÇIKIŞ olarak işlenecektir. Onaylıyor musunuz?\n\n(Eğer ürünü farklı fiyattan aldıysanız İPTAL edip 'Envanter Yönetimi' bölümünden güncelleyiniz.)`,
+        [
+          { text: "İPTAL", style: "cancel" },
+          { text: "ONAYLA VE KASADAN DÜŞ", onPress: () => executeBackendRequest(id, barkod, type) }
+        ]
+      );
+    } else {
+      // Satış işlemiyse direkt motora gönder
+      executeBackendRequest(id, barkod, type);
+    }
+  };
+
+  // --- ⚙️ 2. ASIL İŞLEM MOTORU (ONAYDAN SONRA ÇALIŞIR) ---
+  const executeBackendRequest = async (id: number, barkod: string, type: 'add' | 'sell') => {
+    setLoading(true);
+    try {
+      const endpoint = type === 'add' ? '/api/stok/add' : '/api/stok/sell';
+      const body = type === 'add' ? 
+        { barkod, miktar: 1, malzeme_adi: '', alis_fiyati: 0 } : 
+        { id, barkod, cikan_adet: 1, is_relative: discountRate > 0, manual_discount: discountRate };
+
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const resData = await res.json();
+      
+      if (resData.success) {
+        fetchEnvanter();
+
+        // --- 🚨 KASAYA HABER VERİYORUZ ---
+        DeviceEventEmitter.emit('kasaYenile');
+
+        setAlertConfig({ visible: true, title: "Başarılı", message: resData.message || "İşlem tamamlandı.", type: 'success' });
+      }
+    } catch (e) { 
+        setAlertConfig({ visible: true, title: "Hata", message: "İşlem yapılamadı.", type: 'error' }); 
+    }
+    finally { setLoading(false); }
+  };
+
+  /*
+
+        const quickAction = async (id: number, barkod: string, type: 'add' | 'sell') => {
+            setLoading(true);
+            try {
+              const endpoint = type === 'add' ? '/api/stok/add' : '/api/stok/sell';
+              const body = type === 'add' ? 
+                { barkod, miktar: 1, malzeme_adi: '', alis_fiyati: 0 } : 
+                { id, barkod, cikan_adet: 1, is_relative: discountRate > 0, manual_discount: discountRate };
+
+              const res = await fetch(`${API_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+              });
+              const resData = await res.json();
+              
+              if (resData.success) {
+                fetchEnvanter();
+
+                // --- 🚨 İŞTE ATEŞLEME MEKANİZMASI: KASAYA HABER VERİYORUZ ---
+                DeviceEventEmitter.emit('kasaYenile');
+
+                // --- 🚨 MÜDÜRÜN FİYAT UYARI KİLİDİ ---
+                let uyariMesaji = resData.message || "Stok güncellendi.";
+                
+                // Sadece 'add' (+1 EKLE) işleminde bu uyarıyı ver
+                if (type === 'add' && resData.data) {
+                    const guncelFiyat = resData.data.alis_fiyati || 0;
+                    uyariMesaji = `İşlem Başarılı: +1 Eklendi.\n\n💰 Kayıtlı Alış Fiyatı: ${guncelFiyat} ₺\n(Kasadan bu tutar düşüldü)\n\nFarklı bir fiyattan aldıysanız, Envanter Yönetimi'nden güncelleyin!`;
+                }
+
+                // Güncellenmiş mesajı ekrana bas
+                setAlertConfig({ visible: true, title: "Başarılı", message: uyariMesaji, type: 'success' });
+              }
+            } catch (e) { 
+                setAlertConfig({ visible: true, title: "Hata", message: "İşlem yapılamadı.", type: 'error' }); 
+            }
+            finally { setLoading(false); }
+          };
+
+
+
+
+   
   const quickAction = async (id: number, barkod: string, type: 'add' | 'sell') => {
     setLoading(true);
     try {
@@ -209,6 +303,8 @@ const handleSmartScan = async ({ data }: any) => {
       if (resData.success) {
         fetchEnvanter();
 
+       
+
         // --- 🚨 İŞTE ATEŞLEME MEKANİZMASI: KASAYA HABER VERİYORUZ ---
         DeviceEventEmitter.emit('kasaYenile');
 
@@ -221,6 +317,11 @@ const handleSmartScan = async ({ data }: any) => {
     }
     finally { setLoading(false); }
   };
+
+*/
+
+
+
 
   return (
     <Modal visible={true} animationType="slide" transparent={true} statusBarTranslucent>
@@ -261,7 +362,7 @@ const handleSmartScan = async ({ data }: any) => {
 
           {/* ÇERÇEVELİ HIZLI TARAMA BÖLGESİ */}
           <View style={[styles.framedContainer, { borderColor: theme.borderColor, backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.frameTitle, { color: theme.subText }]}>HIZLI TARAMA BÖLGESİ</Text>
+            <Text style={[styles.frameTitle, { color: theme.subText }]}>HIZLI İŞLEM BÖLGESİ</Text>
             
             <View style={styles.radarActionContainer}>
               <TouchableOpacity 
@@ -271,7 +372,7 @@ const handleSmartScan = async ({ data }: any) => {
                   setCameraVisible(true);
                 }}
               >
-                <Ionicons name="barcode-outline" size={26} color="#fff" />
+                <Ionicons name="barcode-outline" size={15} color="#fff" />
                 <Text style={styles.barcodeTitle}>HIZLI İŞLEMLER</Text>
                 <Ionicons name="scan" size={20} color={theme.primary} />
               </TouchableOpacity>
@@ -286,7 +387,7 @@ const handleSmartScan = async ({ data }: any) => {
             </View>
           </View>
 
-          <View style={[styles.actionRow, { marginHorizontal: 15 }]}>
+          <View style={[styles.actionRow, { marginHorizontal: 19 }]}>
             <TouchableOpacity style={[styles.mainActionBox, { backgroundColor: '#1A1A1A' }]} onPress={() => { setScannedBarcode(''); setStokGirisVisible(true); }}>
               <View style={styles.iconCircle}><Ionicons name="arrow-down" size={24} color="#fff" /></View>
               <Text style={styles.actionMainText}>STOK GİRİŞİ</Text>
@@ -297,7 +398,7 @@ const handleSmartScan = async ({ data }: any) => {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.listHeaderRow, { marginHorizontal: 20 }]}>
+          <View style={[styles.listHeaderRow, { marginHorizontal: 25 }]}>
             <Text style={[styles.sectionTitle, { color: theme.subText, marginBottom: 0 }]}>SON ÜÇ HAREKET</Text>
             <TouchableOpacity style={styles.allListBtn} onPress={() => setEnvanterYonetimVisible(true)}>
               <Ionicons name="list" size={30} color={theme.primary} />
@@ -446,7 +547,7 @@ const styles = StyleSheet.create({
   frameTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 15, textAlign: 'center' },
   radarActionContainer: { flexDirection: 'row', gap: 10 },
   
-  barcodeBox: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 18, justifyContent: 'space-around' },
+  barcodeBox: { flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 18, justifyContent: 'space-around' },
   barcodeTitle: { color: '#fff', fontSize: 14, fontWeight: '900' },
   discountBox: { flex: 1, borderRadius: 18, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
   discountIcon: { fontSize: 20, fontWeight: '900' },
@@ -460,7 +561,7 @@ const styles = StyleSheet.create({
   listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, marginTop: 10 },
   allListBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 59, 48, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   allListBtnText: { fontSize: 11, fontWeight: '900', marginLeft: 5 },
-  listItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 16, borderWidth: 1.5, marginBottom: 12 },
+  listItem: { flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 16, borderWidth: 1.5, marginBottom: 10 },
   listIconBox: { width: 45, height: 45, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   listTitle: { fontSize: 15, fontWeight: '800', marginBottom: 4 },
   listBrand: { fontSize: 12, fontWeight: '600', opacity: 0.8 },
