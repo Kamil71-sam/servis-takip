@@ -1,11 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Alert, Dimensions, ActivityIndicator 
 } from 'react-native';
-
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
@@ -14,8 +11,19 @@ const { width } = Dimensions.get('window');
 
 // MÜDÜR: externalDiscount artık dışarıdan (Ana Ekran'dan) geliyor
 export default function StokCikisiFormu({ visible, onClose, isDarkMode, externalDiscount = 0 }: any) {
+  
+  // --- 🚨 MÜDÜR: TYPESCRIPT'İN KIZMAMASI İÇİN YENİ ODALARI BURAYA DA EKLEDİK ---
   const initialState = {
-    barkod: '', malzeme_adi: '', marka: '', uyumlu_cihaz: '', cikan_adet: '1', satis_fiyati: '', mevcut_stok: 0, id: null
+    barkod: '', 
+    malzeme_adi: '', 
+    marka: '', 
+    uyumlu_cihaz: '', 
+    cikan_adet: '1', 
+    satis_fiyati: '', 
+    mevcut_stok: 0, 
+    id: null as any,
+    alis_fiyati: 0,  // 🚨 İŞTE TYPESCRIPT'İN ARADIĞI MALİYET ODASI
+    eski_satis: 0    // 🚨 İŞTE TYPESCRIPT'İN ARADIĞI B PLANI ODASI
   };
   
   const [f, setF] = useState(initialState);
@@ -28,115 +36,34 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
   
   const [permission, requestPermission] = useCameraPermissions();
 
+  // Canlı İskonto hafızası
+  const [iskonto, setIskonto] = useState(externalDiscount ? externalDiscount.toString() : '0'); 
+
+
+
+
+
+
+
   useEffect(() => {
     if (visible) {
       setF(initialState);
       setFocus('');
       setRadarMsg({ type: '', text: '' });
+      setIskonto(externalDiscount ? externalDiscount.toString() : '0'); // Form açıldığında iskontoyu sıfırla/yenile
     }
-  }, [visible]);
+  }, [visible, externalDiscount]);
 
-
-
-
-
-
-
-const calculateFinalPrice = async (barkod: string) => {
-    if (!barkod) return;
-    try {
-      setRadarMsg({ type: 'loading', text: 'Radar taranıyor ve fiyat hesaplanıyor...' });
-      
-      const response = await fetch(`${API_URL}/api/stok/search?barkod=${encodeURIComponent(barkod)}`);
-      const res = await response.json();
-
-      if (res.success && res.found) {
-        const item = res.data;
-        
-        // --- 🚨 MÜDÜR: EKRANDAKİ YALANCI HESABI DÜZELTEN KISIM ---
-        const birimAlis = parseFloat(item.alis_fiyati || "0");
-        
-        // Şimdilik dükkan genel kârını %20, KDV'yi %20 varsayıyoruz (Backend ile aynı olmalı)
-        // Eğer bunları da DB'den çekmek istersen backend'den bu oranları da search ile yollatırız.
-        const dukkanKari = 20; 
-        const dukkanKdv = 20;
-
-        let hesaplananSatis = 0;
-
-        if (birimAlis > 0) {
-            // Backend'deki "Utanç Giderici" formülün aynısı:
-            const netKarOrani = dukkanKari - externalDiscount; // İndirimi kârdan düştük
-            const matrah = birimAlis * (1 + (netKarOrani / 100));
-            hesaplananSatis = matrah * (1 + (dukkanKdv / 100));
-        } else {
-            // Alış fiyatı yoksa mecburen eski satış fiyatından yüzde düş (B planı)
-            const eskiSatis = parseFloat(item.satis_fiyati || "0");
-            hesaplananSatis = eskiSatis * (1 - (externalDiscount / 100));
-        }
-
-        setF(prev => ({
-          ...prev,
-          id: item.id,
-          barkod: item.barkod,
-          malzeme_adi: item.malzeme_adi,
-          marka: item.marka || '',
-          uyumlu_cihaz: item.uyumlu_cihaz || '',
-          mevcut_stok: item.miktar,
-          satis_fiyati: hesaplananSatis.toFixed(2) // ARTIK EKRANDA DOĞRU RAKAM (330 vb.) GÖRÜNECEK
-        }));
-        
-        setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU: Kâr üzerinden %${externalDiscount} indirim uygulandı.` });
-      } else {
-        setRadarMsg({ type: 'warning', text: '🚨 HATA: Kayıtsız Barkod!' });
-      }
-    } catch (e) {
-      setRadarMsg({ type: 'error', text: 'Bağlantı hatası!' });
-    }
-  };
-
-
-
-
-
-
-
-  /*
-  // --- 🚨 MÜDÜR: FİYAT HESAPLAMA MOTORU (BACKEND'DEKİ MANTIKLA AYNI) ---
+  // --- 1. SADECE VERİYİ ÇEKİP HAFIZAYA ATAN KISIM ---
   const calculateFinalPrice = async (barkod: string) => {
     if (!barkod) return;
     try {
-      setRadarMsg({ type: 'loading', text: 'Radar taranıyor ve fiyat hesaplanıyor...' });
-      
-      // 1. Önce malın bilgilerini getir (Alış fiyatı lazım)
+      setRadarMsg({ type: 'loading', text: 'Radar taranıyor...' });
       const response = await fetch(`${API_URL}/api/stok/search?barkod=${encodeURIComponent(barkod)}`);
       const res = await response.json();
 
       if (res.success && res.found) {
         const item = res.data;
-        
-        // 2. Dükkan ayarlarını al (Kâr ve KDV oranları için)
-        // Not: Burada backend'e bir 'preview' isteği atmak en sağlıklısıdır ama 
-        // biz şimdilik maliyet üzerinden simülasyon yapıyoruz.
-        // İstersen backend'e sadece fiyat soran bir route da ekleyebiliriz.
-        
-        // Şimdilik hızlı çözüm: Backend'deki 'sell' tetiğine 'preview: true' gibi bir bayrak 
-        // gönderebiliriz ama senin istediğin "Buraya gelsin ve değişmesin" olduğu için 
-        // arama (search) sonucunda gelen 'satis_fiyati' (Eğer formüllü ise) buraya akar.
-        
-        // EĞER backend 'search' içinde hesaplanmış fiyatı gönderiyorsa:
-        // f.satis_fiyati = item.hesaplanmis_fiyat; 
-
-        // ANCAK en garanti yol: Backend'deki satış fiyatını direkt alıp indirim oranını düşmek.
-        // Varsayalım backend search sonucu 'satis_fiyati' kolonunu dolu getiriyor:
-        let basePrice = parseFloat(item.satis_fiyati || "0");
-        
-        if (externalDiscount > 0) {
-            // Müdürüm: Burada kâr üzerinden indirim yapmak için alış fiyatı lazım.
-            // Ama pratik olsun dersen satış fiyatından direkt yüzde düşebiliriz:
-            const discountAmount = basePrice * (externalDiscount / 100);
-            basePrice = basePrice - discountAmount;
-        }
-
         setF(prev => ({
           ...prev,
           id: item.id,
@@ -145,10 +72,10 @@ const calculateFinalPrice = async (barkod: string) => {
           marka: item.marka || '',
           uyumlu_cihaz: item.uyumlu_cihaz || '',
           mevcut_stok: item.miktar,
-          satis_fiyati: basePrice.toFixed(2) // Fiyat buraya kilitleniyor
+          alis_fiyati: parseFloat(item.alis_fiyati || "0"), // 🚨 Maliyeti hafızaya at
+          eski_satis: parseFloat(item.satis_fiyati || "0")  // 🚨 B planı için hafızaya at
         }));
-        
-        setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU: Fiyat %${externalDiscount} indirimle hesaplandı.` });
+        setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU: Stok okundu.` });
       } else {
         setRadarMsg({ type: 'warning', text: '🚨 HATA: Kayıtsız Barkod!' });
       }
@@ -157,10 +84,44 @@ const calculateFinalPrice = async (barkod: string) => {
     }
   };
 
+  // --- 2. 🚨 MÜDÜR: CANLI HESAPLAMA MOTORU (Sihir Burada) ---
+  // Sen iskontoyu değiştirdikçe bu motor otomatik çalışıp fiyatı günceller!
+ 
+ 
+// --- 2. 🚨 MÜDÜR: CANLI HESAPLAMA MOTORU (Gerçek Esnaf Matematiği) ---
+  useEffect(() => {
+    if (f.id) { // Sadece ürün barkodu okutulduysa çalışsın
+      const dukkanKari = 25; 
+      const dukkanKdv = 20;
+      const girilenIskonto = parseFloat(iskonto || '0');
+      let hesaplananSatis = 0;
 
-*/
+      if (f.alis_fiyati > 0) {
+        // 1. Edeceğimiz brüt kâr miktarını buluyoruz
+        const hamKarMiktari = f.alis_fiyati * (dukkanKari / 100); 
+        
+        // 2. İskontoyu sadece KÂR MİKTARINDAN düşüyoruz (Ana paraya dokunmak yok!)
+        const netKarMiktari = hamKarMiktari * (1 - (girilenIskonto / 100)); 
+        
+        // 3. Maliyetin üzerine kalan net kârı ekliyoruz
+        const matrah = f.alis_fiyati + netKarMiktari; 
+        
+        // 4. En son KDV'yi çakıp yuvarlıyoruz
+        hesaplananSatis = Math.round(matrah * (1 + (dukkanKdv / 100)));
+      } else {
+        // Alış fiyatı yoksa eski satış fiyatından düş (B planı)
+        hesaplananSatis = Math.round(f.eski_satis * (1 - (girilenIskonto / 100)));
+      }
+
+      setF(prev => ({ ...prev, satis_fiyati: hesaplananSatis.toFixed(2) }));
+    }
+  }, [iskonto, f.alis_fiyati, f.eski_satis, f.id]);
 
 
+
+
+ 
+  
 
 
 
@@ -184,15 +145,20 @@ const calculateFinalPrice = async (barkod: string) => {
           cikan_adet: parseInt(f.cikan_adet),
           // MÜDÜR: Hesaplanan fiyatı olduğu gibi gönderiyoruz
           satis_fiyati: parseFloat(f.satis_fiyati),
-          manual_discount: externalDiscount
+          // 🚨 MÜDÜR: Ekrana yazdığımız taze iskontoyu yolluyoruz!
+          manual_discount: parseFloat(iskonto || '0') 
         })
       });
       const res = await response.json();
       if (res.success) {
         setConfirmModalVisible(false);
         setSuccessModalVisible(true); 
+      } else {
+        Alert.alert("Hata", res.error || "Satış tamamlanamadı.");
       }
-    } catch (e) { Alert.alert("Hata", "Satış tamamlanamadı."); }
+    } catch (e) { 
+        Alert.alert("Hata", "Bağlantı sorunu oluştu."); 
+    }
     finally { setLoading(false); }
   };
 
@@ -241,7 +207,7 @@ const calculateFinalPrice = async (barkod: string) => {
               <View style={styles.header}>
                 <View>
                    <Text style={[styles.title, { color: theme.textColor }]}>STOK ÇIKIŞI / SATIŞ</Text>
-                   {externalDiscount > 0 && <Text style={{color: '#34C759', fontSize: 11, fontWeight: 'bold'}}>%{externalDiscount} İNDİRİM UYGULANIYOR</Text>}
+                   {parseFloat(iskonto) > 0 && <Text style={{color: '#FF9500', fontSize: 11, fontWeight: 'bold'}}>%{iskonto} İNDİRİM UYGULANIYOR</Text>}
                 </View>
                 <TouchableOpacity onPress={onClose} style={styles.solidCloseBtn}><Ionicons name="close" size={26} color="#fff" /></TouchableOpacity>
               </View>
@@ -282,20 +248,33 @@ const calculateFinalPrice = async (barkod: string) => {
                 </View>
 
                 <View style={styles.row}>
-                  <View style={{flex: 1, marginRight: 10}}>
-                    <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKAN ADET (*)</Text>
+                  {/* 1. KUTU: ÇIKAN ADET */}
+                  <View style={{flex: 1, marginRight: 5}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKAN ADET</Text>
                     <TextInput 
-                      style={[styles.input, { backgroundColor: theme.inputBg, color: theme.textColor, borderColor: focus === 'cikan' ? theme.primary : theme.borderColor }]} 
+                      style={[styles.input, { marginHorizontal: 0, backgroundColor: theme.inputBg, color: theme.textColor, borderColor: focus === 'cikan' ? theme.primary : theme.borderColor }]} 
                       keyboardType="numeric" value={f.cikan_adet} placeholder="1" placeholderTextColor="#888"
                       onFocus={() => setFocus('cikan')}
                       onChangeText={v => setF({...f, cikan_adet: v})} 
                     />
                   </View>
-                  <View style={{flex: 1.5}}>
-                    <Text style={[styles.label, { color: theme.labelColor }]}>SATIŞ FİYATI (₺) [KİLİTLİ]</Text>
-                    {/* 🚨 MÜDÜR: BURASI ARTIK 'editable={false}' YANİ DEĞİŞTİRİLEMEZ! */}
-                    <View style={[styles.infoBox, { backgroundColor: '#E8F5E9', borderColor: '#34C759', borderWidth: 2 }]}>
-                        <Text style={{color: '#1B5E20', fontWeight: 'bold', fontSize: 18}}>
+
+                  {/* 🚨 2. KUTU: YENİ İSKONTO ALANI 🚨 */}
+                  <View style={{flex: 1, marginHorizontal: 5}}>
+                    <Text style={[styles.label, { color: '#FF9500' }]}>İSKONTO (%)</Text>
+                    <TextInput 
+                      style={[styles.input, { marginHorizontal: 0, backgroundColor: 'rgba(255, 149, 0, 0.1)', color: '#FF9500', fontWeight: 'bold', borderColor: focus === 'iskonto' ? '#FF9500' : theme.borderColor }]} 
+                      keyboardType="numeric" value={iskonto} placeholder="0" placeholderTextColor="#888"
+                      onFocus={() => setFocus('iskonto')}
+                      onChangeText={setIskonto} 
+                    />
+                  </View>
+
+                  {/* 3. KUTU: CANLI SATIŞ FİYATI */}
+                  <View style={{flex: 1.5, marginLeft: 5}}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>SATIŞ (₺)</Text>
+                    <View style={[styles.infoBox, { marginHorizontal: 0, backgroundColor: '#E8F5E9', borderColor: '#34C759', borderWidth: 2 }]}>
+                        <Text style={{color: '#1B5E20', fontWeight: 'bold', fontSize: 16}}>
                             {f.satis_fiyati ? `${f.satis_fiyati} ₺` : '0.00 ₺'}
                         </Text>
                     </View>
