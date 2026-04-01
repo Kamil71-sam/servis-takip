@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect  } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard, ActivityIndicator, Dimensions
+  Modal, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard, ActivityIndicator, Dimensions, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -20,7 +20,11 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
   const [f, setF] = useState(initialState);
   const [focus, setFocus] = useState(''); 
   const [loading, setLoading] = useState(false);
-  
+  // --- MÜDÜR: FİYAT RADARI HAFIZALARI ---
+  const [eskiAlis, setEskiAlis] = useState('');
+  const [fiyatGuncelle, setFiyatGuncelle] = useState(true);
+
+
   // --- MÜDÜR: RADAR ALARM STATE'İ EKLENDİ ---
   const [radarMsg, setRadarMsg] = useState({ type: '', text: '' }); 
   
@@ -51,6 +55,8 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
       } else {
         setF(initialState);
         setRadarMsg({ type: '', text: '' });
+         // 🚨 YENİ EKLENEN: Form her açıldığında eski fiyat hafızasını sil
+        setEskiAlis('');
       }
     }
   }, [visible, initialBarcode]);
@@ -95,6 +101,10 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
           uyumlu_cihaz: res.data.uyumlu_cihaz || prev.uyumlu_cihaz, // Müdür: TV ise TV gelecek!
           alis_fiyati: res.data.alis_fiyati ? res.data.alis_fiyati.toString() : prev.alis_fiyati
         }));
+
+        // MÜDÜR: Bulunan malın sistemdeki eski fiyatını hafızaya alıyoruz
+        setEskiAlis(res.data.alis_fiyati ? res.data.alis_fiyati.toString() : '');
+
         setRadarMsg({ type: 'success', text: `✅ DİKKAT: Bu malzeme depoda kayıtlı! Barkod: ${res.data.barkod}` });
       } else {
         // MÜDÜR: Malzeme yok! Kırmızı/Sarı alarmı yak.
@@ -128,6 +138,57 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
     checkRadar('barkod', data);
   };
 
+
+
+
+
+const handleSaveAttempt = () => {
+    if (!f.barkod || !f.malzeme_adi || !f.alis_fiyati) {
+      alert("Barkod, Malzeme Adı ve Alış Fiyatı zorunludur!");
+      return;
+    }
+
+    const girilenFiyat = parseFloat(f.alis_fiyati);
+    const sistemdekiFiyat = parseFloat(eskiAlis || '0');
+
+    // 🚨 FİYAT DEĞİŞİMİ TESPİT EDİLDİYSE İKAZ VER
+    if (sistemdekiFiyat > 0 && girilenFiyat !== sistemdekiFiyat) {
+      Alert.alert(
+        "⚠️ FİYAT DEĞİŞİMİ TESPİT EDİLDİ",
+        `Bu ürünün sistemdeki eski alış fiyatı: ${sistemdekiFiyat} ₺\nSizin girdiğiniz yeni fiyat: ${girilenFiyat} ₺\n\nKasadan ${girilenFiyat} ₺ çıkış yapılacak.\n\nPeki stoktaki temel alış fiyatı da güncellensin mi?`,
+        [
+          { text: "Vazgeç", style: "cancel" },
+          { 
+            text: "Hayır, Eski Fiyatı Koru", 
+            onPress: () => {
+              setFiyatGuncelle(false); // Şalteri kapat, veritabanı fiyatı değişmesin
+              Keyboard.dismiss();
+              setConfirmModalVisible(true);
+            }
+          },
+          { 
+            text: "Evet, Fiyatı Güncelle", 
+            onPress: () => {
+              setFiyatGuncelle(true); // Şalteri aç, veritabanı da yeni fiyat olsun
+              Keyboard.dismiss();
+              setConfirmModalVisible(true);
+            }
+          }
+        ]
+      );
+      return; // Alert açıldığı için işlemi burada durdur
+    }
+
+    // Fiyat değişmediyse veya ilk kez giriliyorsa direkt onaya geç
+    setFiyatGuncelle(true); 
+    Keyboard.dismiss();
+    setConfirmModalVisible(true); 
+  };
+
+
+
+
+  /*
   const handleSaveAttempt = () => {
     if (!f.barkod || !f.malzeme_adi || !f.alis_fiyati) {
       alert("Barkod, Malzeme Adı ve Alış Fiyatı zorunludur!");
@@ -136,6 +197,13 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
     Keyboard.dismiss();
     setConfirmModalVisible(true); 
   };
+
+*/
+
+
+
+
+
 
   const executeSave = async () => {
     setLoading(true);
@@ -150,7 +218,9 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
           marka: f.marka,
           miktar: parseInt(f.miktar),
           alis_fiyati: parseFloat(f.alis_fiyati),
-          request_id: f.request_id 
+          request_id: f.request_id,
+          // 🚨 MÜDÜR: Son Eklentimiz! Fiyat güncellensin mi şalteri.
+          fiyat_guncelle: fiyatGuncelle
         })
       });
 
@@ -163,10 +233,16 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
     finally { setLoading(false); }
   };
 
+
+
+
+
   const handleFinalClose = () => {
     setSuccessModalVisible(false);
     setF(initialState);
     setRadarMsg({ type: '', text: '' });
+    // 🚨 YENİ EKLENEN: Ekran kapanırken hafızayı sil
+    setEskiAlis('');
     onClose();
   };
 
@@ -395,6 +471,10 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
                       </TouchableOpacity>
                     ))}
                   </View>
+
+
+
+                    
                 </TouchableOpacity>
               </Modal>
 
@@ -403,16 +483,69 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
                   <View style={[styles.siparisModal, { backgroundColor: theme.cardBg }]}>
                     <Text style={[styles.modalTitle, { color: theme.textColor }]}>USTA TALEPLERİ LİSTESİ</Text>
                     <ScrollView>
+
+
                       {ustaSiparisleri.map((s: any) => (
-                        <TouchableOpacity key={s.id} style={styles.siparisItem} onPress={() => {
-                          // MÜDÜR: Usta siparişi seçildiği an radar tetikleniyor!
-                          setF({...f, tur: 'Bekleyen Parça', malzeme_adi: s.material_name, uyumlu_cihaz: s.device_model, miktar: s.quantity.toString(), request_id: s.id});
-                          setShowUstaSiparisModal(false);
-                          checkRadar('malzeme_adi', s.material_name);
-                        }}>
-                          <Text style={{fontWeight: '900', color: theme.textColor}}>{s.material_name}</Text>
-                          <Text style={{fontSize: 12, color: '#888'}}>{s.device_model} - {s.quantity} Adet</Text>
-                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                                key={s.id} 
+                                style={styles.siparisItem} 
+                                onPress={() => {
+                                  setF({
+                                    ...f, 
+                                    tur: 'Bekleyen Parça', 
+                                    malzeme_adi: s.material_name, 
+                                    uyumlu_cihaz: s.device_model, 
+                                    miktar: s.quantity.toString(), 
+                                    request_id: s.id
+                                  });
+                                  setShowUstaSiparisModal(false);
+                                  checkRadar('malzeme_adi', s.material_name);
+                                }}
+                              >
+                                {/* Üst Kısım: Malzeme ve Cihaz Bilgisi (Standart Veri) */}
+                                <Text style={{fontWeight: '900', color: theme.textColor}}>{s.material_name}</Text>
+                                <Text style={{fontSize: 12, color: '#888'}}>{s.device_model} - {s.quantity} Adet</Text>
+
+                                {/* 🚨 SADECE NOT ALANI: Sadece ham metni gösteren temiz kutu */}
+                                {s.description ? (
+                                  <View style={{
+                                    backgroundColor: 'rgba(255, 204, 0, 0.1)', 
+                                    padding: 6, 
+                                    marginTop: 6, 
+                                    borderRadius: 6, 
+                                    borderLeftWidth: 3, 
+                                    borderLeftColor: '#FFCC00'
+                                  }}>
+
+                                  {/* 🚨 İŞTE İSTEDİĞİN O BAŞLIK 🚨 */}
+                                    <Text style={{
+                                      fontSize: 11, 
+                                      fontWeight: '900', 
+                                      color: '#B45309', // Koyu sarı/turuncu tonu, göz yormaz ama dikkat çeker
+                                      marginBottom: 3
+                                    }}>
+                                      📌 USTA NOTU:
+                                    </Text>
+
+                                    <Text style={{
+                                      fontSize: 12, 
+                                      color: theme.textColor, 
+                                      fontStyle: 'italic',
+                                      lineHeight: 16
+                                    }}>
+                                      {s.description}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                              </TouchableOpacity>
+                        
+                        
+
+
+
+
+
                       ))}
                     </ScrollView>
                     <TouchableOpacity style={styles.closeBtn} onPress={() => setShowUstaSiparisModal(false)}><Text style={{color: '#fff', fontWeight: 'bold'}}>KAPAT</Text></TouchableOpacity>

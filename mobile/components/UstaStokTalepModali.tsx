@@ -67,6 +67,49 @@ export default function UstaStokTalepModali({ visible, onClose, onSuccess, servi
     setCart(cart.filter(item => item.id !== id));
   };
 
+
+
+
+
+
+  // 3. Tüm Sepeti Tek Seferde Fırlatma
+  const handleSendAll = async () => {
+    if (cart.length === 0) {
+      Alert.alert("Sepet Boş", "Lütfen önce sepete malzeme ekleyin.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      for (const item of cart) {
+        await sendMaterialRequest({
+          service_id: serviceId,
+          usta_email: 'Usta_1', 
+          part_name: item.partName,
+          quantity: item.quantity,
+          
+          // 🚨 İŞTE TEMİZLİK: Sadece ustanın yazdığı ham notu gönderiyoruz!
+          // Eğer usta not yazmadıysa boş bırakıyoruz.
+          description: item.desc ? item.desc : '' 
+        });
+      }
+      
+      Alert.alert("Başarılı", `${cart.length} adet malzeme talebi iletildi.`);
+      setCart([]); 
+      onSuccess(); 
+      onClose();   
+    } catch (err) {
+      Alert.alert("Hata", "Taleplerin tamamı veya bir kısmı gönderilemedi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  
+
+  /*
   // 3. Tüm Sepeti Tek Seferde Fırlatma
   const handleSendAll = async () => {
     if (cart.length === 0) {
@@ -97,6 +140,13 @@ export default function UstaStokTalepModali({ visible, onClose, onSuccess, servi
       setLoading(false);
     }
   };
+
+*/
+
+
+
+
+
 
   // Modalı kapatırken her şeyi sıfırla
   const handleClose = () => {
