@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
   Modal, ScrollView, SafeAreaView, Platform, TextInput, Alert, ActivityIndicator,
-  DeviceEventEmitter, // <--- BURAYA EKLE
-  RefreshControl    // <--- AŞAĞI ÇEKİP YENİLEME İÇİN BURAYA DA EKLE
+  DeviceEventEmitter,
+  RefreshControl
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // MÜDÜR: Rota motoru eklendi
+import { useRouter } from 'expo-router'; 
 import ParaCikisiFormu from './ParaCikisiFormu';
 import { useFocusEffect } from 'expo-router'; 
 import { useCallback } from 'react';
@@ -243,7 +243,7 @@ const DetayliListeModal = ({ visible, islemler, onClose, isDarkMode }: any) => {
 
 export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: any) {
   
-  const router = useRouter(); // MÜDÜR: Vana açıldı
+  const router = useRouter(); 
   const [exitVisible, setExitVisible] = useState(false); 
   const [detayliListeVisible, setDetayliListeVisible] = useState(false); 
   const [detayModalVisible, setDetayModalVisible] = useState(false);
@@ -254,28 +254,29 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
   const [aktifFiltreMetni, setAktifFiltreMetni] = useState('Tüm Nakit Hareketleri');
 
   const [islemler, setIslemler] = useState<any[]>([]);
-  const [ozet, setOzet] = useState({ toplam_giris: 0, toplam_cikis: 0, net_bakiye: 0 });
+  
+  // 🚨 MÜDÜR: Arka plandan gelen ÇİFT KATLI veriyi karşılayacak yeni hafıza
+  const [ozet, setOzet] = useState({ 
+    genel: { giris: 0, cikis: 0, net: 0 },
+    gunluk: { giris: 0, cikis: 0, net: 0 }
+  });
+
   const [loading, setLoading] = useState(false);
 
-// --- MÜDÜRÜN RADARI: SAYFAYA GERİ DÖNÜNCE LİSTEYİ TAZELE ---
+  // --- MÜDÜRÜN RADARI: SAYFAYA GERİ DÖNÜNCE LİSTEYİ TAZELE ---
   useFocusEffect(
     useCallback(() => {
       fetchKasaHareketleri();
     }, [])
   );
 
-    // --- 🚨 YENİ EKLE: BAŞKA EKRANDAN GELEN "YENİLE" SİNYALİNİ DİNLE ---
+  // --- BAŞKA EKRANDAN GELEN "YENİLE" SİNYALİNİ DİNLE ---
   useEffect(() => {
     const listener = DeviceEventEmitter.addListener('kasaYenile', () => {
-      console.log("Müdürüm sinyal geldi, kasa listesi tazeleniyor!");
       fetchKasaHareketleri();
     });
-    return () => listener.remove(); // Sayfa kapanınca kulaklığı çıkar
+    return () => listener.remove();
   }, []);
-
-
-
-
 
   const fetchKasaHareketleri = async () => {
     setLoading(true);
@@ -284,6 +285,7 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
       const data = await response.json();
       if (data.success) {
         setIslemler(data.data);
+        // Yeni sisteme göre state güncelleniyor
         setOzet(data.ozet);
       }
     } catch (error) {
@@ -293,7 +295,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
     }
   };
 
-  
   const handleFiltreUygula = (ozetMetni: string) => {
     setAktifFiltreMetni(ozetMetni);
     setFilterModalVisible(false);
@@ -325,7 +326,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             <TouchableOpacity onPress={onClose} activeOpacity={0.7}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
           </View>
 
-
           <ScrollView 
             showsVerticalScrollIndicator={false} 
             contentContainerStyle={{ paddingBottom: 30 }}
@@ -337,25 +337,47 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               />
             }
           >
-
-
-
-          {/*<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>*/}
-            
+            {/* 🚨 DUBLEKS KASA KUTUSU */}
             <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
               
-              
-              <Text style={[styles.summaryLabel, { color: theme.subText }]}>NET KASA DURUMU</Text>
-              <Text style={[styles.netKasaText, { color: theme.textColor }]}>{formatMoney(ozet.net_bakiye)} ₺</Text>
-              <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />
+              {/* --- ÜST KAT: TÜM ZAMANLAR (GENEL KASA) --- */}
+              <Text style={[styles.summaryLabel, { color: theme.subText }]}>GENEL KASA DURUMU</Text>
+              <Text style={[styles.netKasaText, { color: theme.textColor }]}>{formatMoney(ozet?.genel?.net || 0)} ₺</Text>
               <View style={styles.teraziRow}>
-                <View style={styles.teraziCol}><Text style={[styles.teraziLabel, { color: theme.subText }]}>TOPLAM GİREN</Text><Text style={[styles.teraziValue, { color: theme.textColor }]}>+ {formatMoney(ozet.toplam_giris)} ₺</Text></View>
-                <View style={styles.teraziColRight}><Text style={[styles.teraziLabel, { color: theme.subText }]}>TOPLAM ÇIKAN</Text><Text style={[styles.teraziValue, { color: '#FF3B30' }]}>- {formatMoney(ozet.toplam_cikis)} ₺</Text></View>
+                <View style={styles.teraziCol}>
+                    <Text style={[styles.teraziLabel, { color: theme.subText }]}>TOPLAM GİREN</Text>
+                    <Text style={[styles.teraziValue, { color: theme.textColor, fontSize: 14 }]}>+ {formatMoney(ozet?.genel?.giris || 0)} ₺</Text>
+                </View>
+                <View style={styles.teraziColRight}>
+                    <Text style={[styles.teraziLabel, { color: theme.subText }]}>TOPLAM ÇIKAN</Text>
+                    <Text style={[styles.teraziValue, { color: '#FF3B30', fontSize: 14 }]}>- {formatMoney(ozet?.genel?.cikis || 0)} ₺</Text>
+                </View>
               </View>
+
+              {/* --- ➖ ORTA ÇİZGİ (Ayırıcı) ➖ --- */}
+              <View style={[styles.divider, { backgroundColor: theme.borderColor, marginVertical: 18, height: 2 }]} />
+
+              {/* --- ALT KAT: SADECE BUGÜN (GÜNLÜK KASA) --- */}
+              <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 5}}>
+                  
+                  <Text style={[styles.summaryLabel, { color: '#090a0a' }]}>BUGÜNKÜ HAREKETLER</Text>
+              </View>
+              <Text style={[styles.netKasaText, { color: theme.textColor, fontSize: 22, marginVertical: 4 }]}>{formatMoney(ozet?.gunluk?.net || 0)} ₺</Text>
+              <View style={styles.teraziRow}>
+                <View style={styles.teraziCol}>
+                    <Text style={[styles.teraziLabel, { color: theme.subText }]}>BUGÜN GİREN</Text>
+                    <Text style={[styles.teraziValue, { color: theme.textColor, fontSize: 14 }]}>+ {formatMoney(ozet?.gunluk?.giris || 0)} ₺</Text>
+                </View>
+                <View style={styles.teraziColRight}>
+                    <Text style={[styles.teraziLabel, { color: theme.subText }]}>BUGÜN ÇIKAN</Text>
+                    <Text style={[styles.teraziValue, { color: '#FF3B30', fontSize: 14 }]}>- {formatMoney(ozet?.gunluk?.cikis || 0)} ₺</Text>
+                </View>
+              </View>
+
             </View>
 
+            {/* AKSİYON BUTONLARI */}
             <View style={styles.actionRow}>
-              {/* MÜDÜR: DOSYA ADI paragirisiformu.tsx OLDUĞU İÇİN YOLU BUNA GÖRE MÜHÜRLEDİM! */}
               <TouchableOpacity 
                 style={[styles.actionBtnSolid, { backgroundColor: theme.girisBtnBg }]} 
                 onPress={() => router.push("/paragirisiformu")} 
@@ -369,22 +391,42 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               </TouchableOpacity>
             </View>
 
-            <View style={styles.listHeaderRow}>
-              <Text style={[styles.sectionTitleLeft, { color: theme.textColor }]}>GÜNCEL HAREKETLER</Text>
-              <TouchableOpacity style={styles.detayliListeBtn} onPress={() => setDetayliListeVisible(true)}>
-                <Text style={styles.detayliListeBtnText}>DETAYLI LİSTE</Text>
-                <Ionicons name="chevron-forward" size={14} color="#fff" />
-              </TouchableOpacity>
+
+
+
+
+            {/* 🚨 YENİ DEV BUTON (ÜSTTE) */}
+            <TouchableOpacity 
+              style={[styles.devListeButonu, { backgroundColor: isDarkMode ? '#313131' : '#10adf7' }]} 
+              onPress={() => setDetayliListeVisible(true)}
+              activeOpacity={0.8}
+            >
+
+              <Text style={[styles.devListeButonuText, { color: isDarkMode ? '#ffffff' : '#1A1A1A' }]}>
+                MALİ İŞLEMLER DETAY LİSTESİ
+              </Text>
+              
+            </TouchableOpacity>
+
+          
+
+
+
+              {/* 🚨 LİSTE BAŞLIĞI (2mm yukarı çekildi ve ismi değişti) */}
+            <View style={{ marginBottom: 10, marginTop: 13, paddingHorizontal: 5 }}>
+              <Text style={[styles.sectionTitleLeft, { color: theme.textColor }]}>SON HAREKET</Text>
             </View>
 
+            {/* 🚨 İŞLEMLER LİSTESİ (SADECE EN SON İŞLEMİ GÖSTERİR) */}
             <View style={[styles.listContainer, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
               {loading ? ( <ActivityIndicator color="#FF3B30" style={{ padding: 30 }} /> ) 
               : islemler.length === 0 ? ( <Text style={{ textAlign: 'center', padding: 20, color: theme.subText, fontWeight: 'bold' }}>Kasa hareketi yok.</Text> ) 
               : (
-                islemler.map((islem, index) => (
+                // MÜDÜR: slice(0, 1) diyerek koca listeden sadece en baştakini koparıp alıyoruz!
+                islemler.slice(0, 1).map((islem) => (
                   <TouchableOpacity 
                     key={islem.id} 
-                    style={[styles.miniListItem, index !== islemler.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.borderColor }]}
+                    style={[styles.miniListItem, { borderBottomWidth: 0 }]} // Tek eleman olduğu için alt çizgiye gerek yok
                     onPress={() => { setSeciliIslem(islem); setDetayModalVisible(true); }}
                     activeOpacity={0.7}
                   >
@@ -403,10 +445,28 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             </View>
           </ScrollView>
 
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+          {/* MODALLAR */}
           <ParaCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} />
           <IslemDetayModal visible={detayModalVisible} islem={seciliIslem} onClose={() => setDetayModalVisible(false)} isDarkMode={isDarkMode} />
           <DetayliListeModal visible={detayliListeVisible} islemler={islemler} onClose={() => setDetayliListeVisible(false)} isDarkMode={isDarkMode} />
-          
           <GelismisFiltreModal visible={filterModalVisible} onClose={() => setFilterModalVisible(false)} onApply={handleFiltreUygula} isDarkMode={isDarkMode} />
           <CiktiAlModal visible={ciktiModalVisible} onClose={() => setCiktiModalVisible(false)} onConfirm={handlePdfOnayla} isDarkMode={isDarkMode} />
 
@@ -421,16 +481,16 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 50 : 20, marginBottom: 15 },
   titleBadge: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   title: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  summaryCard: { borderRadius: 20, padding: 18, borderWidth: 1, elevation: 5, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, marginBottom: 15 },
+  summaryCard: { borderRadius: 20, padding: 19, borderWidth: 1, elevation: 5, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, marginBottom: 15 },
   summaryLabel: { fontSize: 11, fontWeight: 'bold', textAlign: 'center', letterSpacing: 1 },
-  netKasaText: { fontSize: 34, fontWeight: '900', textAlign: 'center', marginVertical: 8 },
+  netKasaText: { fontSize: 25, fontWeight: '900', textAlign: 'center', marginVertical: 5 },
   divider: { height: 1, width: '100%', marginVertical: 10 },
   teraziRow: { flexDirection: 'row', justifyContent: 'space-between' },
   teraziCol: { flex: 1 },
   teraziColRight: { flex: 1, alignItems: 'flex-end' },
   teraziLabel: { fontSize: 10, fontWeight: 'bold', marginBottom: 3 },
   teraziValue: { fontSize: 16, fontWeight: '900' },
-  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   actionBtnSolid: { width: '48%', paddingVertical: 15, borderRadius: 20, alignItems: 'center', elevation: 6 },
   iconCircleSolid: { width: 45, height: 45, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   actionBtnTextSolid: { fontSize: 14, fontWeight: '900', color: '#fff' },
@@ -464,7 +524,7 @@ const styles = StyleSheet.create({
   tamListeKartOrta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   tamListeTarih: { fontSize: 11, fontWeight: '600' },
   tamListeServisNo: { fontSize: 11, fontWeight: '800' },
-  tamListeKartAlt: { borderTopWidth: 1, paddingTop: 6, marginTop: 2 },
+  tamListeKartAlt: { borderTopWidth: 1, paddingTop: 6, marginTop: 1 },
   tamListeDetayMetin: { fontSize: 12, fontWeight: '600' },
   tamListeNotMetin: { fontSize: 11, fontStyle: 'italic', marginTop: 2 },
   filterPanelContent: { width: '90%', borderRadius: 25, padding: 25, elevation: 20 },
@@ -476,7 +536,7 @@ const styles = StyleSheet.create({
   filterOptText: { fontSize: 14, fontWeight: 'bold' },
   rangeLabel: { fontSize: 11, fontWeight: 'bold', marginBottom: 5 },
   rangeHalfInput: { width: '48%', borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: '500', textAlign: 'center' },
-  applyBtn: { width: '100%', paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: 10 },
+  applyBtn: { width: '100%', paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: 5 },
   applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   ciktiModalContent: { width: '85%', borderRadius: 25, padding: 25, alignItems: 'center', elevation: 20 },
   ciktiIconBox: { width: 70, height: 70, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
@@ -484,5 +544,29 @@ const styles = StyleSheet.create({
   ciktiDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 25 },
   ciktiBtnRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   ciktiBtn: { width: '48%', height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  ciktiBtnText: { fontSize: 15, fontWeight: 'bold' }
+  ciktiBtnText: { fontSize: 15, fontWeight: 'bold' },
+  
+
+  devListeButonu: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    paddingVertical: 18, /* 1 cm kalınlık hissi verir */
+    borderRadius: 16, /* Köşeleri tatlı yuvarlar */
+    width: '100%', 
+    marginBottom: 1,
+    marginTop: 5,
+    elevation: 2, /* Android'de hafif gölge verir, kutu gibi durur */
+    shadowColor: '#000', /* iOS gölgesi */
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  devListeButonuText: { 
+    fontSize: 15, 
+    fontWeight: '900', /* Yazıyı en kalın haline getirir */
+    marginRight: 8, 
+    letterSpacing: 1 /* Harflerin arasını hafif açar, kurumsal durur */
+  },
+
 });
