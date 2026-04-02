@@ -3,12 +3,13 @@ import {
   StyleSheet, Text, View, TouchableOpacity, 
   Modal, ScrollView, SafeAreaView, Platform, TextInput, Alert, ActivityIndicator,
   DeviceEventEmitter,
-  RefreshControl
+  RefreshControl,
+  FlatList
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
-import ParaCikisiFormu from './ParaCikisiFormu';
+//import ParaCikisiFormu from './ParaCikisiFormu';
 import { useFocusEffect } from 'expo-router'; 
 import { useCallback } from 'react';
 
@@ -30,40 +31,7 @@ const formatMoney = (amount: number) => {
   return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// --- ÇIKTI ALMA ASANSÖRÜ ---
-const CiktiAlModal = ({ visible, onClose, onConfirm, isDarkMode }: any) => {
-  const theme = {
-    bg: isDarkMode ? '#1e1e1e' : '#fff',
-    text: isDarkMode ? '#fff' : '#1A1A1A',
-    subText: isDarkMode ? '#aaa' : '#666',
-    cancelBg: isDarkMode ? '#333' : '#e0e0e0',
-    cancelText: isDarkMode ? '#fff' : '#333'
-  };
 
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.ciktiModalContent, { backgroundColor: theme.bg }]}>
-          <View style={[styles.ciktiIconBox, { backgroundColor: '#FFEBEE' }]}>
-            <Ionicons name="document-text" size={36} color="#FF3B30" />
-          </View>
-          <Text style={[styles.ciktiTitle, { color: theme.text }]}>PDF ÇIKTISI AL</Text>
-          <Text style={[styles.ciktiDesc, { color: theme.subText }]}>
-            Ekranda listelenen nakit hareketleri PDF formatında hazırlanıp cihazınıza indirilecektir. Onaylıyor musunuz?
-          </Text>
-          <View style={styles.ciktiBtnRow}>
-            <TouchableOpacity style={[styles.ciktiBtn, { backgroundColor: theme.cancelBg }]} onPress={onClose}>
-              <Text style={[styles.ciktiBtnText, { color: theme.cancelText }]}>İPTAL</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.ciktiBtn, { backgroundColor: '#FF3B30' }]} onPress={onConfirm}>
-              <Text style={[styles.ciktiBtnText, { color: '#fff' }]}>OLUŞTUR</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-};
 
 // --- FİLTRE ASANSÖRÜ ---
 const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => {
@@ -156,6 +124,14 @@ const GelismisFiltreModal = ({ visible, onClose, onApply, isDarkMode }: any) => 
   );
 };
 
+
+
+
+
+
+
+
+
 const IslemDetayModal = ({ visible, islem, onClose, isDarkMode }: any) => {
   if (!visible || !islem) return null;
   const theme = { bg: isDarkMode ? '#1e1e1e' : '#fff', text: isDarkMode ? '#fff' : '#1A1A1A', subText: isDarkMode ? '#aaa' : '#666', border: isDarkMode ? '#333' : '#eee' };
@@ -178,9 +154,14 @@ const IslemDetayModal = ({ visible, islem, onClose, isDarkMode }: any) => {
           <Text style={[styles.detayTarih, { color: theme.subText }]}>{new Date(islem.islem_tarihi).toLocaleString('tr-TR')}</Text>
 
           <View style={[styles.detayInfoContainer, { borderColor: theme.border }]}>
-            {islem.servis_no && <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>Servis No:</Text><Text style={[styles.detayValue, { color: theme.text, fontWeight: 'bold' }]}>{islem.servis_no}</Text></View>}
-            {islem.musteri_adi && <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>Müşteri:</Text><Text style={[styles.detayValue, { color: theme.text }]}>{islem.musteri_adi}</Text></View>}
-            {(islem.cihaz_turu || islem.marka || islem.model) && <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>Cihaz:</Text><Text style={[styles.detayValue, { color: theme.text }]}>{islem.cihaz_turu ? `${islem.cihaz_turu} ` : ''}{islem.marka ? `${islem.marka} ` : ''}{islem.model || ''}</Text></View>}
+            
+            {/* 🚨 SİNSİ HATANIN İKİZ KARDEŞİNİ BURADA YOK ETTİK */}
+            {islem.servis_no ? <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>Servis No:</Text><Text style={[styles.detayValue, { color: theme.text, fontWeight: 'bold' }]}>{islem.servis_no}</Text></View> : null}
+            
+            {islem.musteri_adi ? <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>Müşteri:</Text><Text style={[styles.detayValue, { color: theme.text }]}>{islem.musteri_adi}</Text></View> : null}
+            
+            {(islem.cihaz_turu || islem.marka || islem.model) ? <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>Cihaz:</Text><Text style={[styles.detayValue, { color: theme.text }]}>{islem.cihaz_turu ? `${islem.cihaz_turu} ` : ''}{islem.marka ? `${islem.marka} ` : ''}{islem.model || ''}</Text></View> : null}
+            
             <View style={[styles.detayRow, { borderBottomColor: theme.border }]}><Text style={styles.detayLabel}>İşlemi Yapan:</Text><Text style={[styles.detayValue, { color: theme.text }]}>{islem.islem_yapan || 'Sistem'}</Text></View>
             <View style={[styles.detayRow, { borderBottomWidth: 0, flexDirection: 'column', alignItems: 'flex-start', paddingTop: 15 }]}>
               <Text style={[styles.detayLabel, { marginBottom: 8 }]}>Not:</Text>
@@ -193,53 +174,169 @@ const IslemDetayModal = ({ visible, islem, onClose, isDarkMode }: any) => {
   );
 };
 
-const DetayliListeModal = ({ visible, islemler, onClose, isDarkMode }: any) => {
+
+
+
+
+
+
+
+
+
+
+
+// --- TÜM NAKİT HAREKETLERİ LİSTESİ ---
+// MÜDÜRÜN RADARI: Buraya "onIslemSec" diye yeni bir kablo çektik!
+
+
+// --- TÜM NAKİT HAREKETLERİ LİSTESİ (ARAMA MOTORLU VERSİYON) ---
+const DetayliListeModal = ({ visible, islemler, onClose, onIslemSec, isDarkMode }: any) => {
   const theme = { bg: isDarkMode ? '#121212' : '#f4f6f8', cardBg: isDarkMode ? '#1e1e1e' : '#fff', border: isDarkMode ? '#333' : '#eee', text: isDarkMode ? '#fff' : '#1A1A1A', subText: isDarkMode ? '#aaa' : '#666' };
+
+  // 🚨 1. ARAMA HAFIZASI: Klavyeden girilen metni burada tutacağız
+  const [aramaMetni, setAramaMetni] = useState('');
+
+  // 🚨 2. FİLTRE MOTORU: Sen yazdıkça anında listeyi daraltır
+  const filtrelenmisIslemler = islemler.filter((islem: any) => {
+    if (!aramaMetni) return true; // Arama kutusu boşsa hepsini göster
+    
+    // Büyük/küçük harf duyarlılığını kaldırmak için hepsini küçültüyoruz
+    const aranan = aramaMetni.toLowerCase();
+    
+    return (
+      (islem.kategori && islem.kategori.toLowerCase().includes(aranan)) ||
+      (islem.musteri_adi && islem.musteri_adi.toLowerCase().includes(aranan)) ||
+      (islem.servis_no && islem.servis_no.toLowerCase().includes(aranan)) ||
+      (islem.cihaz_turu && islem.cihaz_turu.toLowerCase().includes(aranan)) ||
+      (islem.marka && islem.marka.toLowerCase().includes(aranan)) ||
+      (islem.aciklama && islem.aciklama.toLowerCase().includes(aranan))
+    );
+  });
+
+
+
+
+
+
+
+const renderIslem = ({ item: islem }: any) => {
+    const isGiris = islem.islem_yonu === 'GİRİŞ';
+    return (
+      <TouchableOpacity 
+        style={[styles.tamListeKart, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
+        activeOpacity={0.7}
+        onPress={() => onIslemSec(islem)}
+      >
+        <View style={styles.tamListeKartUst}>
+          <Text style={[styles.tamListeKategori, { color: theme.text }]} numberOfLines={1}>{islem.kategori}</Text>
+          <Text style={[styles.tamListeTutar, { color: isGiris ? '#34C759' : '#FF3B30' }]}>{isGiris ? '+' : '-'} {formatMoney(parseFloat(islem.tutar))} ₺</Text>
+        </View>
+        
+        <View style={styles.tamListeKartOrta}>
+          <Text style={[styles.tamListeTarih, { color: theme.subText }]}>{new Date(islem.islem_tarihi).toLocaleDateString('tr-TR')} {new Date(islem.islem_tarihi).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}</Text>
+          
+          {/* 🚨 SİNSİ HATA 1 BURADA ÇÖZÜLDÜ: && yerine ? ... : null kullanıldı */}
+          {islem.servis_no ? <Text style={[styles.tamListeServisNo, { color: '#007AFF' }]}>{islem.servis_no}</Text> : null}
+        </View>
+
+        {/* 🚨 SİNSİ HATA 2 BURADA ÇÖZÜLDÜ */}
+        {(islem.musteri_adi || islem.cihaz_turu || islem.aciklama) ? (
+          <View style={[styles.tamListeKartAlt, { borderTopColor: theme.border }]}>
+            {(islem.musteri_adi || islem.cihaz_turu) ? (
+              <Text style={[styles.tamListeDetayMetin, { color: theme.subText }]} numberOfLines={1}>
+                {islem.musteri_adi ? `${islem.musteri_adi} ` : ''} 
+                {islem.cihaz_turu ? `• ${islem.cihaz_turu} ${islem.marka || ''}` : ''}
+              </Text>
+            ) : null}
+            
+            {/* 🚨 SİNSİ HATA 3 BURADA ÇÖZÜLDÜ */}
+            {islem.aciklama ? (
+              <Text style={[styles.tamListeNotMetin, { color: theme.subText }]} numberOfLines={1}>Not: {islem.aciklama}</Text>
+            ) : null}
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
+
+
+
+
+  
+
+
+
+
+
+
 
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
-        <View style={[styles.header, { paddingHorizontal: 20 }]}>
+        
+        <View style={[styles.header, { paddingHorizontal: 20, marginBottom: 10 }]}>
           <View style={[styles.titleBadge, { backgroundColor: isDarkMode ? '#333' : '#1A1A1A' }]}><Text style={styles.title}>TÜM NAKİT HAREKETLERİ</Text></View>
           <TouchableOpacity onPress={onClose}><Ionicons name="close-circle" size={42} color="#FF3B30" /></TouchableOpacity>
         </View>
-        
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}>
-          {islemler.map((islem: any) => {
-            const isGiris = islem.islem_yonu === 'GİRİŞ';
-            return (
-              <View key={islem.id} style={[styles.tamListeKart, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-                <View style={styles.tamListeKartUst}>
-                  <Text style={[styles.tamListeKategori, { color: theme.text }]} numberOfLines={1}>{islem.kategori}</Text>
-                  <Text style={[styles.tamListeTutar, { color: isGiris ? '#34C759' : '#FF3B30' }]}>{isGiris ? '+' : '-'} {formatMoney(parseFloat(islem.tutar))} ₺</Text>
-                </View>
-                
-                <View style={styles.tamListeKartOrta}>
-                  <Text style={[styles.tamListeTarih, { color: theme.subText }]}>{new Date(islem.islem_tarihi).toLocaleDateString('tr-TR')} {new Date(islem.islem_tarihi).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}</Text>
-                  {islem.servis_no && <Text style={[styles.tamListeServisNo, { color: '#007AFF' }]}>{islem.servis_no}</Text>}
-                </View>
 
-                {(islem.musteri_adi || islem.cihaz_turu || islem.aciklama) && (
-                  <View style={[styles.tamListeKartAlt, { borderTopColor: theme.border }]}>
-                    {(islem.musteri_adi || islem.cihaz_turu) && (
-                      <Text style={[styles.tamListeDetayMetin, { color: theme.subText }]} numberOfLines={1}>
-                        {islem.musteri_adi ? `${islem.musteri_adi} ` : ''} 
-                        {islem.cihaz_turu ? `• ${islem.cihaz_turu} ${islem.marka || ''}` : ''}
-                      </Text>
-                    )}
-                    {islem.aciklama && (
-                      <Text style={[styles.tamListeNotMetin, { color: theme.subText }]} numberOfLines={1}>Not: {islem.aciklama}</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </ScrollView>
+        {/* 🚨 3. ARAMA ÇUBUĞU VİTRİNİ */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDarkMode ? '#2c2c2c' : '#e5e5ea', borderRadius: 12, paddingHorizontal: 15, height: 45 }}>
+            <Ionicons name="search" size={20} color={theme.subText} />
+            <TextInput 
+              style={{ flex: 1, marginLeft: 10, color: theme.text, fontSize: 15 }}
+              placeholder="Müşteri, servis no, cihaz veya not ara..."
+              placeholderTextColor={theme.subText}
+              value={aramaMetni}
+              onChangeText={setAramaMetni}
+            />
+            {/* Yazı yazılınca beliren çarpı butonu (temizlemek için) */}
+            {aramaMetni.length > 0 && (
+              <TouchableOpacity onPress={() => setAramaMetni('')}>
+                <Ionicons name="close-circle" size={20} color={theme.subText} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        
+        {/* 🚨 YENİ MOTOR: Artık ham listeyi değil, filtrelenmiş olanı çiziyor! */}
+        <FlatList
+          data={filtrelenmisIslemler} 
+          renderItem={renderIslem} 
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
+          initialNumToRender={10} 
+          maxToRenderPerBatch={10} 
+          windowSize={5} 
+          removeClippedSubviews={true}
+          // Eğer aranan şey bulunamazsa ekranda çıkacak boşluk uyarısı
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', marginTop: 30, color: theme.subText, fontWeight: 'bold' }}>
+              Arama kriterine uygun sonuç bulunamadı.
+            </Text>
+          }
+        />
+
       </SafeAreaView>
     </Modal>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: any) {
   
@@ -250,7 +347,7 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
   const [seciliIslem, setSeciliIslem] = useState<any>(null);
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [ciktiModalVisible, setCiktiModalVisible] = useState(false);
+  //const [ciktiModalVisible, setCiktiModalVisible] = useState(false);
   const [aktifFiltreMetni, setAktifFiltreMetni] = useState('Tüm Nakit Hareketleri');
 
   const [islemler, setIslemler] = useState<any[]>([]);
@@ -300,10 +397,7 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
     setFilterModalVisible(false);
   };
 
-  const handlePdfOnayla = () => {
-    setCiktiModalVisible(false);
-    Alert.alert("PDF", "Çıktı hazırlanıyor (Yakında aktif olacak)...");
-  };
+ 
 
   const theme = {
     bg: isDarkMode ? '#121212' : '#fdfdfd',
@@ -360,7 +454,11 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               {/* --- ALT KAT: SADECE BUGÜN (GÜNLÜK KASA) --- */}
               <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 5}}>
                   
-                  <Text style={[styles.summaryLabel, { color: '#090a0a' }]}>BUGÜNKÜ HAREKETLER</Text>
+
+                <Text style={[styles.summaryLabel, { color: theme.subText }]}>BUGÜNKÜ HAREKETLER</Text>
+
+                  
+                  
               </View>
               <Text style={[styles.netKasaText, { color: theme.textColor, fontSize: 22, marginVertical: 4 }]}>{formatMoney(ozet?.gunluk?.net || 0)} ₺</Text>
               <View style={styles.teraziRow}>
@@ -376,6 +474,11 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
 
             </View>
 
+
+
+
+
+
             {/* AKSİYON BUTONLARI */}
             <View style={styles.actionRow}>
               <TouchableOpacity 
@@ -385,11 +488,23 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
                 <View style={[styles.iconCircleSolid, { backgroundColor: 'rgba(255,255,255,0.1)' }]}><Ionicons name="arrow-down" size={26} color="#fff" /></View>
                 <Text style={styles.actionBtnTextSolid}>PARA GİRİŞİ</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtnSolid, { backgroundColor: theme.cikisBtnBg }]} onPress={() => setExitVisible(true)}>
+              
+              {/* 🚨 DÜZELTİLEN KISIM: Gece modu mirası (params) buraya eklendi! */}
+              <TouchableOpacity 
+                style={[styles.actionBtnSolid, { backgroundColor: theme.cikisBtnBg }]} 
+                onPress={() => router.push({ pathname: "/paracikisiformu", params: { isDarkMode: isDarkMode } })}
+              >
                 <View style={[styles.iconCircleSolid, { backgroundColor: 'rgba(255,255,255,0.2)' }]}><Ionicons name="arrow-up" size={26} color="#fff" /></View>
                 <Text style={styles.actionBtnTextSolid}>PARA ÇIKIŞI</Text>
               </TouchableOpacity>
             </View>
+
+           
+
+
+
+
+
 
 
 
@@ -464,11 +579,31 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
 
 
           {/* MODALLAR */}
-          <ParaCikisiFormu visible={exitVisible} onClose={() => setExitVisible(false)} isDarkMode={isDarkMode} />
           <IslemDetayModal visible={detayModalVisible} islem={seciliIslem} onClose={() => setDetayModalVisible(false)} isDarkMode={isDarkMode} />
-          <DetayliListeModal visible={detayliListeVisible} islemler={islemler} onClose={() => setDetayliListeVisible(false)} isDarkMode={isDarkMode} />
+         
+         
+         
+
+
+
+          {/* 🚨 KABLOYU BAĞLADIK: onIslemSec eklendi! */}
+          <DetayliListeModal 
+            visible={detayliListeVisible} 
+            islemler={islemler} 
+            onClose={() => setDetayliListeVisible(false)} 
+            isDarkMode={isDarkMode} 
+            onIslemSec={(islem:any) => {
+              setSeciliIslem(islem);       // Hangi karta tıklandıysa onun verisini hafızaya al
+              setDetayModalVisible(true);  // Fatura fişi gibi olan IslemDetayModal'ı ekrana indir!
+            }}
+          />
+
+              
+
+
+          
+          
           <GelismisFiltreModal visible={filterModalVisible} onClose={() => setFilterModalVisible(false)} onApply={handleFiltreUygula} isDarkMode={isDarkMode} />
-          <CiktiAlModal visible={ciktiModalVisible} onClose={() => setCiktiModalVisible(false)} onConfirm={handlePdfOnayla} isDarkMode={isDarkMode} />
 
         </SafeAreaView>
       </View>
