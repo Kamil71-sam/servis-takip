@@ -1,12 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
+
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  ScrollView, StatusBar, Alert, Platform 
+  ScrollView, StatusBar, Alert, Platform, Modal 
 } from 'react-native';
+
+
+
+
+
+
+
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { pdfCiktiAl } from '../components/CiktiMotoru';
+
+
 
 // --- BÖLÜMLERİN İTHALAT MÜHÜRLERİ ---
 import YeniMusteriFormu from '../components/YeniMusteriFormu'; 
@@ -33,6 +45,7 @@ export default function DashboardScreen() {
   const [servisVisible, setServisVisible] = useState(false);
   const [stokVisible, setStokVisible] = useState(false); 
   const [maliVisible, setMaliVisible] = useState(false);
+  const [pdfOnizlemeVisible, setPdfOnizlemeVisible] = useState(false);
 
   // --- MÜDÜR: ALT MENÜ GRUP KİLİTLERİ ---
   const [isServisSubMenuOpen, setIsServisSubMenuOpen] = useState(false);
@@ -40,6 +53,7 @@ export default function DashboardScreen() {
   const [isListeSubMenuOpen, setIsListeSubMenuOpen] = useState(false); 
   const [isRandevuSubMenuOpen, setIsRandevuSubMenuOpen] = useState(false); 
   const [isEnvanterSubMenuOpen, setIsEnvanterSubMenuOpen] = useState(false); 
+  const [isCiktiSubMenuOpen, setIsCiktiSubMenuOpen] = useState(false);
 
   const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; 
 
@@ -50,6 +64,7 @@ export default function DashboardScreen() {
         setIsServisSubMenuOpen(false);
         setIsRandevuSubMenuOpen(false);
         setIsEnvanterSubMenuOpen(false);
+        setIsCiktiSubMenuOpen(false);
     }
   };
 
@@ -338,11 +353,64 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
+
+
                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMaliVisible(true); setIsMenuOpen(false); }}>
                   <Ionicons name="wallet-outline" size={24} color={D_COLOR} />
                   <Text style={[styles.menuItemText, { color: D_COLOR }]}>Mali İşlemler</Text>
                 </TouchableOpacity>
+
+                {/* --- YENİ EKLENEN ÇIKTI İŞLEMLERİ MENÜSÜ --- */}
+                <TouchableOpacity style={styles.menuItem} onPress={() => setIsCiktiSubMenuOpen(!isCiktiSubMenuOpen)}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Ionicons name="print-outline" size={24} color={D_COLOR} />
+                    <Text style={[styles.menuItemText, { color: D_COLOR }]}>Çıktı İşlemleri</Text>
+                  </View>
+                  <Ionicons name={isCiktiSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
+                </TouchableOpacity>
+
+                {isCiktiSubMenuOpen && (
+                  <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
+
+
+
+                   <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
+                      setIsMenuOpen(false); 
+                      setPdfOnizlemeVisible(true); // 🚨 Sadece önizleme ekranını açar!
+                    }}>
+                      <Ionicons name="document-text" size={20} color="#FF3B30" style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>PDF Çıktı Al</Text>
+                    </TouchableOpacity>
+
+
+
+
+
+                  
+                    
+                    
+
+
+
+                    <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
+                    
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { Alert.alert("Bilgi", "Word Çıktı Motoru Yakında!"); setIsMenuOpen(false); }}>
+                      <Ionicons name="document" size={20} color="#007AFF" style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Word Çıktı Al</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
+                    
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { Alert.alert("Bilgi", "Mail Motoru Yakında!"); setIsMenuOpen(false); }}>
+                      <Ionicons name="mail" size={20} color="#34C759" style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Mail Olarak Gönder</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
               </ScrollView>
+
+        
+
             </View>
           </View>
         )}
@@ -352,6 +420,80 @@ export default function DashboardScreen() {
         <YeniServisKaydi visible={servisVisible} onClose={() => setServisVisible(false)} isDarkMode={isDarkMode} />
         <StokTakibiAnaEkran visible={stokVisible} onClose={() => setStokVisible(false)} isDarkMode={isDarkMode} />
         <MaliIslemlerAnaEkran visible={maliVisible} onClose={() => setMaliVisible(false)} isDarkMode={isDarkMode} />
+
+        {/* --- PDF ÖNİZLEME VE ONAY MODALI --- */}
+        <Modal visible={pdfOnizlemeVisible} transparent animationType="slide">
+          <View style={styles.overlay}>
+            <View style={[styles.menuContainer, isDarkMode && styles.darkCard, { width: '85%', height: 'auto', borderRadius: 20, padding: 25 }]}>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <Ionicons name="document-text" size={28} color="#FF3B30" />
+                <Text style={[styles.menuTitle, isDarkMode && styles.darkText, { marginBottom: 0, paddingHorizontal: 10, fontSize: 18 }]}>BELGE ÖNİZLEME</Text>
+              </View>
+
+
+             {/* --- 1. ÖZET KUTUSU (Daraltıldı, Fontlar Küçüldü) --- */}
+              <View style={{ width: '90%', alignSelf: 'center', backgroundColor: isDarkMode ? '#1a1a1a' : '#f9f9f9', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? '#333' : '#eee', marginBottom: 20 }}>
+                <Text style={{ color: '#888', fontSize: 11, fontWeight: 'bold', marginBottom: 5 }}>GÖNDERİLECEK BİLGİLER</Text>
+                <Text style={{ color: D_COLOR, fontSize: 13, fontWeight: '600', marginTop: 3 }}>👤 Müşteri: <Text style={{fontWeight: 'normal'}}>Kemal Müdür</Text></Text>
+                <Text style={{ color: D_COLOR, fontSize: 13, fontWeight: '600', marginTop: 3 }}>🛠 İşlem: <Text style={{fontWeight: 'normal'}}>Anakart Entegre Değişimi vb.</Text></Text>
+                <Text style={{ color: D_COLOR, fontSize: 13, fontWeight: '600', marginTop: 3 }}>💰 Tutar: <Text style={{fontWeight: 'bold', color: '#34C759'}}>19.440,00 ₺</Text></Text>
+              </View>
+
+              {/* --- 2. MAVİ BUTON (Boyu Kısaldı, Daraltıldı) --- */}
+              <TouchableOpacity 
+                style={[styles.sahaBox, { width: '90%', alignSelf: 'center', height: 45, backgroundColor: '#007AFF', marginTop: 0, justifyContent: 'center', marginBottom: 12 }]} 
+                onPress={() => {
+                  setPdfOnizlemeVisible(false);
+                  pdfCiktiAl({ islem: "goster" }); 
+                }}
+              >
+                <Ionicons name="eye" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>ÖNCE A4 EKRANDA GÖR</Text>
+              </TouchableOpacity>
+
+              {/* --- 3. KIRMIZI BUTON (Boyu Kısaldı, Daraltıldı) --- */}
+              <TouchableOpacity 
+                style={[styles.sahaBox, { width: '90%', alignSelf: 'center', height: 45, backgroundColor: '#FF3B30', marginTop: 0, justifyContent: 'center' }]} 
+                onPress={() => {
+                  setPdfOnizlemeVisible(false);
+                  pdfCiktiAl({ islem: "paylas" }); 
+                }}
+              >
+                <Ionicons name="share-social" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>WHATSAPP İLE PAYLAŞ</Text>
+              </TouchableOpacity>
+              
+
+              
+
+
+
+
+
+
+
+              
+
+
+
+
+
+              <TouchableOpacity style={{ marginTop: 15, padding: 10, alignItems: 'center' }} onPress={() => setPdfOnizlemeVisible(false)}>
+                <Text style={{ color: '#888', fontWeight: 'bold', fontSize: 14 }}>VAZGEÇ</Text>
+              </TouchableOpacity>
+
+            </View>
+          </View>
+        </Modal>
+
+
+
+
+
+
+
+
       </SafeAreaView>
     </SafeAreaProvider>
   );
