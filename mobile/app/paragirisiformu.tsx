@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 /**
  * MALİ HESAPLAMA ALGORİTMASI
@@ -37,8 +38,10 @@ interface SQLDeviceData {
 export default function ParaGirisiFormuV2() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.41:3000';
-  const isDarkMode = false; 
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.43:3000';
+  const isDarkMode = params.isDarkMode === 'true';
+  
+  //const isDarkMode = false; 
 
   const initialState = { 
     tur: (params.islem_turu as string) || 'Seçiniz...', 
@@ -55,6 +58,59 @@ export default function ParaGirisiFormuV2() {
   const [isSaving, setIsSaving] = useState(false); 
   const [isRecordFound, setIsRecordFound] = useState(!!params.servis_id);
   const [modalState, setModalState] = useState<'tur' | null>(null);
+
+
+  // --- STOK SATIŞI (RADAR) MOTORLARI ---
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [radarMsg, setRadarMsg] = useState({ type: '', text: '' });
+  const [barkod, setBarkod] = useState('');
+  const [miktar, setMiktar] = useState('1');
+  const [bulunanUrun, setBulunanUrun] = useState<any>(null);
+
+  const handleBarkodAra = async (arananBarkod: string) => {
+    if (!arananBarkod) return;
+    try {
+      setRadarMsg({ type: 'loading', text: 'Radar taranıyor...' });
+      const response = await fetch(`${API_BASE_URL}/api/stok/search?barkod=${encodeURIComponent(arananBarkod)}`);
+      const res = await response.json();
+
+
+
+      if (res.success && res.found) {
+        setBulunanUrun(res.data);
+        // 🚨 Ürün bulununca ALIŞ fiyatını al, Kâr+KDV formülünden geçirip Tutar kutusuna yaz!
+        const alisFiyati = res.data.alis_fiyati ? parseFloat(res.data.alis_fiyati) : 0;
+        const hesaplananSatis = calculateNihaiFiyat(alisFiyati, f.iskonto);
+        
+        setF(prev => ({...prev, tutar: hesaplananSatis.toString()}));
+        setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU` });
+
+
+      
+        
+
+
+
+
+      } else {
+        setBulunanUrun(null);
+        setF(prev => ({...prev, tutar: ''}));
+        setRadarMsg({ type: 'warning', text: '🚨 KAYITSIZ BARKOD!\nLütfen önce stoktan ürünü kaydedin.' });
+      }
+    } catch (e) {
+      setRadarMsg({ type: 'error', text: 'Bağlantı hatası!' });
+    }
+  };
+
+  const handleBarCodeScanned = ({ data }: any) => {
+    setBarkod(data);
+    setCameraVisible(false);
+    handleBarkodAra(data);
+  };
+
+
+
 
 
    /**
@@ -132,15 +188,25 @@ export default function ParaGirisiFormuV2() {
 
 
 
+
+
+
+
   const theme = {
-    bg: isDarkMode ? '#121212' : '#fff',
+    bg: isDarkMode ? '#121212' : '#fdfdfd',
     cardBg: isDarkMode ? '#1e1e1e' : '#f9f9f9',
-    inputBg: isDarkMode ? '#2c2c2c' : '#f2f2f2',
-    textColor: isDarkMode ? '#fff' : '#000',
-    labelColor: isDarkMode ? '#aaa' : '#555',
+    inputBg: isDarkMode ? '#1e1e1e' : '#f2f2f2',
+    textColor: isDarkMode ? '#fff' : '#1A1A1A',
+    labelColor: isDarkMode ? '#aaa' : '#666',
     borderColor: isDarkMode ? '#333' : '#eee',
-    accentColor: '#FF3B30'
+    modalBorder: isDarkMode ? '#333' : '#f0f0f0',
+    btnBg: isDarkMode ? '#fff' : '#1A1A1A',
+    btnText: isDarkMode ? '#1A1A1A' : '#fff',
+    accentColor: '#FF3B30',
+    placeholderColor: isDarkMode ? '#777' : '#aaa'
   };
+    
+    
 
 
 
@@ -298,31 +364,58 @@ export default function ParaGirisiFormuV2() {
 /**
    * ASIL KAYIT İŞLEMİ (Sadece Onay Verilirse Çalışır)
    */
-  const executeSave = async (ozelMesaj: string) => { 
+
+
+  
+const executeSave = async (ozelMesaj: string) => { 
     setIsSaving(true);
     try {
-      // --- MÜDÜRÜN İZOLE KAPISI GERİ GELDİ ---
-      // Randevuysa direkt tahsilat/temizlik kapısına gider, değilse eski tamir kapılarına!
-      const url = f.tur.includes('Randevu') 
-          ? `${API_BASE_URL}/api/tahsilat/banko-tahsilat` 
-          : (f.servis_id ? `${API_BASE_URL}/api/tahsilat/process` : `${API_BASE_URL}/api/kasa/add`);
-      
-      const payload = f.servis_id ? {
-          id: f.servis_id,
-          servis_no: f.kayitNo,
-          kategori: f.tur,
-          tutar: parseFloat(f.tutar),
-          aciklama: f.aciklama,
-          islem_yapan: 'Banko',
-          new_status: 'Teslim Edildi' // <-- Bu komut backend'i tetikleyecek
-      } : {
-          islem_yonu: 'GİRİŞ',
-          kategori: f.tur,
-          tutar: parseFloat(f.tutar),
-          aciklama: f.aciklama,
-          islem_yapan: 'Admin',
-          servis_no: f.kayitNo || null
-      };
+      let url = '';
+      let payload = {};
+
+      // 🚨 MÜDÜRÜN MUSLUĞU: Stok satışı ise stok tüneline, değilse kasa tüneline!
+      if (f.tur === 'Stoktan Ürün Satışı') {
+        url = `${API_BASE_URL}/api/stok/sell`;
+        payload = {
+          id: bulunanUrun.id,
+          barkod: barkod,
+          cikan_adet: parseInt(miktar || '1'),
+          manual_discount: parseFloat(f.iskonto || '0'),
+          satis_fiyati: parseFloat(f.tutar) // Nihai hesaplanmış ve ekranda görünen 1 adet fiyatı
+        };
+      } else {
+        url = f.tur.includes('Randevu') 
+            ? `${API_BASE_URL}/api/tahsilat/banko-tahsilat` 
+            : (f.servis_id ? `${API_BASE_URL}/api/tahsilat/process` : `${API_BASE_URL}/api/kasa/add`);
+        
+        payload = f.servis_id ? {
+            id: f.servis_id,
+            servis_no: f.kayitNo,
+            kategori: f.tur,
+            tutar: parseFloat(f.tutar),
+            aciklama: f.aciklama,
+            islem_yapan: 'Banko',
+            new_status: 'Teslim Edildi'
+        } : {
+            islem_yonu: 'GİRİŞ',
+            kategori: f.tur,
+            tutar: parseFloat(f.tutar),
+            aciklama: f.aciklama,
+            islem_yapan: 'Admin',
+            servis_no: f.kayitNo || null
+        };
+      }
+
+
+
+
+
+
+
+
+
+
+
 
       const response = await fetch(url, {
         method: 'POST',
@@ -457,6 +550,11 @@ const executeSave = async (ozelMesaj: string) => {
   const handleFinalTahsilat = async () => {
     const isTahsilat = f.tur.includes('Tahsilat') || f.tur.includes('Tamir') || f.tur.includes('Randevu');
 
+    if (f.tur === 'Stoktan Ürün Satışı' && !bulunanUrun) {
+      Alert.alert("EKSİK VERİ", "Lütfen önce satılacak ürünü barkod ile okutunuz.");
+      return;
+    }
+
     // 0 TL Kontrolü
     if (parseFloat(f.tutar) <= 0 || isNaN(parseFloat(f.tutar))) {
       Alert.alert("HATA", "Tahsilat tutarı 0 veya geçersiz olamaz!");
@@ -542,22 +640,57 @@ const executeSave = async (ozelMesaj: string) => {
 
 */
 
-
-
-
-
-
-
-
-  
-
-
-
-  const handleIskontoChange = (oran: string) => {
-    const bazFiyat = f.cihazData?.ustaTeklifi || 0;
+const handleIskontoChange = (oran: string) => {
+    // 🚨 Stok satışıysa deponun alış fiyatını, tamirse ustanın teklifini baz al
+    const bazFiyat = f.tur === 'Stoktan Ürün Satışı' && bulunanUrun 
+        ? parseFloat(bulunanUrun.alis_fiyati || 0) 
+        : (f.cihazData?.ustaTeklifi || 0);
+        
     const yeniFiyat = calculateNihaiFiyat(bazFiyat, oran);
     setF({ ...f, iskonto: oran, tutar: yeniFiyat.toString() });
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  if (cameraVisible) {
+    return (
+      <View style={StyleSheet.absoluteFillObject}>
+        <CameraView style={StyleSheet.absoluteFillObject} onBarcodeScanned={handleBarCodeScanned} />
+        <View style={styles.scannerOverlay}>
+          <View style={styles.unfocusedContainer}></View>
+          <View style={styles.middleContainer}>
+            <View style={styles.unfocusedContainer}></View>
+            <View style={styles.focusedContainer}>
+              <View style={[styles.corner, styles.topLeft]} /><View style={[styles.corner, styles.topRight]} />
+              <View style={[styles.corner, styles.bottomLeft]} /><View style={[styles.corner, styles.bottomRight]} />
+              <View style={styles.radarTextRow}><Ionicons name="scan-outline" size={18} color="#FF3B30" /><Text style={styles.radarText}>BARKOD RADARI AKTİF</Text></View>
+            </View>
+            <View style={styles.unfocusedContainer}></View>
+          </View>
+          <View style={styles.unfocusedContainer}>
+            <TouchableOpacity style={styles.camCloseBottom} onPress={() => setCameraVisible(false)}><Ionicons name="close-circle" size={60} color="#fff" /><Text style={{color:'#fff', fontWeight:'bold'}}>İPTAL</Text></TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+
+
+
+
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -590,9 +723,16 @@ const executeSave = async (ozelMesaj: string) => {
                 <View style={styles.searchContainer}>
                   <Text style={[styles.label, { color: theme.accentColor }]}>HAZIR CİHAZ NUMARASI GİRİN (*)</Text>
                   <View style={styles.searchRow}>
+                    
+
+
                     <TextInput 
                       style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, color: theme.textColor, borderColor: theme.accentColor, borderWidth: 1 }]}
-                      placeholder="Örn: 26032401" keyboardType="numeric" value={f.kayitNo}
+                      placeholder="Örn: 26032401" 
+                      placeholderTextColor={theme.placeholderColor}
+                      keyboardType="numeric" 
+                      value={f.kayitNo}
+
                       onChangeText={(v) => { setF({...f, kayitNo: v}); setIsRecordFound(false); }}
                     />
                     <TouchableOpacity style={[styles.searchBtn, {backgroundColor: theme.accentColor}]} onPress={handleSearchRecord}>
@@ -618,38 +758,160 @@ const executeSave = async (ozelMesaj: string) => {
 
               <View style={styles.priceSection}>
                 <Text style={[styles.label, {color: '#FF9500', marginTop: 0}]}>KÂR İSKONTOSU (%)</Text>
+                
                 <TextInput 
                   style={[styles.input, {backgroundColor: isDarkMode ? '#333' : '#fff', borderColor: '#FF9500', borderWidth: 1, color: '#FF9500', fontWeight: 'bold', textAlign: 'center'}]}
+                  placeholder="0"
+                  placeholderTextColor="#FF9500"
                   keyboardType="numeric" maxLength={2} value={f.iskonto} onChangeText={handleIskontoChange}
                 />
+
+               
               </View>
             </View>
           )}
 
-          <View style={{ marginTop: 25 }}>
-            <Text style={[styles.label, { color: theme.labelColor }]}>TAHSİLAT TUTARI (Kâr+KDV Dahil)</Text>
-            <TextInput 
-              style={[styles.input, { backgroundColor: theme.inputBg, color: '#34C759', fontSize: 20, fontWeight: '900', textAlign: 'center' }]}
-              value={f.tutar}
-              editable={f.tur === 'Kasaya Nakit Girişi'} // Tamirde kilitli!
-              onChangeText={(v) => setF({...f, tutar: v})}
-              keyboardType="numeric"
-            />
 
-            <Text style={[styles.label, { color: theme.labelColor, marginTop: 15 }]}>İŞLEM AÇIKLAMASI (*)</Text>
-            <TextInput 
-              style={[styles.input, { backgroundColor: theme.inputBg, color: theme.textColor, height: 80, textAlignVertical: 'top' }]}
-              multiline placeholder="Detay yazınız..."
-              value={f.aciklama} onChangeText={(v) => setF({...f, aciklama: v})}
-            />
+
+          <View style={{ marginTop: 25 }}>
+            {f.tur === 'Stoktan Ürün Satışı' ? (
+              <View>
+                {radarMsg.text ? <View style={[styles.alarmBox, { borderColor: radarMsg.type === 'success' ? '#34C759' : '#FF3B30' }]}><Text style={{ color: radarMsg.type === 'success' ? '#34C759' : '#FF3B30', fontWeight: 'bold' }}>{radarMsg.text}</Text></View> : null}
+                
+                <Text style={[styles.label, { color: theme.labelColor }]}>BARKOD OKUT VEYA YAZ (*)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={[styles.inputContainer, { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.inputBg }]}>
+                    <TextInput style={[styles.input, { flex: 1, color: theme.textColor, paddingHorizontal: 15, borderWidth: 0 }]} placeholder="Barkod..." placeholderTextColor={theme.placeholderColor} value={barkod} onChangeText={setBarkod} onEndEditing={() => handleBarkodAra(barkod)} />
+                    <TouchableOpacity style={styles.araBtn} onPress={() => handleBarkodAra(barkod)}><Ionicons name="search" size={20} color="#fff" /></TouchableOpacity>
+                  </View>
+                  <TouchableOpacity style={styles.kameraBtn} onPress={async () => { if (!permission?.granted) await requestPermission(); setCameraVisible(true); }}><Ionicons name="camera-outline" size={26} color="#fff" /></TouchableOpacity>
+                </View>
+
+                {bulunanUrun && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>MALZEME ADI</Text>
+                    <View style={[styles.infoBox, { backgroundColor: theme.inputBg }]}><Text style={{color: theme.textColor, fontWeight: 'bold'}}>{bulunanUrun.malzeme_adi}</Text></View>
+                    
+
+                       <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                      <View style={{ flex: 1, marginRight: 5 }}>
+                        <Text style={[styles.label, { color: theme.labelColor }]}>ADET</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.inputBg }]}><TextInput style={[styles.input, { color: theme.textColor, textAlign: 'center', borderWidth: 0 }]} keyboardType="numeric" value={miktar} onChangeText={setMiktar} /></View>
+                      </View>
+                      <View style={{ flex: 1, marginHorizontal: 5 }}>
+                        <Text style={[styles.label, { color: '#FF9500' }]}>İSKONTO (%)</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.inputBg, borderColor: '#FF9500', borderWidth: 1 }]}>
+                          <TextInput style={[styles.input, { color: '#FF9500', fontWeight: 'bold', textAlign: 'center', borderWidth: 0 }]} placeholder="0" placeholderTextColor="#FF9500" keyboardType="numeric" value={f.iskonto} onChangeText={handleIskontoChange} />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1.2, marginLeft: 5 }}>
+                        <Text style={[styles.label, { color: theme.labelColor }]}>BİRİM FİYAT (₺)</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: 'rgba(52, 199, 89, 0.1)', borderColor: '#34C759', borderWidth: 1 }]}>
+                          <TextInput style={[styles.input, { color: '#1B5E20', fontWeight: 'bold', textAlign: 'center', borderWidth: 0 }]} placeholder="0.00" placeholderTextColor={theme.placeholderColor} keyboardType="numeric" value={f.tutar} onChangeText={(v) => setF({...f, tutar: v})} />
+                        </View>
+                      </View>
+                    </View>           
+                
+                 </View>
+
+                )}
+                
+                <Text style={[styles.label, { color: theme.labelColor, marginTop: 15 }]}>İŞLEM AÇIKLAMASI (*)</Text>
+                <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, height: 80, textAlignVertical: 'top' }]} multiline placeholder="Örn: Nakit satıldı..." placeholderTextColor={theme.placeholderColor} value={f.aciklama} onChangeText={(v) => setF({...f, aciklama: v})} />
+              </View>
+            ) : (
+              <View>
+
+
+
+
+
+                
+                {f.tur === 'Stoktan Ürün Satışı' ? (
+              <View>
+                {radarMsg.text ? <View style={[styles.alarmBox, { borderColor: radarMsg.type === 'success' ? '#34C759' : '#FF3B30' }]}><Text style={{ color: radarMsg.type === 'success' ? '#34C759' : '#FF3B30', fontWeight: 'bold' }}>{radarMsg.text}</Text></View> : null}
+                
+                <Text style={[styles.label, { color: theme.labelColor }]}>BARKOD OKUT VEYA YAZ (*)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={[styles.inputContainer, { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.inputBg }]}>
+                    <TextInput style={[styles.input, { flex: 1, color: theme.textColor, paddingHorizontal: 15, borderWidth: 0 }]} placeholder="Barkod..." placeholderTextColor={theme.placeholderColor} value={barkod} onChangeText={setBarkod} onEndEditing={() => handleBarkodAra(barkod)} />
+                    <TouchableOpacity style={styles.araBtn} onPress={() => handleBarkodAra(barkod)}><Ionicons name="search" size={20} color="#fff" /></TouchableOpacity>
+                  </View>
+                  <TouchableOpacity style={styles.kameraBtn} onPress={async () => { if (!permission?.granted) await requestPermission(); setCameraVisible(true); }}><Ionicons name="camera-outline" size={26} color="#fff" /></TouchableOpacity>
+                </View>
+
+                {bulunanUrun && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={[styles.label, { color: theme.labelColor }]}>MALZEME ADI</Text>
+                    <View style={[styles.infoBox, { backgroundColor: theme.inputBg }]}><Text style={{color: theme.textColor, fontWeight: 'bold'}}>{bulunanUrun.malzeme_adi}</Text></View>
+                    
+                    <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                      <View style={{ flex: 1, marginRight: 5 }}>
+                        <Text style={[styles.label, { color: theme.labelColor }]}>SATILAN ADET</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.inputBg }]}><TextInput style={[styles.input, { color: theme.textColor, textAlign: 'center', borderWidth: 0 }]} keyboardType="numeric" value={miktar} onChangeText={setMiktar} /></View>
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 5 }}>
+                        <Text style={[styles.label, { color: theme.labelColor }]}>SATIŞ FİYATI (₺)</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: 'rgba(52, 199, 89, 0.1)', borderColor: '#34C759', borderWidth: 1 }]}>
+                          <TextInput style={[styles.input, { color: '#1B5E20', fontWeight: 'bold', textAlign: 'center', borderWidth: 0 }]} placeholder="0.00" placeholderTextColor={theme.placeholderColor} keyboardType="numeric" value={f.tutar} onChangeText={(v) => setF({...f, tutar: v})} />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+                
+                <Text style={[styles.label, { color: theme.labelColor, marginTop: 15 }]}>İŞLEM AÇIKLAMASI (*)</Text>
+                <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, height: 80, textAlignVertical: 'top' }]} multiline placeholder="Örn: Nakit satıldı..." placeholderTextColor={theme.placeholderColor} value={f.aciklama} onChangeText={(v) => setF({...f, aciklama: v})} />
+              </View>
+            ) : (
+              <View>
+                <Text style={[styles.label, { color: theme.labelColor }]}>TAHSİLAT TUTARI (Kâr+KDV Dahil)</Text>
+                <TextInput 
+                  style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: '#34C759', fontSize: 20, fontWeight: '900', textAlign: 'center' }]}
+                  value={f.tutar}
+                  placeholder="0.00"
+                  placeholderTextColor={theme.placeholderColor}
+                  editable={f.tur === 'Kasaya Nakit Girişi'} 
+                  onChangeText={(v) => setF({...f, tutar: v})}
+                  keyboardType="numeric"
+                />
+
+                <Text style={[styles.label, { color: theme.labelColor, marginTop: 15 }]}>İŞLEM AÇIKLAMASI (*)</Text>
+                <TextInput 
+                  style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.borderColor, color: theme.textColor, height: 80, textAlignVertical: 'top' }]}
+                  multiline 
+                  placeholder="Detay yazınız..."
+                  placeholderTextColor={theme.placeholderColor}
+                  value={f.aciklama} 
+                  onChangeText={(v) => setF({...f, aciklama: v})}
+                />
+              </View>
+            )}
+
+              </View>
+            )}
+
+
+
+         
+
+
+
+
 
             <TouchableOpacity 
-                style={[styles.saveBtn, (isSaving || isSearching) && {opacity: 0.5}]} 
+                style={[styles.saveBtn, { backgroundColor: theme.btnBg }, (isSaving || isSearching) && {opacity: 0.5}]} 
                 onPress={handleFinalTahsilat}
                 disabled={isSaving || isSearching}
             >
-              {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>İŞLEMİ ONAYLA VE KAYDET</Text>}
+              {isSaving ? <ActivityIndicator color={theme.btnText} /> : <Text style={[styles.saveBtnText, { color: theme.btnText }]}>İŞLEMİ ONAYLA VE KAYDET</Text>}
             </TouchableOpacity>
+
+
+            
+
+
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -657,8 +919,12 @@ const executeSave = async (ozelMesaj: string) => {
       <Modal visible={modalState === 'tur'} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+
               {['Kasaya Nakit Girişi', 'Tamir Ücreti Tahsili', 'Randevu Geliri Tahsili', 'Stoktan Ürün Satışı'].map((item) => (
-                <TouchableOpacity key={item} style={styles.modalItem} onPress={() => { 
+                <TouchableOpacity key={item} style={[styles.modalItem, { borderBottomColor: theme.modalBorder }]} onPress={() => {
+
+                             
+                 
                   setF({...initialState, tur: item}); 
                   setIsRecordFound(false);
                   setModalState(null); 
@@ -797,5 +1063,30 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     borderBottomWidth: 1, 
     borderBottomColor: '#f0f0f0' 
-  }
+  },
+
+  
+// --- RADAR KAMERA AYARLARI ---
+  inputContainer: { borderRadius: 12, height: 55, justifyContent: 'center' },
+  infoBox: { borderRadius: 12, padding: 15, minHeight: 55, justifyContent: 'center' },
+  araBtn: { width: 55, height: 55, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', borderTopRightRadius: 12, borderBottomRightRadius: 12 },
+  kameraBtn: { width: 55, height: 55, backgroundColor: '#1A1A1A', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+  alarmBox: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center', marginBottom: 10 },
+  scannerOverlay: { flex: 1 },
+  unfocusedContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  middleContainer: { flexDirection: 'row', height: 260 },
+  focusedContainer: { width: 260, height: 260, position: 'relative' },
+  corner: { position: 'absolute', width: 40, height: 40, borderColor: '#FF3B30', borderWidth: 4 },
+  topLeft: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
+  topRight: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
+  bottomLeft: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
+  bottomRight: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
+  radarTextRow: { position: 'absolute', bottom: -40, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  radarText: { color: '#FF3B30', fontSize: 12, fontWeight: '900', marginLeft: 8 },
+  camCloseBottom: { alignItems: 'center', marginTop: 20 }
+
+
+
+
+
 });

@@ -25,7 +25,8 @@ export default function ParaCikisiEkrani() {
     modalBorder: isDarkMode ? '#333' : '#f0f0f0',
     btnBg: isDarkMode ? '#fff' : '#1A1A1A',
     btnText: isDarkMode ? '#1A1A1A' : '#fff',
-    primary: '#FF3B30'
+    primary: '#FF3B30',
+    placeholderColor: isDarkMode ? '#777' : '#aaa'
   };
 
   const [islemTuru, setIslemTuru] = useState('');
@@ -41,7 +42,10 @@ export default function ParaCikisiEkrani() {
   const [secenekModalVisible, setSecenekModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const islemTipleri = ["Genel Gider Çıkışı", "Toptancıya Ödeme / Stok Alımı", "Diğer Giderler"];
+  const islemTipleri = ["Genel Gider Çıkışı", "Stok Alımı", "Diğer Giderler"];
+
+
+  //const islemTipleri = ["Genel Gider Çıkışı", "Toptancıya Ödeme / Stok Alımı", "Diğer Giderler"];
 
   const handleBarkodAra = async (arananBarkod: string) => {
     if (!arananBarkod) return;
@@ -54,11 +58,16 @@ export default function ParaCikisiEkrani() {
         setBulunanUrun(res.data);
         setBirimFiyat(res.data.alis_fiyati ? res.data.alis_fiyati.toString() : '0');
         setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU` });
-      } else {
+
+
+        } else {
         setBulunanUrun(null);
         setBirimFiyat('');
-        setRadarMsg({ type: 'warning', text: '🚨 KAYITSIZ BARKOD!' });
+        setRadarMsg({ type: 'warning', text: '🚨 KAYITSIZ BARKOD!\nLütfen stok girişi bölümünden malzeme kaydı yapın.' });
       }
+
+
+
     } catch (e) {
       setRadarMsg({ type: 'error', text: 'Bağlantı hatası!' });
     }
@@ -73,7 +82,13 @@ export default function ParaCikisiEkrani() {
   const handleSavePress = () => {
     if (!islemTuru) { Alert.alert("Eksik", "İşlem türü seçiniz."); return; }
 
-    if (islemTuru === "Toptancıya Ödeme / Stok Alımı") {
+
+    if (islemTuru === "Stok Alımı") {
+
+    
+
+
+
       if (!bulunanUrun) { Alert.alert("Eksik", "Barkod okutunuz."); return; }
       if (!birimFiyat) { Alert.alert("Eksik", "Birim fiyat giriniz."); return; }
       
@@ -105,7 +120,12 @@ export default function ParaCikisiEkrani() {
       let finalEndpoint = '';
       let payload = {};
 
-      if (islemTuru === "Toptancıya Ödeme / Stok Alımı") {
+
+      if (islemTuru === "Stok Alımı") {
+
+
+
+
         // Senin Stok.js'deki /add motorunu çalıştırıyoruz (Otomatik kasayı da düşer)
         finalEndpoint = `${API_URL}/api/stok/add`;
         payload = {
@@ -191,12 +211,26 @@ export default function ParaCikisiEkrani() {
             <Ionicons name="chevron-down" size={22} color={theme.subText} />
           </TouchableOpacity>
 
-          {islemTuru !== "Toptancıya Ödeme / Stok Alımı" ? (
+          {islemTuru !== "Stok Alımı" ? (
+
+          
+
+
+
+
+
             <View>
               <Text style={[styles.label, { color: theme.subText }]}>ÇIKIŞ TUTARI (₺)</Text>
-              <View style={[styles.inputContainer, { backgroundColor: theme.inputBg }]}><TextInput style={[styles.input, { color: theme.text }]} placeholder="0.00" keyboardType="numeric" value={tutar} onChangeText={setTutar} /></View>
+
+              <View style={[styles.inputContainer, { backgroundColor: theme.inputBg }]}><TextInput style={[styles.input, { color: theme.text }]} placeholder="0.00" placeholderTextColor={theme.placeholderColor} keyboardType="numeric" value={tutar} onChangeText={setTutar} /></View>
+
               <Text style={[styles.label, { color: theme.subText }]}>İŞLEM AÇIKLAMASI (*)</Text>
-              <View style={[styles.inputContainer, { height: 100, backgroundColor: theme.inputBg }]}><TextInput style={[styles.input, { color: theme.text, textAlignVertical: 'top', paddingTop: 15 }]} placeholder="Detay..." multiline value={aciklama} onChangeText={setAciklama} /></View>
+
+              <View style={[styles.inputContainer, { height: 100, backgroundColor: theme.inputBg }]}><TextInput style={[styles.input, { color: theme.text, textAlignVertical: 'top', paddingTop: 15 }]} placeholder="Detay..." placeholderTextColor={theme.placeholderColor} multiline value={aciklama} onChangeText={setAciklama} /></View>
+
+            
+            
+            
             </View>
           ) : (
             <View>
@@ -205,7 +239,11 @@ export default function ParaCikisiEkrani() {
               <Text style={[styles.label, { color: theme.subText }]}>BARKOD OKUT VEYA YAZ (*)</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                 <View style={[styles.inputContainer, { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.inputBg }]}>
-                  <TextInput style={[styles.input, { flex: 1, color: theme.text }]} placeholder="Barkod..." value={barkod} onChangeText={setBarkod} onEndEditing={() => handleBarkodAra(barkod)} />
+
+                  <TextInput style={[styles.input, { flex: 1, color: theme.text, paddingHorizontal: 15 }]} placeholder="Barkod..." placeholderTextColor={theme.placeholderColor} value={barkod} onChangeText={setBarkod} onEndEditing={() => handleBarkodAra(barkod)} />
+
+                  
+                  
                   <TouchableOpacity style={styles.araBtn} onPress={() => handleBarkodAra(barkod)}><Ionicons name="search" size={20} color="#fff" /></TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.kameraBtn} onPress={async () => { if (!permission?.granted) await requestPermission(); setCameraVisible(true); }}><Ionicons name="camera-outline" size={26} color="#fff" /></TouchableOpacity>
@@ -224,7 +262,10 @@ export default function ParaCikisiEkrani() {
                     <View style={{ flex: 1, marginLeft: 5 }}>
                       <Text style={[styles.label, { color: theme.subText }]}>BİRİM FİYAT (₺)</Text>
                       <View style={[styles.inputContainer, { backgroundColor: 'rgba(52, 199, 89, 0.1)', borderColor: '#34C759', borderWidth: 1 }]}>
-                        <TextInput ref={birimFiyatRef} style={[styles.input, { color: '#1B5E20', fontWeight: 'bold', textAlign: 'center' }]} keyboardType="numeric" value={birimFiyat} onChangeText={setBirimFiyat} />
+
+                        <TextInput ref={birimFiyatRef} style={[styles.input, { color: '#1B5E20', fontWeight: 'bold', textAlign: 'center' }]} placeholder="0.00" placeholderTextColor={theme.placeholderColor} keyboardType="numeric" value={birimFiyat} onChangeText={setBirimFiyat} />
+                                                 
+                     
                       </View>
                     </View>
                   </View>
@@ -239,17 +280,44 @@ export default function ParaCikisiEkrani() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+
       <Modal visible={secenekModalVisible} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} onPress={() => setSecenekModalVisible(false)}>
-          <View style={[styles.modalContent, { backgroundColor: theme.modalBg }]}>
-            {islemTipleri.map((tip, index) => (
-              <TouchableOpacity key={index} style={styles.modalOption} onPress={() => { setIslemTuru(tip); setSecenekModalVisible(false); }}>
-                <Text style={[styles.modalOptionText, { color: theme.text }]}>{tip}</Text>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.modalBg }]}>
+              {islemTipleri.map((tip, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  style={[styles.modalItem, { borderBottomColor: theme.modalBorder }]} 
+                  onPress={() => { 
+                    setIslemTuru(tip); 
+                    setSecenekModalVisible(false); 
+                    setTutar(''); 
+                    setAciklama(''); 
+                    setBulunanUrun(null); 
+                    setBarkod(''); 
+                    setRadarMsg({type:'', text:''}); 
+                  }}
+                >
+                  <Text style={{ color: theme.text, fontWeight: 'bold' }}>{tip}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity onPress={() => setSecenekModalVisible(false)} style={{marginTop: 15}}>
+                <Text style={{color: '#FF3B30', fontWeight: 'bold'}}>VAZGEÇ</Text>
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
-        </TouchableOpacity>
       </Modal>
+
+
+
+
+      
+
+
+
+
+
+
     </SafeAreaView>
   );
 }
@@ -266,10 +334,16 @@ const styles = StyleSheet.create({
   infoBox: { borderRadius: 12, padding: 15, minHeight: 55, justifyContent: 'center' },
   submitBtn: { borderRadius: 12, height: 60, justifyContent: 'center', alignItems: 'center', marginTop: 35 },
   submitBtnText: { fontSize: 15, fontWeight: '900' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '85%', borderRadius: 20, overflow: 'hidden' },
-  modalOption: { paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#eee', alignItems: 'center' },
-  modalOptionText: { fontSize: 16, fontWeight: '900' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '80%', padding: 20, borderRadius: 20, alignItems: 'center' },
+  modalItem: { paddingVertical: 15, width: '100%', alignItems: 'center', borderBottomWidth: 1 },
+
+  
+
+
+
+
   araBtn: { width: 55, height: 55, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', borderTopRightRadius: 12, borderBottomRightRadius: 12 },
   kameraBtn: { width: 55, height: 55, backgroundColor: '#1A1A1A', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
   alarmBox: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center', marginBottom: 10 },

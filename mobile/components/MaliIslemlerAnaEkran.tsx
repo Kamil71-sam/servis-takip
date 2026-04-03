@@ -477,19 +477,19 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
 
 
 
-
-
-            {/* AKSİYON BUTONLARI */}
+{/* AKSİYON BUTONLARI */}
             <View style={styles.actionRow}>
+              
+              {/* 🚨 DÜZELTİLEN KISIM 1: Para Girişi için de gece modu mirası (params) eklendi! */}
               <TouchableOpacity 
                 style={[styles.actionBtnSolid, { backgroundColor: theme.girisBtnBg }]} 
-                onPress={() => router.push("/paragirisiformu")} 
+                onPress={() => router.push({ pathname: "/paragirisiformu", params: { isDarkMode: isDarkMode } })} 
               >
                 <View style={[styles.iconCircleSolid, { backgroundColor: 'rgba(255,255,255,0.1)' }]}><Ionicons name="arrow-down" size={26} color="#fff" /></View>
                 <Text style={styles.actionBtnTextSolid}>PARA GİRİŞİ</Text>
               </TouchableOpacity>
               
-              {/* 🚨 DÜZELTİLEN KISIM: Gece modu mirası (params) buraya eklendi! */}
+              {/* 🚨 DÜZELTİLEN KISIM 2: Para Çıkışı zaten doğruydu, aynen duruyor */}
               <TouchableOpacity 
                 style={[styles.actionBtnSolid, { backgroundColor: theme.cikisBtnBg }]} 
                 onPress={() => router.push({ pathname: "/paracikisiformu", params: { isDarkMode: isDarkMode } })}
@@ -499,7 +499,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
               </TouchableOpacity>
             </View>
 
-           
 
 
 
@@ -508,7 +507,7 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
 
 
 
-
+            
 
             {/* 🚨 YENİ DEV BUTON (ÜSTTE) */}
             <TouchableOpacity 
