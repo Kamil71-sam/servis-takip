@@ -375,18 +375,19 @@ export default function DashboardScreen() {
 
 
                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
-                      setIsMenuOpen(false); 
-                      setPdfOnizlemeVisible(true); // 🚨 Sadece önizleme ekranını açar!
+                        setIsMenuOpen(false); 
+                        // 🚨 KEMAL MÜDÜR MODALINI İPTAL ETTİK, LİSTEYE YÖNLENDİRDİK!
+                        router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light' } }); 
                     }}>
-                      <Ionicons name="document-text" size={20} color="#FF3B30" style={{ marginRight: 15 }} />
-                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>PDF Çıktı Al</Text>
+                        <Ionicons name="document-text" size={20} color="#FF3B30" style={{ marginRight: 15 }} />
+                        <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>PDF Çıktı Al</Text>
                     </TouchableOpacity>
 
 
+           
 
 
-
-                  
+               
                     
                     
 

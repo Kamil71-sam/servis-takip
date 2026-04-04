@@ -2,10 +2,8 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
 
-// 🚨 MÜDÜRÜN DİNAMİK MOTORU: Kalandar Yazılım Ayarları ve "Göster/Paylaş" Şalteri
-export const pdfCiktiAl = async ({
-  islem = "paylas", // YENİ: Motorun ne yapacağını belirten şalter
-  firma = {
+export const pdfCiktiAl = async (gelenVeri: any = {}) => {
+  const firma = gelenVeri.firma || {
     unvan: "KALANDAR YAZILIM",
     adres: "Ege Mah. 210 Sok. No: 12 İç Kapı No: 1 Altıeylül / Balıkesir",
     vergiDairesi: "Kurtdereli VD",
@@ -15,34 +13,22 @@ export const pdfCiktiAl = async ({
     iban1: "TR00 0000 0000 0000 0000 0000 00",
     iban2Banka: "Garanti BBVA",
     iban2: "TR99 9999 9999 9999 9999 9999 99"
-  },
-  musteri = {
-    adi: "Kemal Müdür",
-    adres: "Bursa / Merkez",
-    telefon: "0500 000 0000"
-  },
-  belgeNo = `KY-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
-  kalemler = [
-    { ad: "Anakart Entegre Değişimi", miktar: 1, fiyat: 15000, kdv: 20, toplam: 18000 },
-    { ad: "Genel Bakım ve Temizlik", miktar: 1, fiyat: 1000, kdv: 20, toplam: 1200 }
-  ],
-  toplamlar = {
-    araToplam: 16000,
-    iskonto: 0,
-    kdvToplam: 3200,
-    genelToplam: 19200
-  }
-} = {}) => {
+  };
+  const musteri = gelenVeri.musteri || { adi: "Bilinmiyor", adres: "-", telefon: "-" };
+  const cihaz = gelenVeri.cihaz || { markaModel: "Bilinmiyor", seriNo: "Barkodsuz" };
+  const belgeNo = gelenVeri.belgeNo || `KY-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`;
+  const kalemler: any[] = gelenVeri.kalemler || [];
+  const toplamlar = gelenVeri.toplamlar || { araToplam: 0, iskonto: 0, kdvToplam: 0, genelToplam: 0 };
 
   try {
-    const kalemlerHTML = kalemler.map((kalem, index) => `
+    const kalemlerHTML = kalemler.map((kalem: any, index: number) => `
       <tr>
-        <td>${index + 1}</td>
-        <td style="text-align: left;">${kalem.ad}</td>
-        <td>${kalem.miktar}</td>
-        <td>${kalem.fiyat.toFixed(2)} ₺</td>
-        <td>%${kalem.kdv}</td>
-        <td><b>${kalem.toplam.toFixed(2)} ₺</b></td>
+        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 14px;">${index + 1}</td>
+        <td style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 14px;">${kalem.ad}</td>
+        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 14px;">${kalem.miktar || 1}</td>
+        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 14px;">${parseFloat(kalem.fiyat || 0).toFixed(2)} ₺</td>
+        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 14px;">%${kalem.kdv || 20}</td>
+        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; font-size: 14px;"><b>${parseFloat(kalem.toplam || 0).toFixed(2)} ₺</b></td>
       </tr>
     `).join('');
 
@@ -50,68 +36,87 @@ export const pdfCiktiAl = async ({
       <html>
         <head>
           <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: 'Helvetica', sans-serif; margin: 0; padding: 40px; color: #1a1a1a; }
-            .top-bar { background-color: #D32F2F; color: white; padding: 10px 20px; font-weight: bold; font-size: 22px; text-align: center; border-radius: 8px 8px 0 0; text-transform: uppercase; letter-spacing: 2px;}
-            .header-area { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 20px;}
-            .company-name { font-size: 36px; font-weight: 900; color: #1a1a1a; letter-spacing: -1px;}
+            body { font-family: 'Helvetica', sans-serif; margin: 0; padding: 20px; color: #1a1a1a; }
+            .top-bar { background-color: #D32F2F; color: white; padding: 10px; font-weight: bold; font-size: 20px; text-align: center; border-radius: 8px 8px 0 0; text-transform: uppercase; letter-spacing: 2px;}
+            .company-name { font-size: 32px; font-weight: 900; color: #1a1a1a; letter-spacing: -1px; margin: 0;}
             .company-name span { color: #D32F2F; }
-            .doc-info { display: flex; gap: 10px; }
-            .doc-box { background-color: #1a1a1a; color: white; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 14px;}
-            .info-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
-            .info-box { width: 48%; border: 2px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
-            .info-title { background-color: #f4f4f4; text-align: center; padding: 8px; font-weight: bold; border-bottom: 2px solid #1a1a1a; }
-            .info-content { padding: 15px; font-size: 14px; line-height: 1.6; }
-            .info-content strong { color: #D32F2F; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 2px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
-            th { background-color: #D32F2F; color: white; padding: 12px; font-size: 14px; border-bottom: 2px solid #1a1a1a; border-right: 1px solid #fff;}
-            th:last-child { border-right: none; }
-            td { padding: 12px; text-align: center; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 14px; }
-            td:last-child { border-right: none; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-            .bottom-container { display: flex; justify-content: space-between; align-items: flex-start; }
-            .bank-box { width: 55%; border: 2px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
-            .bank-title { background-color: #1a1a1a; color: white; text-align: center; padding: 8px; font-weight: bold; }
-            .bank-content { padding: 15px; font-size: 13px; line-height: 1.8; }
-            .totals-box { width: 40%; background-color: #D32F2F; border-radius: 12px; color: white; padding: 15px; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 15px; font-weight: bold; }
-            .total-row.grand { border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; font-size: 24px; margin-bottom: 0; }
-            .footer { margin-top: 40px; text-align: center; font-size: 13px; font-weight: bold; color: #555; }
+            .doc-box { background-color: #1a1a1a; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; display: inline-block; margin-left: 5px;}
+            
+            .info-box { border: 2px solid #1a1a1a; border-radius: 12px; overflow: hidden; height: 100%; }
+            .info-title { background-color: #f4f4f4; text-align: center; padding: 6px; font-weight: bold; border-bottom: 2px solid #1a1a1a; font-size: 11px;}
+            .info-content { padding: 10px; font-size: 12px; line-height: 1.5; }
+            
+            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 2px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
+            .item-table th { background-color: #D32F2F; color: white; padding: 10px; font-size: 13px; border-bottom: 2px solid #1a1a1a; border-right: 1px solid #fff;}
+            .item-table th:last-child { border-right: none; }
+            
+            .bank-box { border: 2px solid #1a1a1a; border-radius: 12px; overflow: hidden; height: 100%;}
+            .bank-title { background-color: #1a1a1a; color: white; text-align: center; padding: 6px; font-weight: bold; font-size: 12px;}
+            .bank-content { padding: 10px; font-size: 12px; line-height: 1.6; }
+            
+            .totals-box { background-color: #D32F2F; border-radius: 12px; color: white; padding: 15px; height: 100%; box-sizing: border-box;}
+            .total-row { padding-bottom: 8px; font-size: 14px; font-weight: bold; width: 100%; clear: both;}
+            .total-row span:first-child { float: left; }
+            .total-row span:last-child { float: right; }
+            .total-row.grand { border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; font-size: 20px; margin-bottom: 0; margin-top: 10px;}
+            
+            .footer { margin-top: 30px; text-align: center; font-size: 12px; font-weight: bold; color: #555; }
           </style>
         </head>
         <body>
-          
           <div class="top-bar">Teknik Servis ve Satış Belgesi</div>
 
-          <div class="header-area">
-            <div class="company-name"><span>${firma.unvan.split(' ')[0]}</span> ${firma.unvan.substring(firma.unvan.indexOf(' ') + 1)}</div>
-            <div class="doc-info">
-              <div class="doc-box">BELGE NO: ${belgeNo}</div>
-              <div class="doc-box">TARİH: ${new Date().toLocaleDateString('tr-TR')}</div>
-            </div>
-          </div>
+          <table style="width: 100%; margin-top: 15px; margin-bottom: 15px; border: none;">
+            <tr>
+              <td style="width: 50%; text-align: left; border: none;">
+                <div class="company-name"><span>${firma.unvan.split(' ')[0]}</span> ${firma.unvan.substring(firma.unvan.indexOf(' ') + 1)}</div>
+              </td>
+              <td style="width: 50%; text-align: right; border: none;">
+                <div class="doc-box">BELGE NO: ${belgeNo}</div>
+                <div class="doc-box">TARİH: ${new Date().toLocaleDateString('tr-TR')}</div>
+              </td>
+            </tr>
+          </table>
 
-          <div class="info-container">
-            <div class="info-box">
-              <div class="info-title">FİRMA BİLGİLERİMİZ</div>
-              <div class="info-content">
-                <strong>Adres:</strong> ${firma.adres}<br>
-                <strong>Vergi Dairesi:</strong> ${firma.vergiDairesi} / ${firma.vergiNo}<br>
-                <strong>İletişim:</strong> ${firma.telefon}
-              </div>
-            </div>
-            
-            <div class="info-box">
-              <div class="info-title">MÜŞTERİ BİLGİLERİ</div>
-              <div class="info-content">
-                <strong>SAYIN:</strong> ${musteri.adi}<br>
-                <strong>Adres:</strong> ${musteri.adres}<br>
-                <strong>GSM:</strong> ${musteri.telefon}
-              </div>
-            </div>
-          </div>
+          <table style="width: 100%; margin-bottom: 20px; border: none;">
+            <tr>
+              <td style="width: 32%; vertical-align: top; padding: 0; border: none;">
+                <div class="info-box">
+                  <div class="info-title">FİRMA BİLGİLERİMİZ</div>
+                  <div class="info-content">
+                    <strong>Adres:</strong> ${firma.adres}<br>
+                    <strong>Vergi:</strong> ${firma.vergiDairesi} / ${firma.vergiNo}<br>
+                    <strong>Tel:</strong> ${firma.telefon}
+                  </div>
+                </div>
+              </td>
+              <td style="width: 2%; border: none;"></td>
+              <td style="width: 32%; vertical-align: top; padding: 0; border: none;">
+                <div class="info-box">
+                  <div class="info-title">MÜŞTERİ BİLGİLERİ</div>
+                  <div class="info-content">
+                    <strong>SAYIN:</strong> ${musteri.adi}<br>
+                    <strong>Adres:</strong> ${musteri.adres || 'Belirtilmemiş'}<br>
+                    <strong>GSM:</strong> ${musteri.telefon || '-'}
+                  </div>
+                </div>
+              </td>
+              <td style="width: 2%; border: none;"></td>
+              <td style="width: 32%; vertical-align: top; padding: 0; border: none;">
+                <div class="info-box">
+                  <div class="info-title">ÜRÜN / CİHAZ BİLGİSİ</div>
+                  <div class="info-content">
+                    <strong>Ürün:</strong> ${cihaz.markaModel}<br>
+                    <strong>Seri / Barkod No:</strong> ${cihaz.seriNo}
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </table>
 
-          <table>
+          <table class="item-table">
             <thead>
               <tr>
                 <th width="5%">NO</th>
@@ -122,46 +127,40 @@ export const pdfCiktiAl = async ({
                 <th width="20%">TOPLAM</th>
               </tr>
             </thead>
-            <tbody>
-              ${kalemlerHTML}
-            </tbody>
+            <tbody>${kalemlerHTML}</tbody>
           </table>
 
-          <div class="bottom-container">
-            <div class="bank-box">
-              <div class="bank-title">BANKA HESAP BİLGİLERİMİZ</div>
-              <div class="bank-content">
-                <strong>${firma.iban1Banka}:</strong> ${firma.iban1}<br>
-                <strong>${firma.iban2Banka}:</strong> ${firma.iban2}
-              </div>
-            </div>
+          <table style="width: 100%; border: none;">
+            <tr>
+              <td style="width: 55%; vertical-align: top; padding: 0; border: none;">
+                <div class="bank-box">
+                  <div class="bank-title">BANKA HESAP BİLGİLERİMİZ</div>
+                  <div class="bank-content">
+                    <strong>${firma.iban1Banka}:</strong> ${firma.iban1}<br>
+                    <strong>${firma.iban2Banka}:</strong> ${firma.iban2}
+                  </div>
+                </div>
+              </td>
+              <td style="width: 5%; border: none;"></td>
+              <td style="width: 40%; vertical-align: top; padding: 0; border: none;">
+                <div class="totals-box">
+                  <div class="total-row"><span>ARA TOPLAM:</span> <span>${parseFloat(toplamlar?.araToplam || 0).toFixed(2)} ₺</span></div><div style="clear: both;"></div>
+                  <div class="total-row"><span>İSKONTO:</span> <span>-${parseFloat(toplamlar?.iskonto || 0).toFixed(2)} ₺</span></div><div style="clear: both;"></div>
+                  <div class="total-row"><span>KDV TOPLAMI:</span> <span>${parseFloat(toplamlar?.kdvToplam || 0).toFixed(2)} ₺</span></div><div style="clear: both;"></div>
+                  <div class="total-row grand"><span>ÖDENECEK:</span> <span>${parseFloat(toplamlar?.genelToplam || 0).toFixed(2)} ₺</span></div><div style="clear: both;"></div>
+                </div>
+              </td>
+            </tr>
+          </table>
 
-            <div class="totals-box">
-              <div class="total-row"><span>ARA TOPLAM:</span> <span>${toplamlar.araToplam.toFixed(2)} ₺</span></div>
-              <div class="total-row"><span>İSKONTO:</span> <span>-${toplamlar.iskonto.toFixed(2)} ₺</span></div>
-              <div class="total-row"><span>KDV TOPLAMI:</span> <span>${toplamlar.kdvToplam.toFixed(2)} ₺</span></div>
-              <div class="total-row grand"><span>ÖDENECEK:</span> <span>${toplamlar.genelToplam.toFixed(2)} ₺</span></div>
-            </div>
-          </div>
-
-          <div class="footer">
-            Bizi tercih ettiğiniz için teşekkür ederiz.<br>
-            Değişen parçalar 6 ay garantilidir.
-          </div>
-
+          <div class="footer">Bizi tercih ettiğiniz için teşekkür ederiz.<br>Değişen parçalar 6 ay garantilidir.</div>
         </body>
       </html>
     `;
 
-    // 🚨 ŞALTER BURADA DEVREYE GİRİYOR
-    if (islem === "goster") {
-      // Sadece Ekranda A4 Olarak Gösterir
-      await Print.printAsync({ html: htmlIcerik });
-    } else {
-      // PDF Dosyası Oluşturur ve Paylaşım Seçeneklerini Açar
-      const { uri } = await Print.printToFileAsync({ html: htmlIcerik });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    }
+    // Sadece PDF üretir ve telefonun paylaşım ekranını açar
+    const { uri } = await Print.printToFileAsync({ html: htmlIcerik });
+    await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Faturayı Görüntüle' });
 
   } catch (error) {
     Alert.alert("Hata", "PDF oluşturulurken bir sorun çıktı.");
