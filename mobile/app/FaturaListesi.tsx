@@ -36,6 +36,33 @@ const FaturaListesi = () => {
         } finally { setLoading(false); }
     };
 
+
+
+
+
+// 🚨 Kurye'ye "Tamir mi, Stok mu?" olduğunu söylüyoruz ve ALARM mesajlarını yakalıyoruz
+    const faturaAtesle = async (id: string, islemTipi: string) => {
+        try {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/fatura/detay?servis_no=${id}&tip=${islemTipi}`);
+            const json = await res.json();
+            
+            if (json.success) {
+                pdfCiktiAl(json.faturaVerisi); 
+            } else {
+                // 🚨 EĞER İŞLEM ZARARINAYSA BURADA KOCAMAN ALARM ÇALACAK VE DURACAK!
+                Alert.alert("İşlem Durduruldu", json.message || "Detaylar alınamadı.");
+            }
+        } catch (e) {
+            Alert.alert("Hata", "Fatura detayları çekilirken bir hata oluştu.");
+        }
+    };
+
+
+
+
+
+
+    /*
     // 🚨 Doğrudan Ateşleme: Menü yok, soru yok. Tıkla ve PDF gelsin.
     const faturaAtesle = async (id: string) => {
         try {
@@ -51,6 +78,12 @@ const FaturaListesi = () => {
             Alert.alert("Hata", "Fatura detayları çekilirken bir hata oluştu.");
         }
     };
+
+    */
+
+
+
+
 
     const filtreUygula = (tip: string) => {
         setAktifFiltre(tip);
@@ -105,10 +138,17 @@ const FaturaListesi = () => {
                 ) : (
                     <FlatList data={filtreliVeriler} keyExtractor={(item, index) => index.toString()} showsVerticalScrollIndicator={false}
                         renderItem={({ item }) => (
+                          
+                          
+
                             <TouchableOpacity 
-                                onPress={() => faturaAtesle(String(item.id))} // 🚨 Sadece ID gidiyor
+                                onPress={() => faturaAtesle(String(item.id), item.islem_tipi)} // 🚨 islem_tipi'ni fırlattık
                                 style={styles.card}
                             >
+
+                        
+                           
+
                                 <View style={{ flex: 1, paddingRight: 10 }}>
                                     <View style={{flexDirection: 'row', alignItems: 'center'}}>
                                         <Text style={styles.clientName} numberOfLines={1}>{item.musteri_adi}</Text>
