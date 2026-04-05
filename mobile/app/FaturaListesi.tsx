@@ -2,8 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router'; 
-import { pdfCiktiAl } from '../components/CiktiMotoru'; 
+import { useRouter, useLocalSearchParams } from 'expo-router'; // 🚨 useLocalSearchParams eklendi
+import { pdfCiktiAl, wordCiktiAl, mailCiktiAl } from '../components/CiktiMotoru';
+
+
+
+
+//import { pdfCiktiAl, wordCiktiAl } from '../components/CiktiMotoru'; // 🚨 WORD MOTORU İÇERİ ALINDI
 
 interface BekleyenFatura {
     id: string;
@@ -15,6 +20,14 @@ interface BekleyenFatura {
 
 const FaturaListesi = () => {
     const router = useRouter(); 
+    const params = useLocalSearchParams(); // 🚨 DASHBOARD'DAN GELEN ŞİFREYİ YAKALIYORUZ
+    
+    // Şifre 'word' ise isWordMode true olur, değilse false (yani PDF).
+    const isWordMode = params.format === 'word'; 
+    const isMailMode = params.format === 'mail'; // 🚨 YENİ GELDİ
+
+
+
     const [tumVeriler, setTumVeriler] = useState<BekleyenFatura[]>([]);
     const [filtreliVeriler, setFiltreliVeriler] = useState<BekleyenFatura[]>([]);
     const [aktifFiltre, setAktifFiltre] = useState('Hepsi');
@@ -36,18 +49,25 @@ const FaturaListesi = () => {
         } finally { setLoading(false); }
     };
 
-
-
-
-
-// 🚨 Kurye'ye "Tamir mi, Stok mu?" olduğunu söylüyoruz ve ALARM mesajlarını yakalıyoruz
+    // 🚨 Kurye'ye "Tamir mi, Stok mu?" olduğunu söylüyoruz ve ALARM mesajlarını yakalıyoruz
     const faturaAtesle = async (id: string, islemTipi: string) => {
         try {
             const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/fatura/detay?servis_no=${id}&tip=${islemTipi}`);
             const json = await res.json();
             
             if (json.success) {
-                pdfCiktiAl(json.faturaVerisi); 
+                // 🚨 İŞTE AKILLI ŞALTER BURADA DEVREYE GİRİYOR!
+                if (isWordMode) {
+                    wordCiktiAl(json.faturaVerisi); // Word şifresiyle gelindiyse Word bas
+                
+                } else if (isMailMode) {
+                // 🚨 MAİL ŞİFRESİYLE GELDİYSE MAİL MOTORUNU ÇALIŞTIR
+                mailCiktiAl(json.faturaVerisi);
+                
+                                
+                } else {
+                    pdfCiktiAl(json.faturaVerisi);  // Normal gelindiyse PDF bas
+                }
             } else {
                 // 🚨 EĞER İŞLEM ZARARINAYSA BURADA KOCAMAN ALARM ÇALACAK VE DURACAK!
                 Alert.alert("İşlem Durduruldu", json.message || "Detaylar alınamadı.");
@@ -56,34 +76,6 @@ const FaturaListesi = () => {
             Alert.alert("Hata", "Fatura detayları çekilirken bir hata oluştu.");
         }
     };
-
-
-
-
-
-
-    /*
-    // 🚨 Doğrudan Ateşleme: Menü yok, soru yok. Tıkla ve PDF gelsin.
-    const faturaAtesle = async (id: string) => {
-        try {
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/fatura/detay?servis_no=${id}`);
-            const json = await res.json();
-            
-            if (json.success) {
-                pdfCiktiAl(json.faturaVerisi); 
-            } else {
-                Alert.alert("Bilgi", json.message || "Detaylar alınamadı.");
-            }
-        } catch (e) {
-            Alert.alert("Hata", "Fatura detayları çekilirken bir hata oluştu.");
-        }
-    };
-
-    */
-
-
-
-
 
     const filtreUygula = (tip: string) => {
         setAktifFiltre(tip);
@@ -111,7 +103,8 @@ const FaturaListesi = () => {
                 
                 <View style={styles.headerContainer}>
                     <TouchableOpacity onPress={() => router.back()} style={{ padding: 5 }}><Ionicons name="arrow-back" size={28} color="#1a1a1a" /></TouchableOpacity>
-                    <Text style={styles.headerTitle}>Fatura Masası</Text>
+                    {/* 🚨 Ekrana patronun hangi modda olduğunu yazdırıyoruz */}
+                    <Text style={styles.headerTitle}>Fatura Masası <Text style={{color: isWordMode ? '#007AFF' : '#D32F2F'}}>{isWordMode ? '(WORD)' : '(PDF)'}</Text></Text>
                     <TouchableOpacity onPress={() => verileriGetir(zamanFiltre)} style={{ padding: 5 }}><Ionicons name="refresh" size={24} color="#D32F2F" /></TouchableOpacity>
                 </View>
 
@@ -138,17 +131,10 @@ const FaturaListesi = () => {
                 ) : (
                     <FlatList data={filtreliVeriler} keyExtractor={(item, index) => index.toString()} showsVerticalScrollIndicator={false}
                         renderItem={({ item }) => (
-                          
-                          
-
                             <TouchableOpacity 
-                                onPress={() => faturaAtesle(String(item.id), item.islem_tipi)} // 🚨 islem_tipi'ni fırlattık
+                                onPress={() => faturaAtesle(String(item.id), item.islem_tipi)} 
                                 style={styles.card}
                             >
-
-                        
-                           
-
                                 <View style={{ flex: 1, paddingRight: 10 }}>
                                     <View style={{flexDirection: 'row', alignItems: 'center'}}>
                                         <Text style={styles.clientName} numberOfLines={1}>{item.musteri_adi}</Text>
@@ -159,7 +145,8 @@ const FaturaListesi = () => {
                                 </View>
                                 <View style={{ alignItems: 'flex-end', minWidth: 75 }}>
                                     <Text style={styles.priceText}>{item.tutar} ₺</Text>
-                                    <Ionicons name="document-text" size={20} color="#D32F2F" style={{marginTop: 5}} />
+                                    {/* 🚨 Word modundaysa ikon mavi olur, PDF ise kırmızı kalır */}
+                                    <Ionicons name="document-text" size={20} color={isWordMode ? "#007AFF" : "#D32F2F"} style={{marginTop: 5}} />
                                 </View>
                             </TouchableOpacity>
                         )}

@@ -1,24 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
   ScrollView, StatusBar, Alert, Platform, Modal 
 } from 'react-native';
-
-
-
-
-
-
-
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { pdfCiktiAl } from '../components/CiktiMotoru';
-
-
 
 // --- BÖLÜMLERİN İTHALAT MÜHÜRLERİ ---
 import YeniMusteriFormu from '../components/YeniMusteriFormu'; 
@@ -35,6 +24,10 @@ export default function DashboardScreen() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
+  // --- MÜDÜR: GRAFİK İÇİN DİNAMİK VERİ STATE'LERİ ---
+  const [servisToplam, setServisToplam] = useState(0); 
+  const [randevuToplam, setRandevuToplam] = useState(0); 
+
   const [onayBekleyenSayisi, setOnayBekleyenSayisi] = useState(0); 
   const [parcaBekleyenSayisi, setParcaBekleyenSayisi] = useState(0); 
   const [teyitBekleyenSayisi, setTeyitBekleyenSayisi] = useState(0); 
@@ -57,50 +50,23 @@ export default function DashboardScreen() {
 
   const D_COLOR = isDarkMode ? "#ffffff" : "#000000"; 
 
-  const toggleMusteriMenu = () => {
-    const nextState = !isMusteriSubMenuOpen;
-    setIsMusteriSubMenuOpen(nextState);
-    if (nextState) {
-        setIsServisSubMenuOpen(false);
-        setIsRandevuSubMenuOpen(false);
-        setIsEnvanterSubMenuOpen(false);
-        setIsCiktiSubMenuOpen(false);
-    }
-  };
-
-  const toggleServisMenu = () => {
-    const nextState = !isServisSubMenuOpen;
-    setIsServisSubMenuOpen(nextState);
-    if (nextState) {
-        setIsMusteriSubMenuOpen(false);
-        setIsRandevuSubMenuOpen(false);
-        setIsEnvanterSubMenuOpen(false);
-    }
-  };
-
-  const toggleRandevuMenu = () => {
-    const nextState = !isRandevuSubMenuOpen;
-    setIsRandevuSubMenuOpen(nextState);
-    if (nextState) {
-        setIsMusteriSubMenuOpen(false);
-        setIsServisSubMenuOpen(false);
-        setIsEnvanterSubMenuOpen(false);
-    }
-  };
-
-  const toggleEnvanterMenu = () => {
-    const nextState = !isEnvanterSubMenuOpen;
-    setIsEnvanterSubMenuOpen(nextState);
-    if (nextState) {
-        setIsMusteriSubMenuOpen(false);
-        setIsServisSubMenuOpen(false);
-        setIsRandevuSubMenuOpen(false);
-    }
+  // --- 🛡️ MÜDÜRÜN MERKEZİ KİLİT SİSTEMİ (SANDVİÇ PANEL KORUMASI) ---
+  const toggleSubMenu = (menuName: string) => {
+    setIsMusteriSubMenuOpen(menuName === 'musteri' ? !isMusteriSubMenuOpen : false);
+    setIsServisSubMenuOpen(menuName === 'servis' ? !isServisSubMenuOpen : false);
+    setIsRandevuSubMenuOpen(menuName === 'randevu' ? !isRandevuSubMenuOpen : false);
+    setIsEnvanterSubMenuOpen(menuName === 'envanter' ? !isEnvanterSubMenuOpen : false);
+    setIsCiktiSubMenuOpen(menuName === 'cikti' ? !isCiktiSubMenuOpen : false);
+    
+    // Eğer müşteri menüsü değilse içindeki listeyi de kapat
+    if (menuName !== 'musteri') setIsListeSubMenuOpen(false);
   };
 
   const fetchDashboardStats = async () => {
     try {
       const srvData = await getServices();
+      setServisToplam(srvData ? srvData.length : 0); 
+
       const bekleyenler = (srvData || []).filter((s: any) => s.durum === 'Onay Bekliyor' || s.status === 'Onay Bekliyor');
       setOnayBekleyenSayisi(bekleyenler.length);
 
@@ -110,11 +76,34 @@ export default function DashboardScreen() {
         setParcaBekleyenSayisi(talepler.length);
       }
 
-      const response = await fetch('http://192.168.1.41:3000/api/operation/pending-confirmations');
-      const teyitData = await response.json();
-      if (teyitData.success) {
-        setTeyitBekleyenSayisi(teyitData.data.length);
-      }
+
+      // operation.js yerine appointments'a bağlıyoruz
+
+
+
+
+          // Artık IP adresi değişse bile kod patlamaz, .env dosyasından otomatik alır!
+          const API_URL = process.env.EXPO_PUBLIC_API_URL;
+          const response = await fetch(`${API_URL}/api/appointments/pending-confirmations`);
+
+
+          //const response = await fetch('http://192.168.1.41:3000/api/appointments/pending-confirmations');
+          
+          
+          
+          
+          const teyitData = await response.json();
+          if (teyitData.success) {
+            setTeyitBekleyenSayisi(teyitData.data.length); // Sadece Yarınkiler (Mor Buton İçin)
+            setRandevuToplam(teyitData.toplam_aktif);      // Bütün Aktifler (Kalın Simit İçin)
+          }
+
+
+     
+
+
+
+
     } catch (e) { 
       console.log("Dashboard motoru iletişim bekliyor..."); 
     }
@@ -136,6 +125,21 @@ export default function DashboardScreen() {
     else router.replace('/');
   };
 
+  // --- 🍩 KALIN SİMİT GRAFİĞİ (DONUT) MATEMATİĞİ ---
+  const toplamIs = servisToplam + randevuToplam;
+  const getDonutColors = () => {
+    if (toplamIs === 0) return ['#eaeaea', '#eaeaea', '#eaeaea', '#eaeaea']; // Veri yoksa gri
+    const servisOran = servisToplam / toplamIs;
+    const servisDilimSayisi = Math.round(servisOran * 4); // 4 parça üzerinden hesaplanır
+    let colors = [];
+    for (let i = 0; i < 4; i++) {
+      if (i < servisDilimSayisi) colors.push('#FFCC00'); // Sarı (Servis)
+      else colors.push('#6558dd'); // Mor (Randevu)
+    }
+    return colors; // Array: [Top, Right, Bottom, Left] Border renkleri
+  };
+  const [colorTop, colorRight, colorBottom, colorLeft] = getDonutColors();
+
   return (
     <SafeAreaProvider>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -147,7 +151,6 @@ export default function DashboardScreen() {
             <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
               <Ionicons name="menu" size={30} color={isDarkMode ? "#fff" : "#333"} />
             </TouchableOpacity>
-            {/* HAVA DURUMU KÖKÜNDEN SÖKÜLDÜ */}
           </View>
           <View style={styles.topActions}>
             <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={{ marginRight: 25 }}>
@@ -165,9 +168,44 @@ export default function DashboardScreen() {
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
           </View>
 
+          {/* 📊 DİNAMİK KALIN SİMİT GRAFİĞİ (DONUT CHART) */}
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
             <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
-            <Ionicons name="pie-chart" size={140} color={isDarkMode ? "#555" : "#333"} style={{ alignSelf: 'center' }} />
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15 }}>
+              
+              {/* KALIN SİMİT KISMI */}
+              <View style={{
+                width: 150, height: 150, borderRadius: 75,
+                borderTopColor: colorTop, borderRightColor: colorRight,
+                borderBottomColor: colorBottom, borderLeftColor: colorLeft,
+                borderWidth: 35,
+                justifyContent: 'center', alignItems: 'center'
+              }}>
+                {/* SİMİTİN ORTASI (KIRMIZI TOPLAM RAKAMI) */}
+                <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                   <Text style={{ fontSize: 26, fontWeight: '900', color: '#FF3B30' }}>{toplamIs}</Text>
+                   <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#888' }}>TOPLAM İŞ</Text>
+                </View>
+              </View>
+
+              {/* SAĞ TARAF - AÇIKLAMA (LEJANT) KISMI */}
+              <View style={{ marginLeft: 30, justifyContent: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#FF3B30', marginRight: 10 }} />
+                  <Text style={[{ fontSize: 15, fontWeight: 'bold' }, isDarkMode && styles.darkText]}>Toplam: {toplamIs}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFCC00', marginRight: 10 }} />
+                  <Text style={[{ fontSize: 15, fontWeight: 'bold' }, isDarkMode && styles.darkText]}>Servis: {servisToplam}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#6558dd', marginRight: 10 }} />
+                  <Text style={[{ fontSize: 15, fontWeight: 'bold' }, isDarkMode && styles.darkText]}>Randevu: {randevuToplam}</Text>
+                </View>
+              </View>
+
+            </View>
           </View>
           
           <TouchableOpacity 
@@ -213,6 +251,7 @@ export default function DashboardScreen() {
             <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
 
+          {/* 🚨 İŞTE GERİ DÖNEN O MEŞHUR MOR BUTON (Sıfır da olsa ekranda kalır!) 🚨 */}
           {teyitBekleyenSayisi >= 0 && (
             <TouchableOpacity 
               style={[styles.alertBanner, { backgroundColor: '#6558dd', marginTop: 12, height: 56 }]} 
@@ -230,6 +269,7 @@ export default function DashboardScreen() {
               <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
             </TouchableOpacity>
           )}
+
         </ScrollView>
 
         {isMenuOpen && (
@@ -238,7 +278,8 @@ export default function DashboardScreen() {
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard]}>
               <Text style={[styles.menuTitle, isDarkMode && styles.darkText]}>İŞLEMLER</Text>
               <ScrollView showsVerticalScrollIndicator={false}>
-                <TouchableOpacity style={styles.menuItem} onPress={toggleMusteriMenu}>
+                
+                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('musteri')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="people-outline" size={24} color={D_COLOR} />
                     <Text style={[styles.menuItemText, { color: D_COLOR }]}>Müşteri İşlemleri</Text>
@@ -280,7 +321,7 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.menuItem} onPress={toggleServisMenu}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('servis')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="construct-outline" size={24} color={D_COLOR} />
                     <Text style={[styles.menuItemText, { color: D_COLOR }]}>Servis İşlemleri</Text>
@@ -302,7 +343,7 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.menuItem} onPress={toggleRandevuMenu}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('randevu')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="calendar-outline" size={24} color={D_COLOR} />
                     <Text style={[styles.menuItemText, { color: D_COLOR }]}>Randevu İşlemleri</Text>
@@ -324,7 +365,7 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.menuItem} onPress={toggleEnvanterMenu}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('envanter')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="file-tray-full-outline" size={24} color={D_COLOR} />
                     <Text style={[styles.menuItemText, { color: D_COLOR }]}>Envanter İşlemleri</Text>
@@ -353,15 +394,12 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-
-
                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMaliVisible(true); setIsMenuOpen(false); }}>
                   <Ionicons name="wallet-outline" size={24} color={D_COLOR} />
                   <Text style={[styles.menuItemText, { color: D_COLOR }]}>Mali İşlemler</Text>
                 </TouchableOpacity>
 
-                {/* --- YENİ EKLENEN ÇIKTI İŞLEMLERİ MENÜSÜ --- */}
-                <TouchableOpacity style={styles.menuItem} onPress={() => setIsCiktiSubMenuOpen(!isCiktiSubMenuOpen)}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('cikti')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="print-outline" size={24} color={D_COLOR} />
                     <Text style={[styles.menuItemText, { color: D_COLOR }]}>Çıktı İşlemleri</Text>
@@ -369,52 +407,74 @@ export default function DashboardScreen() {
                   <Ionicons name={isCiktiSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
                 </TouchableOpacity>
 
+
+
+
+
+
                 {isCiktiSubMenuOpen && (
                   <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
-
-
-
-                   <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
+                    
+                    {/* 🚨 1. PDF BUTONU (Normal Şifre) */}
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
                         setIsMenuOpen(false); 
-                        // 🚨 KEMAL MÜDÜR MODALINI İPTAL ETTİK, LİSTEYE YÖNLENDİRDİK!
-                        router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light' } }); 
+                        router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'pdf' } }); 
                     }}>
                         <Ionicons name="document-text" size={20} color="#FF3B30" style={{ marginRight: 15 }} />
                         <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>PDF Çıktı Al</Text>
                     </TouchableOpacity>
-
-
-           
-
-
-               
                     
-                    
-
-
-
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
                     
-                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { Alert.alert("Bilgi", "Word Çıktı Motoru Yakında!"); setIsMenuOpen(false); }}>
+                    {/* 🚨 2. WORD BUTONU (Gizli Şifre: format='word') */}
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
+                        setIsMenuOpen(false); 
+                        router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'word' } }); 
+                    }}>
                       <Ionicons name="document" size={20} color="#007AFF" style={{ marginRight: 15 }} />
                       <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Word Çıktı Al</Text>
                     </TouchableOpacity>
+
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
                     
-                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { Alert.alert("Bilgi", "Mail Motoru Yakında!"); setIsMenuOpen(false); }}>
-                      <Ionicons name="mail" size={20} color="#34C759" style={{ marginRight: 15 }} />
-                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Mail Olarak Gönder</Text>
-                    </TouchableOpacity>
+
+
+
+                      {/* 🚨 3. MAİL BUTONU (Şifre: format='mail') */}
+                        <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
+                            setIsMenuOpen(false); 
+                            router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'mail' } }); 
+                        }}>
+                          <Ionicons name="mail" size={20} color="#34C759" style={{ marginRight: 15 }} />
+                          <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Mail Olarak Gönder</Text>
+                        </TouchableOpacity>
+
+
+                   
+
+
+
+
+
                   </View>
                 )}
 
+
+
+
+
               </ScrollView>
-
-        
-
             </View>
           </View>
         )}
+
+
+
+
+
+
+
+
 
         <YeniMusteriFormu visible={musteriVisible} onClose={() => setMusteriVisible(false)} isDarkMode={isDarkMode} />
         <YeniFirmaFormu visible={firmaVisible} onClose={() => setFirmaVisible(false)} isDarkMode={isDarkMode} />
@@ -422,26 +482,19 @@ export default function DashboardScreen() {
         <StokTakibiAnaEkran visible={stokVisible} onClose={() => setStokVisible(false)} isDarkMode={isDarkMode} />
         <MaliIslemlerAnaEkran visible={maliVisible} onClose={() => setMaliVisible(false)} isDarkMode={isDarkMode} />
 
-        {/* --- PDF ÖNİZLEME VE ONAY MODALI --- */}
         <Modal visible={pdfOnizlemeVisible} transparent animationType="slide">
           <View style={styles.overlay}>
             <View style={[styles.menuContainer, isDarkMode && styles.darkCard, { width: '85%', height: 'auto', borderRadius: 20, padding: 25 }]}>
-              
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
                 <Ionicons name="document-text" size={28} color="#FF3B30" />
                 <Text style={[styles.menuTitle, isDarkMode && styles.darkText, { marginBottom: 0, paddingHorizontal: 10, fontSize: 18 }]}>BELGE ÖNİZLEME</Text>
               </View>
-
-
-             {/* --- 1. ÖZET KUTUSU (Daraltıldı, Fontlar Küçüldü) --- */}
               <View style={{ width: '90%', alignSelf: 'center', backgroundColor: isDarkMode ? '#1a1a1a' : '#f9f9f9', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? '#333' : '#eee', marginBottom: 20 }}>
                 <Text style={{ color: '#888', fontSize: 11, fontWeight: 'bold', marginBottom: 5 }}>GÖNDERİLECEK BİLGİLER</Text>
                 <Text style={{ color: D_COLOR, fontSize: 13, fontWeight: '600', marginTop: 3 }}>👤 Müşteri: <Text style={{fontWeight: 'normal'}}>Kemal Müdür</Text></Text>
                 <Text style={{ color: D_COLOR, fontSize: 13, fontWeight: '600', marginTop: 3 }}>🛠 İşlem: <Text style={{fontWeight: 'normal'}}>Anakart Entegre Değişimi vb.</Text></Text>
                 <Text style={{ color: D_COLOR, fontSize: 13, fontWeight: '600', marginTop: 3 }}>💰 Tutar: <Text style={{fontWeight: 'bold', color: '#34C759'}}>19.440,00 ₺</Text></Text>
               </View>
-
-              {/* --- 2. MAVİ BUTON (Boyu Kısaldı, Daraltıldı) --- */}
               <TouchableOpacity 
                 style={[styles.sahaBox, { width: '90%', alignSelf: 'center', height: 45, backgroundColor: '#007AFF', marginTop: 0, justifyContent: 'center', marginBottom: 12 }]} 
                 onPress={() => {
@@ -452,8 +505,6 @@ export default function DashboardScreen() {
                 <Ionicons name="eye" size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>ÖNCE A4 EKRANDA GÖR</Text>
               </TouchableOpacity>
-
-              {/* --- 3. KIRMIZI BUTON (Boyu Kısaldı, Daraltıldı) --- */}
               <TouchableOpacity 
                 style={[styles.sahaBox, { width: '90%', alignSelf: 'center', height: 45, backgroundColor: '#FF3B30', marginTop: 0, justifyContent: 'center' }]} 
                 onPress={() => {
@@ -464,37 +515,12 @@ export default function DashboardScreen() {
                 <Ionicons name="share-social" size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>WHATSAPP İLE PAYLAŞ</Text>
               </TouchableOpacity>
-              
-
-              
-
-
-
-
-
-
-
-              
-
-
-
-
-
               <TouchableOpacity style={{ marginTop: 15, padding: 10, alignItems: 'center' }} onPress={() => setPdfOnizlemeVisible(false)}>
                 <Text style={{ color: '#888', fontWeight: 'bold', fontSize: 14 }}>VAZGEÇ</Text>
               </TouchableOpacity>
-
             </View>
           </View>
         </Modal>
-
-
-
-
-
-
-
-
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -524,7 +550,7 @@ const styles = StyleSheet.create({
   menuItemText: { marginLeft: 15, fontSize: 16, fontWeight: 'bold' },
   subMenuBlock: { backgroundColor: '#f6f6f6', width: '100%', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#eee' },
   darkSubMenuBlock: { backgroundColor: '#1a1a1a', borderBottomColor: '#2a2a2a' },
-  subMenuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingLeft: 45 },
+  subMenuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingLeft: 45 },
   subMenuItemText: { fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
   subMenuDivider: { height: 1, backgroundColor: '#eee', marginLeft: 45 },
   darkText: { color: '#fff' }
