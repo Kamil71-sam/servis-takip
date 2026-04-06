@@ -23,8 +23,12 @@ export default function ParaCikisiEkrani() {
     inputBorder: isDarkMode ? '#333' : '#eee',
     modalBg: isDarkMode ? '#1e1e1e' : '#fff',
     modalBorder: isDarkMode ? '#333' : '#f0f0f0',
-    btnBg: isDarkMode ? '#fff' : '#1A1A1A',
-    btnText: isDarkMode ? '#1A1A1A' : '#fff',
+    btnBg: isDarkMode ? '#FF3B30' : '#1A1A1A', // Gece modunda Kırmızı, Gündüz Siyah
+    btnText: '#fff', // Her iki modda da yazı Beyaz kalsın ki okunsun
+   
+
+   
+   
     primary: '#FF3B30',
     placeholderColor: isDarkMode ? '#777' : '#aaa'
   };

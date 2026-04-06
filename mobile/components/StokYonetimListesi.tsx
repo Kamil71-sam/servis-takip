@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// MÜDÜR: onShowHistory artık dışarıdan (Ana Ekran'dan) geliyor
 export default function StokYonetimListesi({ visible, onClose, isDarkMode, onShowHistory }: any) {
   const [envanter, setEnvanter] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -16,16 +15,17 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode, onSho
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
+  // 🚨 MÜDÜR: ARTIK BURASI AKILLI! Geceyi Gündüzü Ayırt Ediyor.
   const theme = {
-    bg: '#FFF', // 🚨 MÜDÜR: Arka Plan Süt Beyaz
-    card: '#F4F4F4', // 🚨 MÜDÜR: Kartların İçi Açık Gri
-    text: '#1A1A1A',
-    subText: '#666',
-    border: '#EEE',
-    primary: '#fc1307', // O meşhur KIRMIZI tonun
-    btnEdit: '#eee', // Düzenle butonunun açık gri rengi
-    btnDelete: '#ddd', // Sil butonunun biraz daha koyu gri rengi
-    btnHistory: '#ddd', // Tarihçe butonunun açık gri rengi
+    bg: isDarkMode ? '#121212' : '#FFF', 
+    card: isDarkMode ? '#1E1E1E' : '#F4F4F4', 
+    text: isDarkMode ? '#FFF' : '#1A1A1A',
+    subText: isDarkMode ? '#AAA' : '#666',
+    border: isDarkMode ? '#333' : '#EEE',
+    primary: '#fc1307', 
+    btnEdit: isDarkMode ? '#333' : '#eee', 
+    btnDelete: isDarkMode ? '#444' : '#ddd', 
+    btnHistory: isDarkMode ? '#333' : '#ddd', 
   };
 
   const fetchEnvanter = async () => {
@@ -114,7 +114,7 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode, onSho
           <Ionicons name="search" size={20} color={theme.subText} />
           <TextInput 
             placeholder="Ara (İsim veya Barkod)..." 
-            placeholderTextColor="#888"
+            placeholderTextColor={isDarkMode ? "#666" : "#888"}
             style={[styles.searchInput, { color: theme.text }]}
             value={arama}
             onChangeText={setArama}
@@ -136,9 +136,8 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode, onSho
                   <Text style={[styles.cardStock, { color: item.miktar < 2 ? theme.primary : '#598d66' }]}>Stok: {item.miktar} Adet</Text>
                 </View>
 
-                {/* Sağ Taraf: Butonlar Column */}
+                {/* Sağ Taraf: Butonlar */}
                 <View style={styles.actionColumn}>
-                  {/* Üstte: Eski Butonlar */}
                   <View style={styles.topActionRow}>
                     <TouchableOpacity style={[styles.editBtn, { backgroundColor: theme.btnEdit }]} onPress={() => { setSelectedItem(item); setEditModalVisible(true); }}>
                       <Ionicons name="create" size={22} color={theme.text} />
@@ -148,7 +147,6 @@ export default function StokYonetimListesi({ visible, onClose, isDarkMode, onSho
                     </TouchableOpacity>
                   </View>
 
-                  {/* 🚨 İŞTE O MEŞHUR SAAT BUTONU (ALTTA, GENİŞ) */}
                   <TouchableOpacity 
                     style={[styles.historyFullWidthBtn, { backgroundColor: theme.btnHistory }]} 
                     onPress={() => onShowHistory(item.id, item.malzeme_adi)}
@@ -204,7 +202,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '900' },
   searchBox: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, padding: 12, borderRadius: 15, borderWidth: 1, marginBottom: 10 },
   searchInput: { marginLeft: 10, flex: 1, fontSize: 14 },
-  card: { flexDirection: 'row', padding: 15, borderRadius: 18, borderWidth: 1, marginBottom: 12, marginHorizontal: 10, alignItems: 'center', minHeight: 110 }, // 🚨 MÜDÜR: Eni milimetrik büyüdü (marginHorizontal: 10)
+  card: { flexDirection: 'row', padding: 15, borderRadius: 18, borderWidth: 1, marginBottom: 12, marginHorizontal: 10, alignItems: 'center', minHeight: 110 },
   cardTitle: { fontSize: 16, fontWeight: '800' },
   cardSub: { fontSize: 12, marginTop: 4 },
   cardStock: { fontSize: 13, fontWeight: '900', marginTop: 8 },

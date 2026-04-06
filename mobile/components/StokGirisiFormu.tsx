@@ -73,8 +73,12 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
     borderColor: isDarkMode ? '#333' : '#eee',
     textColor: isDarkMode ? '#fff' : '#000',
     labelColor: isDarkMode ? '#aaa' : '#555',
+   
     primary: '#FF3B30',
-    accent: isDarkMode ? '#333' : '#1A1A1A'
+    accent: isDarkMode ? '#FF3B30' : '#1A1A1A', // Gece Kırmızı, Gündüz Siyah
+      
+   
+    
   };
 
   // --- MÜDÜR: AKILLI RADAR SORGUSU (BOZULMADI AMA SAMSUNGFACİASI İÇİN DÜZELTİLDİ) ---

@@ -169,7 +169,9 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
     borderColor: isDarkMode ? '#333' : '#eee',
     textColor: isDarkMode ? '#fff' : '#000',
     labelColor: isDarkMode ? '#aaa' : '#555',
-    primary: '#FF3B30'
+    primary: isDarkMode ? '#FF3B30' : '#1A1A1A' // Gece Kırmızı, Gündüz Siyah!
+    
+   // primary: '#FF3B30'
   };
 
   return (

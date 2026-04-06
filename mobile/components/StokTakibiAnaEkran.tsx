@@ -90,12 +90,12 @@ export default function StokTakibiAnaEkran({ visible, onClose, isDarkMode = fals
   const [scannedBarcode, setScannedBarcode] = useState(''); 
 
   const theme = {
-    bg: isDarkMode ? '#2b2929' : '#f4f6f8',
+    bg: isDarkMode ? '#2e2d2d' : '#f4f6f8',
     cardBg: isDarkMode ? '#1e1e1e' : '#fff',
     borderColor: isDarkMode ? '#333' : '#e0e0e0',
     textColor: isDarkMode ? '#fff' : '#1A1A1A',
     subText: isDarkMode ? '#aaa' : '#666',
-    primary: '#5c5453', 
+    primary: '#FF3B30',
     barcodeBg: isDarkMode ? '#2c2c2c' : '#1A1A1A', 
   };
 
@@ -451,6 +451,7 @@ const handleSmartScan = async ({ data }: any) => {
             </View>
           </Modal>
 
+
           {/* TARİHÇE MODALI */}
           <Modal visible={historyVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}>
@@ -459,26 +460,50 @@ const handleSmartScan = async ({ data }: any) => {
                   <Text style={[styles.alertTitle, { color: isDarkMode ? '#fff' : '#1A1A1A', fontSize: 18 }]}>{selectedItemName} - Tarihçe</Text>
                   <TouchableOpacity onPress={() => setHistoryVisible(false)}><Ionicons name="close-circle" size={30} color="#FF3B30" /></TouchableOpacity>
                 </View>
+                
                 <ScrollView style={{width:'100%'}} showsVerticalScrollIndicator={false}>
                   {historyData.map((h, i) => (
                     <View key={i} style={{borderBottomWidth:1, borderColor: isDarkMode ? '#333' : '#eee', paddingVertical:12}}>
-                       <Text style={{fontSize:10, color:'#888'}}>{new Date(h.degisim_tarihi).toLocaleString('tr-TR')}</Text>
-                       <View style={{flexDirection:'row', justifyContent:'space-between', marginTop:8}}>
-                          <View>
-                            <Text style={{fontSize:11, color:theme.subText}}>ALIŞ</Text>
-                            <Text style={{fontWeight:'bold', color: parseFloat(h.yeni_alis) > parseFloat(h.eski_alis) ? '#FF3B30' : '#34C759'}}>{h.eski_alis} ₺ ➔ {h.yeni_alis} ₺</Text>
-                          </View>
-                          <View style={{alignItems:'flex-end'}}>
-                            <Text style={{fontSize:11, color:theme.subText}}>SATIŞ</Text>
-                            <Text style={{fontWeight:'bold', color: parseFloat(h.yeni_satis) > parseFloat(h.eski_satis) ? '#FF3B30' : '#34C759'}}>{h.eski_satis} ₺ ➔ {h.yeni_satis} ₺</Text>
+                       <Text style={{fontSize:10, color:'#888', fontWeight: 'bold'}}>{new Date(h.degisim_tarihi).toLocaleString('tr-TR')}</Text>
+                       
+                       {/* MÜDÜR: Satış uçuruldu, Alış tek kutuda merkeze alındı */}
+                       <View style={{ marginTop: 8, backgroundColor: isDarkMode ? '#2c2c2c' : '#f9f9f9', padding: 12, borderRadius: 12 }}>
+                          <Text style={{fontSize:11, color:theme.subText, marginBottom: 6, fontWeight: '900'}}>ALIŞ FİYATI DEĞİŞİMİ</Text>
+                          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <Ionicons name="pricetag" size={16} color={theme.primary} style={{marginRight: 8}} />
+                            <Text style={{
+                              fontWeight: 'bold', 
+                              fontSize: 16, 
+                              color: parseFloat(h.yeni_alis) > parseFloat(h.eski_alis) ? '#FF3B30' : '#34C759'
+                            }}>
+                              {h.eski_alis} ₺ ➔ {h.yeni_alis} ₺
+                            </Text>
                           </View>
                        </View>
                     </View>
                   ))}
                 </ScrollView>
+
+                <TouchableOpacity 
+                  style={[styles.alertBtn, { backgroundColor: '#1A1A1A', marginTop: 15 }]} 
+                  onPress={() => setHistoryVisible(false)}
+                >
+                  <Text style={styles.alertBtnText}>KAPAT</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
+
+
+
+
+
+
+          
+  
+
+
+
 
           {/* 4 BUTONLU ÖZEL TARAMA SONUCU MODALI */}
           <Modal visible={scanModalVisible} transparent animationType="fade">
@@ -559,7 +584,7 @@ const styles = StyleSheet.create({
   actionMainText: { color: '#fff', fontSize: 14, fontWeight: '900' },
   sectionTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 1, marginBottom: 12, marginTop: 15 },
   listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, marginTop: 10 },
-  allListBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 59, 48, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  allListBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(117, 114, 114, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   allListBtnText: { fontSize: 11, fontWeight: '900', marginLeft: 5 },
   listItem: { flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 16, borderWidth: 1.5, marginBottom: 10 },
   listIconBox: { width: 45, height: 45, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },

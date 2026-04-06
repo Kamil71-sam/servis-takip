@@ -9,6 +9,9 @@ export default function BankoStokOnay() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const filterMode = params.filterMode; 
+  
+  // MÜDÜR: GECE GÖRÜŞ GÖZLÜĞÜ BURADA TAKILIYOR
+  const isDarkMode = params.theme === 'dark';
 
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +40,7 @@ export default function BankoStokOnay() {
       setLoading(true);
       const res = await getAllMaterialRequests();
       if (res.success) {
-        // MÜDÜR: İŞTE MOLOZ TEMİZLİĞİ BURADA! 'Geldi' olanları listeden uçuruyoruz.
+        // MÜDÜR: MOLOZ TEMİZLİĞİ! 'Geldi' olanları listeden uçuruyoruz.
         const aktifTalepler = res.data.filter((item: any) => item.status !== 'Geldi');
         setRequests(aktifTalepler);
       }
@@ -50,7 +53,7 @@ export default function BankoStokOnay() {
 
   useEffect(() => { fetchRequests(); }, []);
 
-  // MÜDÜR: İŞTE O MÜTHİŞ GRUPLAMA MOTORU (Aynı cihazın siparişlerini tek dosyada toplar)
+  // MÜDÜR: GRUPLAMA MOTORU (Aynı cihazın siparişlerini tek dosyada toplar)
   const getGroupedData = () => {
     const groups: any = {};
     requests.forEach(r => {
@@ -81,7 +84,6 @@ export default function BankoStokOnay() {
           text: "HAYIR (Hatalı)",
           style: "destructive",
           onPress: () => {
-            // MÜDÜR: Hayır derse hiçbir şey değişmez, ışık yanmaya devam eder.
             Alert.alert("Bilgi", "İşlem reddedildi. Buton yanmaya devam edecek, lütfen işlemi loglayın veya ustayı uyarın.");
           }
         },
@@ -89,10 +91,10 @@ export default function BankoStokOnay() {
           text: "EVET (Doğru)",
           onPress: async () => {
             try {
-              // MÜDÜR: Statüyü 'Stokta' yapıyoruz ki o Işıklı Buton bir daha görünmesin, ama ana sarı buton işlemi devam etsin.
+              // Statüyü 'Stokta' yapıyoruz ki o Işıklı Buton bir daha görünmesin
               await updateMaterialStatus(part.id, 'Stokta', "Banko");
               Alert.alert("Başarılı", "Parça onayı verildi, ışık söndürüldü. Ana butondan işleme devam edebilirsiniz.");
-              fetchRequests(); // Ekranı tazele, ışık sönsün
+              fetchRequests(); 
             } catch (err) {
               Alert.alert("Hata", "Onay verilirken bir sorun oluştu.");
             }
@@ -110,7 +112,7 @@ export default function BankoStokOnay() {
     // 1. Kutuyu kırmızıya boya
     setCheckingId(item.id);
 
-    // 2. Kullanıcı kırmızıyı görsün diye yarım saniye (500ms) bekle, sonra işlemi yap ve kapat
+    // 2. Kullanıcı kırmızıyı görsün diye yarım saniye bekle, sonra işlemi yap ve kapat
     setTimeout(async () => {
       try {
         await updateMaterialStatus(item.id, 'Geldi', "Kemal Müdür"); 
@@ -135,10 +137,10 @@ export default function BankoStokOnay() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color="#333" /></TouchableOpacity>
-        <Text style={styles.title}>Parça Sipariş Takibi</Text>
+    <SafeAreaView style={[styles.container, isDarkMode && darkStyles.container]}>
+      <View style={[styles.header, isDarkMode && darkStyles.header]}>
+        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={isDarkMode ? "#FFF" : "#333"} /></TouchableOpacity>
+        <Text style={[styles.title, isDarkMode && darkStyles.textMain]}>Parça Sipariş Takibi</Text>
         <TouchableOpacity onPress={fetchRequests}><Ionicons name="refresh" size={24} color="#FF3B30" /></TouchableOpacity>
       </View>
 
@@ -150,7 +152,7 @@ export default function BankoStokOnay() {
           ListEmptyComponent={
             <View style={{alignItems: 'center', marginTop: 50}}>
               <Ionicons name="checkmark-done-circle" size={60} color="#34C759" opacity={0.5} />
-              <Text style={{marginTop: 15, fontSize: 16, color: '#666', fontWeight: 'bold'}}>Bekleyen Sipariş Yok.</Text>
+              <Text style={{marginTop: 15, fontSize: 16, color: isDarkMode ? '#AAA' : '#666', fontWeight: 'bold'}}>Bekleyen Sipariş Yok.</Text>
             </View>
           }
 
@@ -159,7 +161,7 @@ export default function BankoStokOnay() {
             const onayiBekleyenler = item.items.filter((i: any) => i.status === 'Onay Bekliyor');
 
             return (
-              <View style={styles.card}>
+              <View style={[styles.card, isDarkMode && darkStyles.card]}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.servisNo}>Kayıt No: #{item.servis_no}</Text>
                   <Text style={[styles.statusText, { color: '#FF9500' }]}>
@@ -167,16 +169,16 @@ export default function BankoStokOnay() {
                   </Text>
                 </View>
                 
-                <Text style={styles.markaModel}>{item.marka_model}</Text>
+                <Text style={[styles.markaModel, isDarkMode && darkStyles.textMain]}>{item.marka_model}</Text>
                 
                 {/* MÜDÜR: İçindeki parçaların kısa özeti */}
-                <Text style={styles.desc} numberOfLines={2}>
+                <Text style={[styles.desc, isDarkMode && darkStyles.textSub]} numberOfLines={2}>
                   Bekleyenler: {item.items.map((i: any) => i.part_name).join(', ')}
                 </Text>
 
                 <View style={styles.btnRow}>
                   
-                  {/* --- MÜDÜR: IŞIKLI BUTONLAR (Sadece stok girişi yapılmışsa görünür) --- */}
+                  {/* --- MÜDÜR: IŞIKLI BUTONLAR --- */}
                   {onayiBekleyenler.length > 0 && onayiBekleyenler.map((part: any) => (
                     <Animated.View key={`pulse-${part.id}`} style={{ opacity: pulseAnim, marginBottom: 10 }}>
                       <TouchableOpacity 
@@ -192,7 +194,7 @@ export default function BankoStokOnay() {
                   ))}
                   {/* ------------------------------------------------------------------------ */}
 
-                  {/* MÜDÜR: ESKİ SARI BUTON BURASI (Işık sönse bile bu hep burada) */}
+                  {/* MÜDÜR: SARI BUTON */}
                   <TouchableOpacity 
                     style={[styles.actionBtn, { backgroundColor: '#FFCC00' }]}
                     onPress={() => {
@@ -216,22 +218,22 @@ export default function BankoStokOnay() {
       {/* MÜDÜR: DETAY (ÇEKMECE) MODALI */}
       <Modal visible={detailModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, isDarkMode && darkStyles.modalContent]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Sipariş Detayı (#{selectedGroup?.servis_no})</Text>
+              <Text style={[styles.modalTitle, isDarkMode && darkStyles.textMain]}>Sipariş Detayı (#{selectedGroup?.servis_no})</Text>
               <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
                 <Ionicons name="close-circle" size={28} color="#999" />
               </TouchableOpacity>
             </View>
             
-            <Text style={styles.modalSubTitle}>{selectedGroup?.marka_model}</Text>
+            <Text style={[styles.modalSubTitle, isDarkMode && darkStyles.textSub]}>{selectedGroup?.marka_model}</Text>
             
             <ScrollView style={{ marginTop: 15 }} showsVerticalScrollIndicator={false}>
               {selectedGroup?.items.map((part: any, index: number) => (
-                <View key={part.id} style={styles.partRow}>
+                <View key={part.id} style={[styles.partRow, isDarkMode && darkStyles.borderDark]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.partName}>{part.quantity}x {part.part_name}</Text>
-                    {part.description ? <Text style={styles.partDesc}>{part.description}</Text> : null}
+                    <Text style={[styles.partName, isDarkMode && darkStyles.textMain]}>{part.quantity}x {part.part_name}</Text>
+                    {part.description ? <Text style={[styles.partDesc, isDarkMode && darkStyles.textSub]}>{part.description}</Text> : null}
                   </View>
                   
                   {/* MÜDÜR: KUTU VE KIRMIZI ONAY İŞLEMİ BURADA */}
@@ -280,4 +282,15 @@ const styles = StyleSheet.create({
   partName: { fontSize: 16, fontWeight: 'bold', color: '#1A1A1A' },
   partDesc: { fontSize: 12, color: '#888', marginTop: 4 },
   checkBoxBtn: { padding: 5, marginLeft: 10 }
+});
+
+// MÜDÜR: İŞTE SİYAH KAPORTA STİLLERİ
+const darkStyles = StyleSheet.create({
+  container: { backgroundColor: '#121212' },
+  header: { backgroundColor: '#1A1A1A', borderBottomColor: '#2C2C2C', borderBottomWidth: 1 },
+  card: { backgroundColor: '#1E1E1E' },
+  textMain: { color: '#F8F9FA' },
+  textSub: { color: '#9BA4B5' },
+  modalContent: { backgroundColor: '#1A1A1A' },
+  borderDark: { borderBottomColor: '#333' }
 });

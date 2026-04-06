@@ -125,20 +125,49 @@ export default function DashboardScreen() {
     else router.replace('/');
   };
 
-  // --- 🍩 KALIN SİMİT GRAFİĞİ (DONUT) MATEMATİĞİ ---
+
+
+// --- 🍩 AKILLI SİMİT GRAFİĞİ (MAKAM MANTIĞI) ---
   const toplamIs = servisToplam + randevuToplam;
+  
   const getDonutColors = () => {
     if (toplamIs === 0) return ['#eaeaea', '#eaeaea', '#eaeaea', '#eaeaea']; // Veri yoksa gri
-    const servisOran = servisToplam / toplamIs;
-    const servisDilimSayisi = Math.round(servisOran * 4); // 4 parça üzerinden hesaplanır
+    
+    let servisDilimSayisi = 0;
+
+    // MÜDÜR: Kaba matematiği attık, mantıksal terazi kurduk!
+    if (servisToplam === 0) {
+      servisDilimSayisi = 0; // Hepsi Mor (Sadece Randevu var)
+    } else if (randevuToplam === 0) {
+      servisDilimSayisi = 4; // Hepsi Sarı (Sadece Servis var)
+    } else if (servisToplam === randevuToplam) {
+      servisDilimSayisi = 2; // Eşitlik var (2 Sarı, 2 Mor)
+    } else if (servisToplam > randevuToplam) {
+      servisDilimSayisi = 3; // Servis fazla (3 Sarı, 1 Mor)
+    } else {
+      servisDilimSayisi = 1; // Randevu fazla (1 Sarı, 3 Mor)
+    }
+    
     let colors = [];
     for (let i = 0; i < 4; i++) {
       if (i < servisDilimSayisi) colors.push('#FFCC00'); // Sarı (Servis)
       else colors.push('#6558dd'); // Mor (Randevu)
     }
-    return colors; // Array: [Top, Right, Bottom, Left] Border renkleri
+    return colors; 
   };
+  
   const [colorTop, colorRight, colorBottom, colorLeft] = getDonutColors();
+
+
+
+
+
+  
+  
+
+
+
+
 
   return (
     <SafeAreaProvider>
@@ -375,7 +404,11 @@ export default function DashboardScreen() {
 
                 {isEnvanterSubMenuOpen && (
                   <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
-                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push('/banko_stok_onay'); }}>
+
+
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push({ pathname: '/banko_stok_onay', params: { theme: isDarkMode ? 'dark' : 'light' } }); }}>
+
+                                                             
                       <Ionicons name="cube-outline" size={20} color={parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR} style={{ marginRight: 15 }} />
                       <View style={{flexDirection: 'row', alignItems: 'center'}}>
                         <Text style={[styles.subMenuItemText, { color: parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR }]}>Parça Takibi</Text>

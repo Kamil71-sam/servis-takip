@@ -89,10 +89,12 @@ export default function YeniRandevu() {
     setTimeout(() => addressRef.current?.focus(), 500);
   };
 
+
+
   const handleGoToDashboard = () => {
-    setSuccessModalVisible(false);
-    router.replace({ pathname: '/dashboard', params: { theme: theme } });
-  };
+  setSuccessModalVisible(false);
+  router.back();
+};
 
 const handleSearchCustomer = async (val: string) => {
   setPhone(val);
@@ -137,17 +139,27 @@ const handleSearchCustomer = async (val: string) => {
     setDate(cleaned);
   };
 
-  const onChangeDate = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
+
+const onChangeDate = (event: any, selectedDate?: Date) => {
+    // 1. HAMLE: Hangi cihaz olursa olsun (iOS/Android) işlem yapılınca takvimi kapat
+    setShowDatePicker(false);
+
+    // 2. HAMLE: Eğer kullanıcı "İptal" demediyse ve bir gün seçtiyse tarihi yaz
+    if (event.type === "set" && selectedDate) {
       setDateObj(selectedDate);
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const year = selectedDate.getFullYear();
       setDate(`${day}-${month}-${year}`);
+      
+      // Tarih seçildikten sonra otomatik olarak Saat kutusuna odaklan
       timeRef.current?.focus();
     }
   };
+
+
+
+
 
 const handleSave = async () => {
     if (!phone || !date || !time) {
@@ -220,8 +232,10 @@ const handleSave = async () => {
       
       <View style={[styles.header, isDarkMode && darkStyles.header]}>
         <Text style={[styles.headerTitle, isDarkMode && darkStyles.textMain]}>Yeni Randevu</Text>
-        <TouchableOpacity onPress={() => router.replace({ pathname: '/dashboard', params: { theme: theme } })} style={styles.closeBtn}>
-          <Ionicons name="close" size={24} color="#FFF" />
+
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+         
+        <Ionicons name="close" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
@@ -373,9 +387,15 @@ const handleSave = async () => {
                   value={date}
                   onChangeText={handleDateType}
                 />
-                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{padding: 10}}>
-                  <Ionicons name="calendar" size={24} color="#007AFF" />
-                </TouchableOpacity>
+
+
+                {Platform.OS !== 'web' && (
+                  <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{padding: 10}}>
+                    <Ionicons name="calendar" size={24} color="#007AFF" />
+                  </TouchableOpacity>
+                )}  
+   
+
               </View>
             </View>
             <View style={[styles.inputGroup, {flex: 1}]}>
@@ -389,7 +409,10 @@ const handleSave = async () => {
                 returnKeyType="next"
                 onFocus={() => setFocusField('time')}
                 onBlur={() => setFocusField(null)}
-                onSubmitEditing={() => Keyboard.dismiss()} 
+
+                onSubmitEditing={() => issueRef.current?.focus()}
+
+                //onSubmitEditing={() => Keyboard.dismiss()} 
                 blurOnSubmit={false}
                 value={time}
                 onChangeText={setTime}
@@ -397,7 +420,11 @@ const handleSave = async () => {
             </View>
           </View>
 
-          {showDatePicker && (<DateTimePicker value={dateObj} mode="date" display="default" onChange={onChangeDate} />)}
+
+
+            {showDatePicker && Platform.OS !== 'web' && (<DateTimePicker value={dateObj} mode="date" display="default" onChange={onChangeDate} />)}      
+
+
 
           {/* USTA */}
           <View style={styles.inputGroup}>
@@ -441,6 +468,9 @@ const handleSave = async () => {
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Kaydet</Text>}
           </TouchableOpacity>
+
+          <View style={{ height: 100 }} />
+
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -517,12 +547,20 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 20 },
   label: { fontSize: 14, color: '#666', marginBottom: 8, fontWeight: '600' },
   input: { backgroundColor: '#F2F2F2', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, padding: 12, fontSize: 16, color: '#333' },
-  focusedBorder: { borderColor: '#FF3B30', borderWidth: 1.5, backgroundColor: '#FFFFFF' }, 
+
+  focusedBorder: { borderColor: '#FF3B30', borderWidth: 1.5 },
+
+
+
   searchRow: { flexDirection: 'row', alignItems: 'center' },
   guideBtn: { backgroundColor: '#000000', padding: 10, borderRadius: 10, marginLeft: 10 },
   infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', padding: 12, borderRadius: 10, marginBottom: 20, gap: 8 },
   infoText: { color: '#2E7D32', fontSize: 14 },
+
+  //saveBtn: { backgroundColor: '#FF3B30', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 40 },
   saveBtn: { backgroundColor: '#000000', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 40 },
+  
+  
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: '75%', padding: 20 },
@@ -552,5 +590,5 @@ const darkStyles = StyleSheet.create({
   trackingBadge: { backgroundColor: '#1E1E1E' }, 
   infoBox: { backgroundColor: '#1B2E1D' },
   infoText: { color: '#81C784' },
-  saveBtn: { backgroundColor: '#000000' }
+  saveBtn: { backgroundColor: '#ff3b30' }
 });

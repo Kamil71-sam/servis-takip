@@ -173,16 +173,32 @@ export default function LoginScreen() {
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="calculator-outline" size={18} color="#666" style={{ marginRight: 10 }} />
+                
+
+
+
                 <TextInput
                   ref={captchaRef}
                   style={styles.input}
                   value={captchaInput}
                   onChangeText={setCaptchaInput}
                   placeholder="Sonuç"
-                  keyboardType="numeric"
+                  keyboardType="number-pad" 
                   returnKeyType="done"
                   onSubmitEditing={() => Keyboard.dismiss()}
+                  importantForAutofill="no"
+                  autoComplete="off"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  textContentType="none"
                 />
+
+
+
+
+                
+
+
               </View>
 
               <TouchableOpacity
