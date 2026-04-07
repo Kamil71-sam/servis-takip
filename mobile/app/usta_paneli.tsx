@@ -54,6 +54,41 @@ export default function UstaPaneli() {
     return () => clearInterval(t);
   }, []);
 
+
+
+
+// 🚨 MÜDÜR: ARTIK BURADA VERİTABANINA YAZMIYORUZ! SADECE ÇANTAYA KOYUP YOLLUYORUZ!
+  const handleCompleteJob = () => {
+    if (!price) return Alert.alert("Hata", "Lütfen bir ücret girin.");
+    
+    // Yazılanları çantaya koy
+    const girilenFiyat = price;
+    const girilenNot = note;
+    
+    // Modalı kapat, inputları temizle
+    setModalVisible(false);
+    setPrice('');
+    setNote('');
+
+    // Kuryeyi doğrudan Hesaplama Ekranına yolluyoruz. 
+    // İş hala listede duruyor, geri basarsa kaybolmaz!
+    router.push({
+      pathname: "/RandevuTahsilatUsta",
+      params: { 
+        id: selectedJob.id, 
+        servis_no: selectedJob.servis_no,
+        musteri: selectedJob.musteri_adi,
+        cihaz: selectedJob.detay,
+        maliyet: girilenFiyat,      // Fiyat çantada
+        usta_notu: girilenNot,      // Not çantada
+        theme: isDarkMode ? 'dark' : 'light' 
+      }
+    });
+  };
+
+
+
+/*
   const handleCompleteJob = async () => {
     if (!price) return Alert.alert("Hata", "Lütfen bir ücret girin.");
     try {
@@ -87,6 +122,13 @@ export default function UstaPaneli() {
       Alert.alert("Hata", "Sunucuya ulaşılamıyor.");
     }
   };
+
+
+*/
+
+
+
+
 
   const renderItem = ({ item }: any) => {
     let dAdres = "";

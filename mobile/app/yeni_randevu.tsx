@@ -80,14 +80,29 @@ export default function YeniRandevu() {
     }
   };
 
-  const handleSelectFromGuide = (item: any) => {
+
+
+const handleSelectFromGuide = (item: any) => {
     setPhone(item.phone);
     setCustomerInfo({ id: item.id, name: item.name, exists: true });
     setCustomerType(item.tip || 'bireysel');
+    
+    // MÜDÜR: Adres bilgisini yakalıyoruz
+    const gelenAdres = item.adres || item.address || '';
+    if (gelenAdres) {
+      setAddress(gelenAdres);
+      // Adres dolu geldi, bankocuyu bekletme direkt cihaza atla!
+      setTimeout(() => deviceTypeRef.current?.focus(), 500);
+    } else {
+      // Adres boşsa mecburen adrese odaklansın
+      setAddress('');
+      setTimeout(() => addressRef.current?.focus(), 500);
+    }
+
     setUnregistered(false);
     setModalVisible(false);
-    setTimeout(() => addressRef.current?.focus(), 500);
   };
+
 
 
 
@@ -95,6 +110,7 @@ export default function YeniRandevu() {
   setSuccessModalVisible(false);
   router.back();
 };
+
 
 const handleSearchCustomer = async (val: string) => {
   setPhone(val);
@@ -110,24 +126,48 @@ const handleSearchCustomer = async (val: string) => {
           exists: true 
         });
         setCustomerType(res.data.data.tip || 'bireysel'); 
+        
+        // 🚨 MÜDÜR: Numaradan ararken adresi yakalıyoruz
+        const gelenAdres = res.data.data.adres || res.data.data.address || '';
+        if (gelenAdres) {
+           setAddress(gelenAdres);
+           // Adres doluysa imleci cihaz kutusuna atlat
+           setTimeout(() => deviceTypeRef.current?.focus(), 100);
+        } else {
+           setAddress('');
+           addressRef.current?.focus(); 
+        }
+
         setUnregistered(false); 
-        addressRef.current?.focus(); 
       } else {
         setCustomerInfo({ id: null, name: '', exists: false });
+        setAddress(''); // Müşteri yoksa adresi de temizle
         setUnregistered(true); 
       }
     } catch (err) {
       console.log("Müşteri bulunamadı.");
       setCustomerInfo({ id: null, name: '', exists: false });
+      setAddress('');
       setUnregistered(true);
     } finally {
       setLoading(false);
     }
   } else {
     setCustomerInfo({ id: null, name: '', exists: false });
+    setAddress(''); // Numara 10 haneden kısaysa kutuları sıfırla
     setUnregistered(false);
   }
 };
+
+
+
+
+
+
+
+
+
+
 
   const handleDateType = (text: string) => {
     let cleaned = text.replace(/[^0-9]/g, '');

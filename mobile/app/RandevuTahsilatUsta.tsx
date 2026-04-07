@@ -12,20 +12,12 @@ export default function RandevuTahsilatUsta() {
   const params = useLocalSearchParams();
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
- 
- 
- // MÜDÜR: Hem 'theme' hem 'isDarkMode' şifrelerini yakalayan tam koruma
-const isDarkMode = params.theme === 'dark' || params.isDarkMode === 'true' || String(params.isDarkMode) === 'true';
- 
- 
- 
-  // 🚨 MÜDÜR: Gece Modu Şalterini Yakalıyoruz
- // const isDarkMode = params.theme === 'dark';
+  // MÜDÜR: Hem 'theme' hem 'isDarkMode' şifrelerini yakalayan tam koruma
+  const isDarkMode = params.theme === 'dark' || params.isDarkMode === 'true' || String(params.isDarkMode) === 'true';
   
-  // Gelen veriler
-  const { id, servis_no, musteri, cihaz } = params;
+  // Gelen veriler (usta_notu'nu da çantadan alıyoruz)
+  const { id, servis_no, musteri, cihaz, usta_notu } = params;
    
-  // MÜDÜR: Usta panelinden gelen maliyeti kucaklayan mıknatıs
   useEffect(() => {
     if (params.maliyet) {
       setHamMaliyet(String(params.maliyet));
@@ -44,15 +36,13 @@ const isDarkMode = params.theme === 'dark' || params.isDarkMode === 'true' || St
     border: isDarkMode ? '#333' : '#EEE',
     primary: '#FF3B30',
     success: '#34C759',
-    btnBg: isDarkMode ? '#FF3B30' : '#1A1A1A', // Racon: Gece Kırmızı, Gündüz Siyah
+    btnBg: isDarkMode ? '#FF3B30' : '#1A1A1A', 
     btnText: '#FFF'
   };
 
-  // MÜDÜR: MEŞHUR HESAPLAMA MOTORU
   const calculateFinal = (val: string) => {
     const ham = parseFloat(val) || 0;
     if (ham <= 0) return 0;
-    // Formül: Ham Maliyet * 1.25 (Kâr) * 1.20 (KDV)
     return Math.round(ham * 1.25 * 1.20);
   };
 
@@ -74,7 +64,24 @@ const isDarkMode = params.theme === 'dark' || params.isDarkMode === 'true' || St
           onPress: async () => {
             setIsSaving(true);
             try {
-              // MÜDÜR: Env'den gelen tertemiz 3000 portlu adresi kullanıyoruz
+              // 🚨 İŞLEM 1: Önce Ustanın işini bitir ve notunu kaydet (Usta Panelinden buraya taşıdık)
+              const completeRes = await fetch(`${API_URL}/api/operation/complete-job/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  price: parseFloat(hamMaliyet), 
+                  usta_notu: usta_notu || 'Not girilmedi' 
+                }),
+              });
+              const completeResult = await completeRes.json();
+
+              if (!completeResult.success) {
+                Alert.alert("Hata", "İşlem kaydedilirken bir sorun oluştu.");
+                setIsSaving(false);
+                return; // İlk adım patlarsa ikinciye geçme
+              }
+
+              // 🚨 İŞLEM 2: Şimdi tahsilat bilgisini kaydet (Mevcut olan kod)
               const response = await fetch(`${API_URL}/api/operation/tahsilat-kaydet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -89,7 +96,8 @@ const isDarkMode = params.theme === 'dark' || params.isDarkMode === 'true' || St
               const res = await response.json();
               if (res.success) {
                 Alert.alert("BAŞARILI", "Kayıt Banko onayına gönderildi.", [
-                  { text: "TAMAM", onPress: () => router.back() }
+                  // MÜDÜR: İşlem bitince Usta paneline geri dönüyor, liste güncellenmiş olacak.
+                  { text: "TAMAM", onPress: () => router.back() } 
                 ]);
               }
             } catch (error) {
