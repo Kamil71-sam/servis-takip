@@ -12,8 +12,17 @@ export default function RandevuTahsilatUsta() {
   const params = useLocalSearchParams();
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+ 
+ 
+ // MÜDÜR: Hem 'theme' hem 'isDarkMode' şifrelerini yakalayan tam koruma
+const isDarkMode = params.theme === 'dark' || params.isDarkMode === 'true' || String(params.isDarkMode) === 'true';
+ 
+ 
+ 
+  // 🚨 MÜDÜR: Gece Modu Şalterini Yakalıyoruz
+ // const isDarkMode = params.theme === 'dark';
   
-  // Gelen veriler (Usta ekranından servis_no ve id gelecek)
+  // Gelen veriler
   const { id, servis_no, musteri, cihaz } = params;
    
   // MÜDÜR: Usta panelinden gelen maliyeti kucaklayan mıknatıs
@@ -23,10 +32,21 @@ export default function RandevuTahsilatUsta() {
     }
   }, [params.maliyet]);
 
-
-
   const [hamMaliyet, setHamMaliyet] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // MÜDÜR: DİNAMİK TEMA (Boya Kutusu)
+  const theme = {
+    bg: isDarkMode ? '#121212' : '#F8F9FA',
+    card: isDarkMode ? '#1E1E1E' : '#FFF',
+    text: isDarkMode ? '#FFF' : '#1A1A1A',
+    subText: isDarkMode ? '#AAA' : '#666',
+    border: isDarkMode ? '#333' : '#EEE',
+    primary: '#FF3B30',
+    success: '#34C759',
+    btnBg: isDarkMode ? '#FF3B30' : '#1A1A1A', // Racon: Gece Kırmızı, Gündüz Siyah
+    btnText: '#FFF'
+  };
 
   // MÜDÜR: MEŞHUR HESAPLAMA MOTORU
   const calculateFinal = (val: string) => {
@@ -54,42 +74,17 @@ export default function RandevuTahsilatUsta() {
           onPress: async () => {
             setIsSaving(true);
             try {
-
-
-            // MÜDÜR: Env'den gelen tertemiz 3000 portlu adresi kullanıyoruz
-        const response = await fetch(`${API_URL}/api/operation/tahsilat-kaydet`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-        id: id, // params'dan gelen ID
-        usta_maliyet: parseFloat(hamMaliyet),
-        tahsil_edilen_tutar: finalTutar, // Senin hesapladığın kdvli karlı rakam
-        status: 'Mali Onay Bekliyor' // Banko onayına düşmesi için
-           })
-             });
-
-
-
-
-
-
-                /*
-              // MÜDÜR: Burası senin 'api/randevu/usta-bitir' ucuna gidecek
-              // Şimdilik taslak URL, backend hazır olunca güncelleriz
-              const response = await fetch(`http://192.168.1.41:8081/api/randevu/usta-bitir`, {
+              // MÜDÜR: Env'den gelen tertemiz 3000 portlu adresi kullanıyoruz
+              const response = await fetch(`${API_URL}/api/operation/tahsilat-kaydet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  appointment_id: id,
-                  servis_no: servis_no,
+                  id: id, 
                   usta_maliyet: parseFloat(hamMaliyet),
-                  tahsil_edilen_tutar: finalTutar,
-                  status: 'Onay Bekliyor' // Banko listesine düşmesi için
+                  tahsil_edilen_tutar: finalTutar, 
+                  status: 'Mali Onay Bekliyor' 
                 })
               });
-                    */
-
-
 
               const res = await response.json();
               if (res.success) {
@@ -109,49 +104,55 @@ export default function RandevuTahsilatUsta() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{flex: 1}}>
         <ScrollView contentContainerStyle={styles.scroll}>
           
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={28} color="#1A1A1A" />
+              <Ionicons name="arrow-back" size={28} color={theme.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Randevu Kapatma</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Randevu Kapatma</Text>
             <View style={{width: 28}} />
           </View>
 
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
             <Text style={styles.infoLabel}>KAYIT NO: {servis_no || id}</Text>
-            <Text style={styles.musteriAdi}>{musteri || 'Müşteri Bilgisi Yok'}</Text>
-            <Text style={styles.cihazBilgi}>{cihaz || 'Cihaz Bilgisi Yok'}</Text>
+            <Text style={[styles.musteriAdi, { color: theme.text }]}>{musteri || 'Müşteri Bilgisi Yok'}</Text>
+            <Text style={[styles.cihazBilgi, { color: theme.subText }]}>{cihaz || 'Cihaz Bilgisi Yok'}</Text>
           </View>
 
-          <View style={styles.formBox}>
+          <View style={[styles.formBox, { backgroundColor: theme.card }]}>
             <Text style={styles.inputLabel}>HAM MALİYET (PARÇA + EMEK)</Text>
             <TextInput 
-              style={styles.input}
+              style={[styles.input, { color: theme.text, borderBottomColor: theme.border }]}
               placeholder="0.00 TL"
+              placeholderTextColor={theme.subText}
               keyboardType="numeric"
               value={hamMaliyet}
               onChangeText={setHamMaliyet}
             />
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.resultBox}>
               <Text style={styles.resultLabel}>MÜŞTERİDEN ALINACAK TOPLAM</Text>
-              <Text style={styles.resultValue}>{finalTutar} ₺</Text>
-              <Text style={styles.taxNote}>(%25 Kâr ve %20 KDV Dahil)</Text>
+              <Text style={[styles.resultValue, { color: theme.text }]}>{finalTutar} ₺</Text>
+              <Text style={[styles.taxNote, { color: theme.subText }]}>(%25 Kâr ve %20 KDV Dahil)</Text>
             </View>
           </View>
 
           <TouchableOpacity 
-            style={[styles.saveBtn, isSaving && {opacity: 0.7}]} 
+            style={[
+              styles.saveBtn, 
+              { backgroundColor: theme.btnBg }, 
+              isSaving && {opacity: 0.7},
+              isDarkMode && { shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8 }
+            ]} 
             onPress={handleFinalKaydet}
             disabled={isSaving}
           >
-            {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>TAHSİLAT YAPILDI / İŞİ BİTİR</Text>}
+            {isSaving ? <ActivityIndicator color={theme.btnText} /> : <Text style={[styles.saveBtnText, { color: theme.btnText }]}>TAHSİLAT YAPILDI / İŞİ BİTİR</Text>}
           </TouchableOpacity>
 
         </ScrollView>
@@ -161,24 +162,22 @@ export default function RandevuTahsilatUsta() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1 },
   scroll: { padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1A1A1A' },
-  infoCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 15, marginBottom: 20, elevation: 2 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  infoCard: { padding: 20, borderRadius: 15, marginBottom: 20, elevation: 2 },
   infoLabel: { fontSize: 12, color: '#FF3B30', fontWeight: 'bold', marginBottom: 5 },
-  musteriAdi: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A' },
-  cihazBilgi: { fontSize: 14, color: '#666', marginTop: 4 },
-  formBox: { backgroundColor: '#FFF', padding: 20, borderRadius: 15, elevation: 2 },
+  musteriAdi: { fontSize: 18, fontWeight: 'bold' },
+  cihazBilgi: { fontSize: 14, marginTop: 4 },
+  formBox: { padding: 20, borderRadius: 15, elevation: 2 },
   inputLabel: { fontSize: 11, fontWeight: 'bold', color: '#888', marginBottom: 10 },
-  input: { borderBottomWidth: 2, borderBottomColor: '#EEE', fontSize: 24, fontWeight: 'bold', paddingVertical: 10, color: '#1A1A1A' },
-  divider: { height: 1, backgroundColor: '#EEE', marginVertical: 25 },
+  input: { borderBottomWidth: 2, fontSize: 24, fontWeight: 'bold', paddingVertical: 10 },
+  divider: { height: 1, marginVertical: 25 },
   resultBox: { alignItems: 'center' },
   resultLabel: { fontSize: 13, fontWeight: 'bold', color: '#34C759', marginBottom: 10 },
-  resultValue: { fontSize: 42, fontWeight: 'bold', color: '#1A1A1A' },
-  taxNote: { fontSize: 11, color: '#AAA', marginTop: 5 },
-  saveBtn: { backgroundColor: '#1A1A1A', height: 60, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 30 },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
-
+  resultValue: { fontSize: 42, fontWeight: 'bold' },
+  taxNote: { fontSize: 11, marginTop: 5 },
+  saveBtn: { height: 60, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 30 },
+  saveBtnText: { fontSize: 16, fontWeight: 'bold' }
 });
-

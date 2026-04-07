@@ -6,11 +6,9 @@ import {
   FlatList, 
   TouchableOpacity, 
   ActivityIndicator,
-  RefreshControl,
   Alert,
   TextInput,
   Modal, 
-  ScrollView,
   StatusBar,
   useColorScheme,
   Platform 
@@ -56,7 +54,6 @@ export default function UstaPaneli() {
     return () => clearInterval(t);
   }, []);
 
-  // MÜDÜR: İŞTE O KRİTİK GÜNCELLEME BURADA!
   const handleCompleteJob = async () => {
     if (!price) return Alert.alert("Hata", "Lütfen bir ücret girin.");
     try {
@@ -73,15 +70,16 @@ export default function UstaPaneli() {
         setNote('');
         fetchJobs();
 
-        // MÜDÜR: Kayıt biter bitmez ustayı kolundan tutup hesap makinesine götürüyoruz
+        // 🚨 MÜDÜR: KURYEYE GECE MODU ŞİFRESİ (THEME) VERİLDİ!
         router.push({
           pathname: "/RandevuTahsilatUsta",
           params: { 
             id: selectedJob.id, 
             servis_no: selectedJob.servis_no,
             musteri: selectedJob.musteri_adi,
-            cihaz: selectedJob.detay,// Cihaz bilgisini buradan paslıyoruz
-            maliyet: price // <--- DÜNKÜ ÇÖZÜM: 'price' değerini 'maliyet' ismiyle fırlatıyoruz!
+            cihaz: selectedJob.detay,
+            maliyet: price,
+            theme: isDarkMode ? 'dark' : 'light' // <--- EKSİK OLAN ANAHTAR BUYDU!
           }
         });
       }
@@ -90,16 +88,6 @@ export default function UstaPaneli() {
     }
   };
 
-
-
-
-
-
-
-
-
-
-  
   const renderItem = ({ item }: any) => {
     let dAdres = "";
     let dCihaz = "";
@@ -131,12 +119,12 @@ export default function UstaPaneli() {
           <Text style={[styles.cardTitle, isDarkMode && { color: '#fff' }]}>
             {item.musteri_adi || "İsimsiz Müşteri"}
           </Text>
-          <View style={[styles.statusBadge, isDarkMode && { backgroundColor: '#333' }]}>
-            <Text style={[styles.statusText, isDarkMode && { color: '#2196F3' }]}>{item.status}</Text>
+          <View style={[styles.statusBadge, isDarkMode && { backgroundColor: '#2C2C2E' }]}>
+            <Text style={[styles.statusText, isDarkMode && { color: '#4DA8DA' }]}>{item.status}</Text>
           </View>
         </View>
         
-        <Text style={[styles.jobDate, isDarkMode && { color: '#AAA' }]}>
+        <Text style={[styles.jobDate, isDarkMode && { color: '#888' }]}>
           📅 {item.tarih} - 🕒 {item.saat}
         </Text>
         
@@ -153,7 +141,7 @@ export default function UstaPaneli() {
         </View>
 
         <TouchableOpacity 
-          style={[styles.finishBtn, isDarkMode && { backgroundColor: '#333' }]} 
+          style={[styles.finishBtn, isDarkMode && { backgroundColor: '#FF3B30' }]} 
           onPress={() => { setSelectedJob(item); setModalVisible(true); }}
         >
           <Ionicons name="checkmark-circle" size={20} color="#fff" />
@@ -175,7 +163,7 @@ export default function UstaPaneli() {
 
         <View style={{alignItems: 'flex-end'}}>
           <Text style={[styles.title, isDarkMode && { color: '#fff' }]}>RANDEVU LİSTESİ</Text>
-          <Text style={[styles.subTitle, isDarkMode && { color: '#AAA' }]}>Usta 1 - Aktif İşler</Text>
+          <Text style={[styles.subTitle, isDarkMode && { color: '#888' }]}>Usta 1 - Aktif İşler</Text>
         </View>
       </View>
 
@@ -189,12 +177,13 @@ export default function UstaPaneli() {
           ListEmptyComponent={
             <View style={{marginTop: 100, alignItems: 'center'}}>
                <Ionicons name="cafe-outline" size={64} color={isDarkMode ? "#444" : "#ccc"} />
-               <Text style={{textAlign: 'center', marginTop: 10, color: '#999'}}>Usta 1 için aktif randevu yok.</Text>
+               <Text style={{textAlign: 'center', marginTop: 10, color: '#888'}}>Usta 1 için aktif randevu yok.</Text>
             </View>
           }
         />
       )}
 
+      {/* 🚨 MÜDÜR: ÜCRET KAYDI MODALI (Geceye Uyandı) */}
       <Modal visible={modalVisible} animationType="slide" transparent={false}>
         <SafeAreaView style={[styles.modalContainer, isDarkMode && { backgroundColor: '#121212' }]}>
           <View style={[styles.modalHeader, isDarkMode && { borderBottomColor: '#333' }]}>
@@ -208,9 +197,9 @@ export default function UstaPaneli() {
           <View style={{padding: 25}}>
             <Text style={[styles.label, isDarkMode && { color: '#AAA' }]}>Alınan Ücret</Text>
             <TextInput 
-              style={[styles.input, isDarkMode && { backgroundColor: '#1C1C1E', color: '#fff', borderColor: '#333' }]} 
+              style={[styles.input, isDarkMode && { backgroundColor: '#1E1E1E', color: '#fff', borderColor: '#333' }]} 
               placeholder="0.00 TL" 
-              placeholderTextColor="#666"
+              placeholderTextColor={isDarkMode ? "#666" : "#999"}
               keyboardType="numeric" 
               value={price} 
               onChangeText={setPrice} 
@@ -219,19 +208,19 @@ export default function UstaPaneli() {
 
             <Text style={[styles.label, isDarkMode && { color: '#AAA' }]}>Usta Notu</Text>
             <TextInput 
-              style={[styles.input, isDarkMode && { backgroundColor: '#1C1C1E', color: '#fff', borderColor: '#333', height: 120, textAlignVertical: 'top' }]} 
+              style={[styles.input, isDarkMode && { backgroundColor: '#1E1E1E', color: '#fff', borderColor: '#333', height: 120, textAlignVertical: 'top' }]} 
               placeholder="Not yazın..." 
-              placeholderTextColor="#666"
+              placeholderTextColor={isDarkMode ? "#666" : "#999"}
               multiline
               value={note} 
               onChangeText={setNote} 
             />
 
             <TouchableOpacity 
-              style={[styles.saveBtn, isDarkMode && { backgroundColor: '#293d52' }]} 
+              style={[styles.saveBtn, isDarkMode && { backgroundColor: '#FF3B30', shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8 }]} 
               onPress={handleCompleteJob}
             >
-              <Text style={{color: '#fff', fontWeight: 'bold', fontSize: 16}}>KAYDET</Text>
+              <Text style={{color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 1}}>KAYDET</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -257,12 +246,12 @@ const styles = StyleSheet.create({
   statusText: { color: '#2a74be', fontSize: 12, fontWeight: 'bold' },
   jobDate: { color: '#666', marginTop: 8 },
   infoText: { fontSize: 14, lineHeight: 22, color: '#555' },
-  finishBtn: { backgroundColor: '#1e1c25', padding: 15, borderRadius: 12, marginTop: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  finishBtn: { backgroundColor: '#1A1A1A', padding: 15, borderRadius: 12, marginTop: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   finishBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  closeCircle: { backgroundColor: '#ff4d4d', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  closeCircle: { backgroundColor: '#FF3B30', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   label: { fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 },
-  input: { backgroundColor: '#f0f0f0', padding: 18, borderRadius: 12, fontSize: 16, marginBottom: 20, borderWidth: 1, borderColor: '#ddd' },
-  saveBtn: { backgroundColor: '#1b1e20', padding: 20, borderRadius: 12, alignItems: 'center', marginTop: 10, elevation: 2 },
+  input: { backgroundColor: '#f9f9f9', padding: 18, borderRadius: 12, fontSize: 16, marginBottom: 20, borderWidth: 1, borderColor: '#ddd' },
+  saveBtn: { backgroundColor: '#1A1A1A', padding: 20, borderRadius: 12, alignItems: 'center', marginTop: 10, elevation: 2 },
   servisNoBadge: {
     backgroundColor: '#FF3B30',
     alignSelf: 'flex-start',
@@ -277,5 +266,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 13,
   }
-});   
-
+});
