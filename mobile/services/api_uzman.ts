@@ -1,9 +1,9 @@
 // mobile/services/api_uzman.ts
-import { API_URL } from './api'; // Ana dosyadan güvenli şekilde çekiyoruz
+import { API_URL, fetchWithAuth } from './api'; // MÜDÜR: Akıllı postacıyı (fetchWithAuth) da içeri aldık
 
 export const getUzmanDashboardData = async (email: string) => {
     try {
-        const response = await fetch(`${API_URL}/uzman/dashboard`, {
+        const response = await fetchWithAuth(`${API_URL}/uzman/dashboard`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
@@ -17,7 +17,7 @@ export const getUzmanDashboardData = async (email: string) => {
 
 export const getUzmanTumIsler = async (email: string) => {
     try {
-        const response = await fetch(`${API_URL}/uzman/tum-isler`, {
+        const response = await fetchWithAuth(`${API_URL}/uzman/tum-isler`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
@@ -43,7 +43,7 @@ export const updateServiceProcess = async (updateData: {
     expert_note?: string;
 }) => {
     try {
-        const response = await fetch(`${API_URL}/uzman/servis-guncelle`, {
+        const response = await fetchWithAuth(`${API_URL}/uzman/servis-guncelle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData),

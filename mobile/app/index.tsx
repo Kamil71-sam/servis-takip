@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
@@ -60,6 +62,8 @@ export default function LoginScreen() {
 
 
 
+
+
   const handleLogin = async () => {
     if (parseInt(captchaInput) !== captcha.result) {
       Alert.alert('Hatalı İşlem', 'Matematik mühürü tutmadı müdür!');
@@ -67,15 +71,47 @@ export default function LoginScreen() {
       return;
     }
 
+
+
     setLoading(true);
     try {
       const data = await login(email, password);
 
+
+
+
+
       if (!data.success) {
-        Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
-        generateCaptcha();
-        return;
-      }
+      Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
+      generateCaptcha();
+      return;
+          }
+
+        // MÜDÜR: Sunucudan gelen VIP kartı (token) telefonun kalıcı hafızasına kaydediyoruz!
+        if (data.token) {
+          await AsyncStorage.setItem('userToken', data.token);
+              }
+
+
+
+
+
+
+
+      // if (!data.success) {
+      //   Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
+      //   generateCaptcha();
+      //   return;
+      // }
+
+
+
+
+
+
+
+
+
 
       // --- TRAFİK POLİSİ ---
       const userRole = data.user.role;
@@ -90,12 +126,32 @@ export default function LoginScreen() {
         }
       }, 100);
 
+
+
     } catch (error) {
-      Alert.alert('Bağlantı Hatası', 'Server’a ulaşılamıyor. IP adresini kontrol et!');
+      console.log("💥 GİZLİ HATA YAKALANDI:", error); // Terminale yazdırır
+      Alert.alert('Gerçek Hata Ne?', String(error)); // Ekrana yazdırır
     } finally {
       setLoading(false);
     }
+
+
+    // } catch (error) {
+    //   Alert.alert('Bağlantı Hatası', 'Server’a ulaşılamıyor. IP adresini kontrol et!');
+    // } finally {
+    //   setLoading(false);
+    // }
+
+
+
+
+
+
   };
+
+
+
+
 
   return (
     <SafeAreaProvider>

@@ -86,13 +86,7 @@ export default function ParaGirisiFormuV2() {
         setF(prev => ({...prev, tutar: hesaplananSatis.toString()}));
         setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU` });
 
-
-      
-        
-
-
-
-
+          
       } else {
         setBulunanUrun(null);
         setF(prev => ({...prev, tutar: ''}));
@@ -108,9 +102,6 @@ export default function ParaGirisiFormuV2() {
     setCameraVisible(false);
     handleBarkodAra(data);
   };
-
-
-
 
 
    /**
@@ -150,48 +141,6 @@ export default function ParaGirisiFormuV2() {
 
 
 
-
-
-    /*
-   * SERVİS MODÜLÜNDEN GELEN VERİLERİN ENTEGRASYONU (BUDANMADI)
-   
-  useEffect(() => {
-    if (params.servis_id && params.usta_fiyati) {
-        const ustaFiyati = Number(params.usta_fiyati);
-        const hesaplanan = calculateNihaiFiyat(ustaFiyati, 0);
-        
-        const mockRes: SQLDeviceData = {
-            kayitNumarasi: params.servis_no as string,
-            musteriFirmaAdi: params.musteri as string || 'Müşteri',
-            cihazTuru: 'Cihaz',
-            marka: '', model: '', seriNo: '', garantiDurumu: '', musteriNotu: '',
-            atananUsta: '', arizaNotu: '', durum: '', kayitTarihi: '',
-            ustaTeklifi: ustaFiyati
-        };
-
-        setF(prev => ({ 
-            ...prev, 
-            tur: (params.islem_turu as string) || 'Tamir Ücreti Tahsili',
-            tutar: hesaplanan.toString(),
-            aciklama: `${params.servis_no} nolu servis tahsilatı.`,
-            cihazData: mockRes,
-            servis_id: Number(params.servis_id),
-            kayitNo: (params.servis_no as string) || ''
-        }));
-        setIsRecordFound(true);
-    }
-  }, [params.servis_id]);
-
-*/
-
-
-
-
-
-
-
-
-
   const theme = {
     bg: isDarkMode ? '#121212' : '#fdfdfd',
     cardBg: isDarkMode ? '#1e1e1e' : '#f9f9f9',
@@ -209,11 +158,7 @@ export default function ParaGirisiFormuV2() {
     placeholderColor: isDarkMode ? '#777' : '#aaa'
   };
     
-    
-
-
-
-/**
+    /**
    * VERİTABANI ÜZERİNDEN MANUEL KAYIT SORGULAMA (ZIRHLI V2 VE RANDEVU MAKASI)
    */
   const handleSearchRecord = async () => {
@@ -284,86 +229,6 @@ export default function ParaGirisiFormuV2() {
 
 
 
-
-
-
-
-
-/*
-
-
-   * VERİTABANI ÜZERİNDEN MANUEL KAYIT SORGULAMA (V2 HATTINA ÇEKİLDİ)
-  
-  const handleSearchRecord = async () => {
-    if (!f.kayitNo) return;
-
-   // MÜDÜR: TELEFON ŞU AN HANGİ KAPIYA GİTMEYE ÇALIŞIYOR? BUNU TERMİNALE YAZDIR!
-    console.log("Seçilen Tür:", f.tur);
-    setIsSearching(true);
-    try {
-        // MÜDÜR: BURAYI YENİ KASA_V2 HATTINA BAĞLADIM (Bozmadan Güçlendirildi)
-        const response = await fetch(`${API_BASE_URL}/api/kasa_v2/search-v2?servis_no=${f.kayitNo}`);
-        const resData = await response.json();
-        
-        // --- MÜDÜRÜN KONTROL HATTI: BU SATIRI EKLE ---
-        console.log("CEVAP GELDİ Mİ?:", resData); 
-        // --------------------------------------------
-
-
-
-
-        if (resData.success && resData.found) {
-            const dev = resData.device;
-            const ustaFiyati = Number(dev.fiyatTeklifi) || 0;
-
-
-            // --- MÜDÜRÜN KİLİDİ BURAYA GELECEK ---
-           if (ustaFiyati <= 0) {
-        Alert.alert("DUR!", "Bu cihazın tamir ücreti 0 veya boş görünüyor. Lütfen önce ustaya fiyat girişi yaptırın.");
-        setIsRecordFound(false); // Bilgileri ekrana basma, kilitli kalsın
-        return; // Fonksiyonu burada bitir, aşağıya geçme
-              }
-            // ------------------------------------
-
-
-
-
-
-            const v2ResData: SQLDeviceData = {
-                kayitNumarasi: dev.servis_no || dev["Kayıt Numarası"],
-                musteriFirmaAdi: dev.musteri_adi || dev["Müşteri Firma Adı"] || 'Belirtilmemiş',
-                cihazTuru: dev.cihaz_turu || 'Cihaz',
-                marka: dev.marka || '', model: dev.model || '', seriNo: dev.seri_no || '',
-                garantiDurumu: '', musteriNotu: '', atananUsta: '', arizaNotu: '',
-                durum: dev.status || 'Hazır', kayitTarihi: '',
-                ustaTeklifi: ustaFiyati
-            };
-
-            const hesaplanan = calculateNihaiFiyat(ustaFiyati, 0);
-
-            setF({ 
-              ...f, 
-              cihazData: v2ResData, 
-              iskonto: '0', 
-              tutar: hesaplanan.toString(), 
-              servis_id: dev.id, 
-              aciklama: `${v2ResData.kayitNumarasi} nolu cihaz tamir bedeli tahsilatı.` 
-            });
-            setIsRecordFound(true);
-        } else {
-            Alert.alert("BİLGİ", "Girilen numarada 'Hazır' durumda bir kayıt bulunamadı.");
-            setIsRecordFound(false);
-        }
-    } catch (e) { 
-      Alert.alert("BAĞLANTI HATASI", "Sorgulama (V2) hattında bir sorun oluştu."); 
-    } finally { 
-      setIsSearching(false); 
-    }
-  };
-
-
-* /
-
 /**
    * ASIL KAYIT İŞLEMİ (Sadece Onay Verilirse Çalışır)
    */
@@ -411,15 +276,6 @@ const executeSave = async (ozelMesaj: string) => {
 
 
 
-
-
-
-
-
-
-
-
-
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -442,110 +298,6 @@ const executeSave = async (ozelMesaj: string) => {
     }
   };
 
-
-
-
-
-/**
-   * ASIL KAYIT İŞLEMİ (Sadece Onay Verilirse Çalışır)
-   
-  const executeSave = async (ozelMesaj: string) => { 
-    setIsSaving(true);
-    try {
-      const url = f.servis_id ? `${API_BASE_URL}/api/tahsilat/process` : `${API_BASE_URL}/api/kasa/add`;
-      
-      const payload = f.servis_id ? {
-          id: f.servis_id,
-          servis_no: f.kayitNo,
-          kategori: f.tur,
-          tutar: parseFloat(f.tutar),
-          aciklama: f.aciklama,
-          islem_yapan: 'Banko',
-          new_status: 'Teslim Edildi'
-      } : {
-          islem_yonu: 'GİRİŞ',
-          kategori: f.tur,
-          tutar: parseFloat(f.tutar),
-          aciklama: f.aciklama,
-          islem_yapan: 'Admin',
-          servis_no: f.kayitNo || null
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const resData = await response.json();
-      
-      if (resData.success) {
-        // MÜDÜR: Burası senin istediğin o dinamik mesajı basan yer!
-        Alert.alert("İŞLEM BAŞARILI", ozelMesaj, [
-          { text: "TAMAM", onPress: () => router.back() }
-        ]);
-      } else {
-        Alert.alert("HATA", resData.error);
-      }
-    } catch (e) { 
-      Alert.alert("SUNUCU HATASI", "Veri iletimi başarısız."); 
-    } finally { 
-      setIsSaving(false); 
-    }
-  };
-
-
-
-  
-  // Parantez içine 'ozelMesaj' kelimesini ekledik:
-const executeSave = async (ozelMesaj: string) => {  
-
-  // const executeSave = async () => {
-    setIsSaving(true);
-    try {
-      const url = f.servis_id ? `${API_BASE_URL}/api/tahsilat/process` : `${API_BASE_URL}/api/kasa/add`;
-      
-      const payload = f.servis_id ? {
-          id: f.servis_id,
-          servis_no: f.kayitNo,
-          kategori: f.tur,
-          tutar: parseFloat(f.tutar),
-          aciklama: f.aciklama,
-          islem_yapan: 'Banko',
-          new_status: 'Teslim Edildi'
-      } : {
-          islem_yonu: 'GİRİŞ',
-          kategori: f.tur,
-          tutar: parseFloat(f.tutar),
-          aciklama: f.aciklama,
-          islem_yapan: 'Admin',
-          servis_no: f.kayitNo || null
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const resData = await response.json();
-      if (resData.success) {
-        Alert.alert("İŞLEM BAŞARILI", "Kasa hareketi kaydedildi ve cihaz teslim edildi durumuna alındı.", [
-          { text: "TAMAM", onPress: () => router.back() }
-        ]);
-      } else {
-        Alert.alert("HATA", resData.error);
-      }
-    } catch (e) { 
-      Alert.alert("SUNUCU HATASI", "Veri iletimi başarısız."); 
-    } finally { 
-      setIsSaving(false); 
-    }
-    
-
-  };
-
-*/
 
 /**
    * TAHSİLAT BUTONUNA BASILDIĞINDA ÇALIŞAN AKILLI BARİKAT
@@ -603,46 +355,7 @@ const executeSave = async (ozelMesaj: string) => {
   };
 
 
-
-
-
-
-
-
- /*
-     const handleFinalTahsilat = async () => {
-    const isTahsilat = f.tur.includes('Tahsilat') || f.tur.includes('Tamir') || f.tur.includes('Randevu');
-
-    // 0 TL Kontrolü
-    if (parseFloat(f.tutar) <= 0 || isNaN(parseFloat(f.tutar))) {
-      Alert.alert("HATA", "Tahsilat tutarı 0 veya geçersiz olamaz!");
-      return;
-    }
-
-    if (isTahsilat && !f.servis_id) {
-      Alert.alert("EKSİK VERİ", "Lütfen önce geçerli bir servis kaydı sorgulayınız.");
-      return;
-    }
-
-    if (!f.tutar || !f.aciklama || f.tur === 'Seçiniz...') {
-      Alert.alert("EKSİK VERİ", "İşlem türü, tutar ve açıklama alanları zorunludur.");
-      return;
-    }
-
-    // MÜDÜRÜN SON ONAYI:
-    Alert.alert(
-      "İŞLEMİ ONAYLIYOR MUSUNUZ?",
-      `${f.tutar} ₺ tutarındaki tahsilat kasaya girilecek ve bu cihaz listeden 'Teslim Edildi' olarak düşecek. Emin misiniz?`,
-      [
-        { text: "VAZGEÇ", style: "cancel" },
-        { text: "EVET, KAYDET", onPress: () => executeSave() }
-      ]
-    );
-  };
-
-
-*/
-
+ 
 const handleIskontoChange = (oran: string) => {
     // 🚨 Stok satışıysa deponun alış fiyatını, tamirse ustanın teklifini baz al
     const bazFiyat = f.tur === 'Stoktan Ürün Satışı' && bulunanUrun 
@@ -652,19 +365,6 @@ const handleIskontoChange = (oran: string) => {
     const yeniFiyat = calculateNihaiFiyat(bazFiyat, oran);
     setF({ ...f, iskonto: oran, tutar: yeniFiyat.toString() });
   };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   if (cameraVisible) {
     return (
@@ -688,12 +388,6 @@ const handleIskontoChange = (oran: string) => {
       </View>
     );
   }
-
-
-
-
-
-
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -825,10 +519,6 @@ const handleIskontoChange = (oran: string) => {
             ) : (
               <View>
 
-
-
-
-
                 
                 {f.tur === 'Stoktan Ürün Satışı' ? (
               <View>
@@ -894,14 +584,7 @@ const handleIskontoChange = (oran: string) => {
               </View>
             )}
 
-
-
-         
-
-
-
-
-
+        
             <TouchableOpacity 
                 style={[styles.saveBtn, { backgroundColor: theme.btnBg }, (isSaving || isSearching) && {opacity: 0.5}]} 
                 onPress={handleFinalTahsilat}
@@ -909,11 +592,7 @@ const handleIskontoChange = (oran: string) => {
             >
               {isSaving ? <ActivityIndicator color={theme.btnText} /> : <Text style={[styles.saveBtnText, { color: theme.btnText }]}>İŞLEMİ ONAYLA VE KAYDET</Text>}
             </TouchableOpacity>
-
-
-            
-
-
+          
 
           </View>
         </ScrollView>
@@ -926,7 +605,7 @@ const handleIskontoChange = (oran: string) => {
               {['Kasaya Nakit Girişi', 'Tamir Ücreti Tahsili', 'Randevu Geliri Tahsili', 'Stoktan Ürün Satışı'].map((item) => (
                 <TouchableOpacity key={item} style={[styles.modalItem, { borderBottomColor: theme.modalBorder }]} onPress={() => {
 
-                             
+                         
                  
                   setF({...initialState, tur: item}); 
                   setIsRecordFound(false);
@@ -952,7 +631,6 @@ const InfoRow = ({ label, value, isDarkMode, highlight }: any) => (
     <Text style={[styles.infoValue, { color: highlight ? '#FF3B30' : (isDarkMode ? '#ddd' : '#333') }]}>{value}</Text>
   </View>
 );
-
 
 const styles = StyleSheet.create({
   // Üst Başlık Alanı (Daha kibar)
@@ -1087,9 +765,5 @@ const styles = StyleSheet.create({
   radarTextRow: { position: 'absolute', bottom: -40, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   radarText: { color: '#FF3B30', fontSize: 12, fontWeight: '900', marginLeft: 8 },
   camCloseBottom: { alignItems: 'center', marginTop: 20 }
-
-
-
-
 
 });
