@@ -100,19 +100,7 @@ const handleSaveAttempt = async () => {
 
 
 
-  /*
-
-  const handleSaveAttempt = () => {
-    if (!customer.adSoyad || !customer.tel || !customer.email) {
-      setStatus({ visible: true, type: 'error', msg: 'Zorunlu alanları (* ) doldurunuz.' });
-      return;
-    }
-    Keyboard.dismiss();
-    setStatus({ visible: true, type: 'success', msg: 'Müşteri başarıyla kaydedildi.' });
-  };
-
-
-*/
+  
 
   // DİNAMİK STİLLER (Şaltere Bağlı)
   const theme = {
