@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import logo from './assets/logo.png';
-// YENİ SAYFALARIMIZIN İTHALATI (Bireysel, Firma ve artık LİSTE)
+// SAYFA İTHALATLARI
 import BireyselMusteriKaydi from './pages/BireyselMusteriKaydi';
 import FirmaKaydi from './pages/FirmaKaydi';
 import MusteriListesi from './pages/MusteriListesi';
+import YeniServisKaydi from './pages/YeniServisKaydi'; 
+import ServisKayitlari from './pages/ServisKayitlari'; 
+import TamamlananIsler from './pages/TamamlananIsler';
 
 export default function Dashboard({ onLogout }: any) {
-  const [acikMenu, setAcikMenu] = useState('Müşteri İşlemleri');
+  // MÜDÜR DİKKAT: Burayı boş bıraktık ki ilk açılışta hiçbir menü açık gelmesin
+  const [acikMenu, setAcikMenu] = useState(''); 
   const [aktifSayfa, setAktifSayfa] = useState('Dashboard');
 
   const menuGecis = (menuAdi: string) => {
@@ -39,7 +43,7 @@ export default function Dashboard({ onLogout }: any) {
 
             {[
               { isim: 'Müşteri İşlemleri', ikon: '👥', altMenuler: ['Bireysel Müşteri Kaydı', 'Firma Kaydı', 'Müşteri Listesi'] },
-              { isim: 'Servis İşlemleri', ikon: '🛠️', altMenuler: ['Yeni Servis Formu', 'Bekleyen İşler', 'Tamamlanan İşler'] },
+              { isim: 'Servis İşlemleri', ikon: '🛠️', altMenuler: ['Yeni Servis Kaydı', 'Servis Kayıtları', 'Tamamlanan İşler'] },
               { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Takvimi'] },
               { isim: 'Envanter İşlemleri', ikon: '📦', altMenuler: ['Stok Durumu', 'Malzeme Girişi', 'Depo Sayımı'] },
               { isim: 'Mali İşlemler', ikon: '💳', altMenuler: ['Faturalar', 'Tahsilatlar', 'Cari Hesaplar'] },
@@ -66,12 +70,18 @@ export default function Dashboard({ onLogout }: any) {
                         onClick={() => {
                           if(altItem === 'Bireysel Müşteri Kaydı') setAktifSayfa('BireyselMusteriKaydi');
                           if(altItem === 'Firma Kaydı') setAktifSayfa('FirmaKaydi');
-                          if(altItem === 'Müşteri Listesi') setAktifSayfa('MusteriListesi'); // LİSTE TETİĞİ
+                          if(altItem === 'Müşteri Listesi') setAktifSayfa('MusteriListesi');
+                          if(altItem === 'Yeni Servis Kaydı') setAktifSayfa('YeniServisKaydi'); 
+                          if(altItem === 'Servis Kayıtları') setAktifSayfa('ServisKayitlari'); 
+                          if(altItem === 'Tamamlanan İşler') setAktifSayfa('TamamlananIsler');
                         }}
                         className={`text-left py-2 px-3 text-xs font-medium rounded-lg transition-all flex items-center gap-2 group ${
                           (aktifSayfa === 'BireyselMusteriKaydi' && altItem === 'Bireysel Müşteri Kaydı') || 
                           (aktifSayfa === 'FirmaKaydi' && altItem === 'Firma Kaydı') ||
-                          (aktifSayfa === 'MusteriListesi' && altItem === 'Müşteri Listesi')
+                          (aktifSayfa === 'MusteriListesi' && altItem === 'Müşteri Listesi') ||
+                          (aktifSayfa === 'YeniServisKaydi' && altItem === 'Yeni Servis Kaydı') ||
+                          (aktifSayfa === 'ServisKayitlari' && altItem === 'Servis Kayıtları') ||
+                          (aktifSayfa === 'TamamlananIsler' && altItem === 'Tamamlanan İşler')
                           ? 'text-white bg-[#8E052C]/20 font-bold'
                           : 'text-gray-500 hover:text-white hover:bg-white/5'
                         }`}>
@@ -103,11 +113,17 @@ export default function Dashboard({ onLogout }: any) {
             <div>
               <h1 className="text-3xl font-black tracking-tight text-white uppercase">
                 {aktifSayfa === 'Dashboard' ? 'Komuta Merkezi' : 
-                 aktifSayfa === 'MusteriListesi' ? 'Müşteri Rehberi' : 'Müşteri İşlemleri'}
+                 aktifSayfa === 'MusteriListesi' ? 'Müşteri Rehberi' : 
+                 aktifSayfa === 'YeniServisKaydi' ? 'Servis Girişi' :
+                 aktifSayfa === 'ServisKayitlari' ? 'Servis Arşivi' : 
+                 aktifSayfa === 'TamamlananIsler' ? 'Tamamlanan İşler' : 'İşlemler'}
               </h1>
               <p className="text-gray-500 text-sm mt-1 font-medium">
                 {aktifSayfa === 'Dashboard' ? 'Sistem jilet gibi çalışıyor müdür.' : 
-                 aktifSayfa === 'MusteriListesi' ? 'Tüm cari kayıtlar burada listeleniyor.' : 'Yeni kayıt girişi yapılıyor.'}
+                 aktifSayfa === 'MusteriListesi' ? 'Tüm cari kayıtlar burada listeleniyor.' : 
+                 aktifSayfa === 'YeniServisKaydi' ? 'Yeni servis formu dolduruluyor.' :
+                 aktifSayfa === 'ServisKayitlari' ? 'Aktif ve geçmiş servis süreçleri.' : 
+                 aktifSayfa === 'TamamlananIsler' ? 'Teslim ve iptal edilen işlerin arşivi.' : 'Kayıt girişi yapılıyor.'}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -186,8 +202,13 @@ export default function Dashboard({ onLogout }: any) {
           ) : aktifSayfa === 'FirmaKaydi' ? (
             <FirmaKaydi onClose={() => setAktifSayfa('Dashboard')} />
           ) : aktifSayfa === 'MusteriListesi' ? (
-            // LİSTE SAYFAMIZ BURADA PATLIYOR
             <MusteriListesi />
+          ) : aktifSayfa === 'YeniServisKaydi' ? (
+            <YeniServisKaydi /> 
+          ) : aktifSayfa === 'ServisKayitlari' ? (
+            <ServisKayitlari /> 
+          ) : aktifSayfa === 'TamamlananIsler' ? (
+            <TamamlananIsler /> 
           ) : null}
         </div>
 
@@ -201,7 +222,9 @@ export default function Dashboard({ onLogout }: any) {
            </h3>
            
            <div className="flex flex-col gap-4 relative z-10">
-              <button className="bg-black/50 hover:bg-[#8E052C]/10 border border-white/5 hover:border-[#8E052C]/50 p-4 rounded-2xl flex items-center gap-4 transition-all duration-300 text-left group relative overflow-hidden">
+              <button 
+                onClick={() => setAktifSayfa('YeniServisKaydi')}
+                className="bg-black/50 hover:bg-[#8E052C]/10 border border-white/5 hover:border-[#8E052C]/50 p-4 rounded-2xl flex items-center gap-4 transition-all duration-300 text-left group relative overflow-hidden">
                  <div className="absolute left-0 top-0 w-1 h-full bg-[#8E052C] opacity-0 group-hover:opacity-100 transition-all"></div>
                  <div className="w-10 h-10 bg-white/5 group-hover:bg-[#8E052C]/20 rounded-xl flex items-center justify-center text-xl transition-all duration-300 shadow-inner">📝</div>
                  <div>

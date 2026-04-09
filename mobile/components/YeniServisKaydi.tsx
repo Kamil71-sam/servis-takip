@@ -394,62 +394,6 @@ const handleSaveAttempt = async () => {
 
 
 
-
-
-/*
-
-  const handleSaveAttempt = async () => {
-    if (!servis.device_id) {
-      return Alert.alert('Hata', 'Cihaz secilmedi!');
-    }
-
-    if (!servis.ariza_notu.trim()) {
-      return Alert.alert('Hata', 'Arıza / sikayet detayı bos bırakılamaz.');
-    }
-
-    setLoading(true);
-
-    try {
-      // MÜDÜR: Kaydederken doğru ID'yi alıyoruz
-      const finalCustomerId = servis.customer_type === 'kurumsal' ? Number(servis.firm_id) : Number(servis.customer_id);
-
-      const result = await createServiceRecord({
-        device_id: Number(servis.device_id),
-        customer_id: finalCustomerId, // İSİM KARIŞIKLIĞINI BİTİREN ASIL PAS BURASI!
-        issue_text: servis.ariza_notu,
-        atanan_usta: servis.usta,
-        musteri_notu: servis.muster_notu,
-      });
-
-      setStatus({
-        visible: true,
-        type: 'success',
-        msg: 'Servis Kaydı Tamamlandı.',
-        recordNo: result.servis_no,
-      });
-    } catch (error) {
-      setStatus({
-        visible: true,
-        type: 'error',
-        msg: 'Kayıt hatası!',
-        recordNo: '',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
-*/
-
-
-
-
-
-
-
-
   const theme = {
     bg: isDarkMode ? '#121212' : '#fff',
     inputBg: isDarkMode ? '#1e1e1e' : '#f5f5f5',
