@@ -6,9 +6,9 @@ export default function TamamlananIsler() {
   const [loading, setLoading] = useState(true);
   
   // FİLTRE STATELERİ
-  const [durumFiltresi, setDurumFiltresi] = useState('Tümü'); // Tümü, Teslim Edildi, İptal Edildi
-  const [arama, setArama] = useState(''); // Plaka veya Müşteri
-  const [tarihArama, setTarihArama] = useState(''); // Örn: 04.2026
+  const [durumFiltresi, setDurumFiltresi] = useState('Tümü'); 
+  const [arama, setArama] = useState(''); 
+  const [tarihArama, setTarihArama] = useState(''); 
 
   const API_URL = "http://localhost:3000";
   const token = localStorage.getItem('token');
@@ -16,8 +16,6 @@ export default function TamamlananIsler() {
 
   const verileriGetir = async () => {
     try {
-      // MÜDÜR DİKKAT: Biten işleri çeken backend rotasını buraya yazmalısın. 
-      // Şimdilik '/services/tamamlanan' olarak varsaydım.
       const res = await axios.get(`${API_URL}/services/tamamlanan`, { headers });
       setIslemler(res.data);
     } catch (err) { 
@@ -29,7 +27,7 @@ export default function TamamlananIsler() {
 
   useEffect(() => { verileriGetir(); }, []);
 
-  // Rozet Renkleri (Sadece biten işler için)
+  // Rozet Renkleri
   const durumRenkleri: any = {
     'Teslim Edildi': 'bg-gray-600 text-gray-100 border border-gray-400/30',
     'İptal Edildi': 'bg-red-900/80 text-red-100 border border-red-500/30'
@@ -37,17 +35,14 @@ export default function TamamlananIsler() {
 
   // FİLTRELEME MOTORU
   const filtrelenmisIslemler = islemler.filter(islem => {
-    // 1. Durum Filtresi (Açılır Kutu)
     const durum = islem.durum || '';
     const durumUyuyor = durumFiltresi === 'Tümü' || durum === durumFiltresi;
 
-    // 2. Metin Araması (Müşteri veya Kayıt No)
     const plaka = islem.plaka || '';
     const musteri = islem.musteri_adi || '';
     const metinUyuyor = plaka.includes(arama) || musteri.toLowerCase().includes(arama.toLowerCase());
 
-    // 3. Tarih Araması (Örn: 04.2026)
-    const tarih = islem.tarih || ''; // Backend'den "09.04.2026 12:53" gibi geldiğini varsayıyoruz
+    const tarih = islem.tarih || ''; 
     const tarihUyuyor = tarih.includes(tarihArama);
 
     return durumUyuyor && metinUyuyor && tarihUyuyor;
@@ -68,7 +63,6 @@ export default function TamamlananIsler() {
         </div>
 
         <div className="flex gap-4 items-center">
-          {/* AÇILIR KUTU (Durum Filtresi) */}
           <select 
             value={durumFiltresi}
             onChange={(e) => setDurumFiltresi(e.target.value)}
@@ -79,7 +73,6 @@ export default function TamamlananIsler() {
             <option value="İptal Edildi" className="bg-[#0F0F12]">❌ Sadece İptal Edilenler</option>
           </select>
 
-          {/* TARİH FİLTRESİ */}
           <input 
             type="text" 
             placeholder="Tarih / Ay Ara (Örn: 04.2026)" 
@@ -88,7 +81,6 @@ export default function TamamlananIsler() {
             className="bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white w-56 outline-none font-semibold focus:border-green-500 transition-all"
           />
 
-          {/* GENEL ARAMA */}
           <input 
             type="text" 
             placeholder="Kayıt No veya Müşteri Adı..." 
@@ -117,7 +109,7 @@ export default function TamamlananIsler() {
               {filtrelenmisIslemler.map((s, index) => {
                 const sNo = s.plaka;
                 const mAdi = s.musteri_adi;
-                const tarih = s.tarih; 
+                const kayitTarihi = s.tarih; 
                 const cTuru = s.cihaz_tipi;
                 const markaModel = s.marka_model; 
                 const seriNo = s.seri_no;
@@ -126,6 +118,12 @@ export default function TamamlananIsler() {
                 const durum = s.durum || 'Bilinmiyor';
                 const usta = s.usta;
                 const fiyat = s.offer_price;
+                
+                // MÜDÜRÜN İSTEDİĞİ BİTİŞ TARİHİ (updated_at)
+                // Eğer updated_at yoksa "Tarih Yok" yazar, varsa TR formatına çevirir
+                const bitisTarihi = s.updated_at 
+                  ? new Date(s.updated_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+                  : 'Bilinmiyor';
 
                 return (
                   <tr key={index} className="hover:bg-white/[0.02] transition-all group align-top opacity-80 hover:opacity-100">
@@ -136,7 +134,7 @@ export default function TamamlananIsler() {
                         <span className="text-lg font-black text-gray-400 tracking-tight">#{sNo}</span>
                         <span className="text-sm font-bold text-white leading-tight uppercase">{mAdi}</span>
                         <span className="text-[10px] text-gray-500 font-bold mt-1">
-                          📅 {tarih || 'Tarih Yok'}
+                          Geliş: {kayitTarihi || 'Tarih Yok'}
                         </span>
                       </div>
                     </td>
@@ -172,16 +170,24 @@ export default function TamamlananIsler() {
                       </div>
                     </td>
 
-                    {/* 4. KOLON: SONUÇ (Durum ve Fiyat) */}
+                    {/* 4. KOLON: SONUÇ (Durum, Usta, BİTİŞ TARİHİ ve Fiyat) */}
                     <td className="p-4 py-5">
                       <div className="flex flex-col items-start gap-2">
                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${durumRenkleri[durum] || 'bg-gray-800 text-gray-400'}`}>
                           {durum}
                         </span>
+                        
                         <div className="flex items-center gap-1.5 mt-2 bg-black/40 px-2 py-1 rounded-md border border-white/5">
                           <span className="text-gray-600">🛠️</span>
-                          <span className="text-[11px] font-bold text-gray-400">{usta || 'Atanmadı'}</span>
+                          <span className="text-[10px] font-bold text-gray-400">{usta || 'Atanmadı'}</span>
                         </div>
+
+                        {/* YENİ EKLENEN BİTİŞ TARİHİ ALANI */}
+                        <div className="flex items-center gap-1.5 bg-[#8E052C]/10 px-2 py-1 rounded-md border border-[#8E052C]/20">
+                          <span className="text-[#8E052C]">🏁</span>
+                          <span className="text-[10px] font-bold text-gray-300">Bitiş: {bitisTarihi}</span>
+                        </div>
+
                         {parseFloat(fiyat) > 0 && durum === 'Teslim Edildi' && (
                           <div className="text-xs font-black text-green-600/80 mt-1 flex items-center gap-1">
                             <span>Tahsil Edildi:</span>

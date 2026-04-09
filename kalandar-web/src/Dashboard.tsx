@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import logo from './assets/logo.png';
-// SAYFA İTHALATLARI
+
+// 🚀 SAYFA İTHALATLARI (İMPORTLAR TAM LİSTE)
 import BireyselMusteriKaydi from './pages/BireyselMusteriKaydi';
 import FirmaKaydi from './pages/FirmaKaydi';
 import MusteriListesi from './pages/MusteriListesi';
 import YeniServisKaydi from './pages/YeniServisKaydi'; 
 import ServisKayitlari from './pages/ServisKayitlari'; 
 import TamamlananIsler from './pages/TamamlananIsler';
+import YeniRandevu from './pages/YeniRandevu'; // 🚨 YENİ EKLENDİ
+import RandevuTakvimi from './pages/RandevuTakvimi'; // YENİ EKLENDİ
+import TamamlananRandevular from './pages/TamamlananRandevular';
+
+
 
 export default function Dashboard({ onLogout }: any) {
-  // MÜDÜR DİKKAT: Burayı boş bıraktık ki ilk açılışta hiçbir menü açık gelmesin
+  // İlk açılışta menüler kapalı gelsin diye boş bıraktık
   const [acikMenu, setAcikMenu] = useState(''); 
   const [aktifSayfa, setAktifSayfa] = useState('Dashboard');
 
@@ -21,7 +27,7 @@ export default function Dashboard({ onLogout }: any) {
     <div className="min-h-screen bg-[#0F0F12] overflow-x-auto selection:bg-[#8E052C] selection:text-white text-white font-sans">
       <div className="w-full min-w-[1100px] min-h-screen flex transition-all duration-500">
         
-        {/* SOL MENÜ (Sidebar) */}
+        {/* ---------------- SOL MENÜ (Sidebar) ---------------- */}
         <div className="w-[280px] border-r border-white/5 bg-black/40 backdrop-blur-md p-6 flex flex-col shrink-0 relative overflow-hidden">
           <div className="absolute top-[-5%] left-[-10%] w-40 h-40 bg-[#8E052C]/10 blur-3xl rounded-full pointer-events-none"></div>
 
@@ -41,14 +47,25 @@ export default function Dashboard({ onLogout }: any) {
               <span className="text-lg">🏠</span> Ana Sayfa
             </button>
 
+
             {[
               { isim: 'Müşteri İşlemleri', ikon: '👥', altMenuler: ['Bireysel Müşteri Kaydı', 'Firma Kaydı', 'Müşteri Listesi'] },
               { isim: 'Servis İşlemleri', ikon: '🛠️', altMenuler: ['Yeni Servis Kaydı', 'Servis Kayıtları', 'Tamamlanan İşler'] },
-              { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Takvimi'] },
+              { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Takvimi', 'Tamamlanan Randevular'] }, // 🚨 TEK VE DOĞRU OLAN BU!
               { isim: 'Envanter İşlemleri', ikon: '📦', altMenuler: ['Stok Durumu', 'Malzeme Girişi', 'Depo Sayımı'] },
               { isim: 'Mali İşlemler', ikon: '💳', altMenuler: ['Faturalar', 'Tahsilatlar', 'Cari Hesaplar'] },
               { isim: 'Çıktı İşlemleri', ikon: '🖨️', altMenuler: ['Servis Fişi Yazdır', 'Barkod Oluştur'] },
             ].map((menu) => (
+
+
+            
+
+
+
+
+
+
+
               <div key={menu.isim} className="flex flex-col">
                 <button 
                   onClick={() => menuGecis(menu.isim)}
@@ -65,15 +82,22 @@ export default function Dashboard({ onLogout }: any) {
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${acikMenu === menu.isim ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                   <div className="flex flex-col gap-1 pl-11 pr-2 border-l-2 border-[#8E052C]/20 ml-5">
                     {menu.altMenuler.map((altItem, i) => (
+                      
+                      
                       <button 
                         key={i} 
                         onClick={() => {
+                          // MENÜ YÖNLENDİRMELERİ
                           if(altItem === 'Bireysel Müşteri Kaydı') setAktifSayfa('BireyselMusteriKaydi');
                           if(altItem === 'Firma Kaydı') setAktifSayfa('FirmaKaydi');
                           if(altItem === 'Müşteri Listesi') setAktifSayfa('MusteriListesi');
                           if(altItem === 'Yeni Servis Kaydı') setAktifSayfa('YeniServisKaydi'); 
                           if(altItem === 'Servis Kayıtları') setAktifSayfa('ServisKayitlari'); 
                           if(altItem === 'Tamamlanan İşler') setAktifSayfa('TamamlananIsler');
+                          if(altItem === 'Yeni Randevu') setAktifSayfa('YeniRandevu');
+                          if(altItem === 'Randevu Takvimi') setAktifSayfa('RandevuTakvimi'); // 🚨 İŞTE EKSİK OLAN ŞALTER BUYDU!
+                          if(altItem === 'Tamamlanan Randevular') setAktifSayfa('TamamlananRandevular');
+                       
                         }}
                         className={`text-left py-2 px-3 text-xs font-medium rounded-lg transition-all flex items-center gap-2 group ${
                           (aktifSayfa === 'BireyselMusteriKaydi' && altItem === 'Bireysel Müşteri Kaydı') || 
@@ -81,7 +105,11 @@ export default function Dashboard({ onLogout }: any) {
                           (aktifSayfa === 'MusteriListesi' && altItem === 'Müşteri Listesi') ||
                           (aktifSayfa === 'YeniServisKaydi' && altItem === 'Yeni Servis Kaydı') ||
                           (aktifSayfa === 'ServisKayitlari' && altItem === 'Servis Kayıtları') ||
-                          (aktifSayfa === 'TamamlananIsler' && altItem === 'Tamamlanan İşler')
+                          (aktifSayfa === 'TamamlananIsler' && altItem === 'Tamamlanan İşler') ||
+                          (aktifSayfa === 'YeniRandevu' && altItem === 'Yeni Randevu') ||
+                          (aktifSayfa === 'RandevuTakvimi' && altItem === 'Randevu Takvimi')  ||  // 🚨 CSS İÇİN EKSİK OLAN KISIM DA BUYDU!
+                          (aktifSayfa === 'TamamlananRandevular' && altItem === 'Tamamlanan Randevular')
+                         
                           ? 'text-white bg-[#8E052C]/20 font-bold'
                           : 'text-gray-500 hover:text-white hover:bg-white/5'
                         }`}>
@@ -90,6 +118,10 @@ export default function Dashboard({ onLogout }: any) {
                         }`}></div>
                         {altItem}
                       </button>
+                      
+                      
+                            
+
                     ))}
                   </div>
                 </div>
@@ -106,7 +138,7 @@ export default function Dashboard({ onLogout }: any) {
           </div>
         </div>
 
-        {/* ORTA BÖLÜM: DİNAMİK ALAN */}
+        {/* ---------------- ORTA BÖLÜM: DİNAMİK ALAN ---------------- */}
         <div className="flex-1 p-8 flex flex-col gap-6 relative min-w-0">
           
           <div className="flex justify-between items-center z-10">
@@ -116,14 +148,16 @@ export default function Dashboard({ onLogout }: any) {
                  aktifSayfa === 'MusteriListesi' ? 'Müşteri Rehberi' : 
                  aktifSayfa === 'YeniServisKaydi' ? 'Servis Girişi' :
                  aktifSayfa === 'ServisKayitlari' ? 'Servis Arşivi' : 
-                 aktifSayfa === 'TamamlananIsler' ? 'Tamamlanan İşler' : 'İşlemler'}
+                 aktifSayfa === 'TamamlananIsler' ? 'Tamamlanan İşler' : 
+                 aktifSayfa === 'YeniRandevu' ? 'Yeni Randevu' : 'İşlemler'} {/* 🚨 BAŞLIK EKLENDİ */}
               </h1>
               <p className="text-gray-500 text-sm mt-1 font-medium">
                 {aktifSayfa === 'Dashboard' ? 'Sistem jilet gibi çalışıyor müdür.' : 
                  aktifSayfa === 'MusteriListesi' ? 'Tüm cari kayıtlar burada listeleniyor.' : 
                  aktifSayfa === 'YeniServisKaydi' ? 'Yeni servis formu dolduruluyor.' :
                  aktifSayfa === 'ServisKayitlari' ? 'Aktif ve geçmiş servis süreçleri.' : 
-                 aktifSayfa === 'TamamlananIsler' ? 'Teslim ve iptal edilen işlerin arşivi.' : 'Kayıt girişi yapılıyor.'}
+                 aktifSayfa === 'TamamlananIsler' ? 'Teslim ve iptal edilen işlerin arşivi.' : 
+                 aktifSayfa === 'YeniRandevu' ? 'Sahaya yeni randevu ve iş emri açılıyor.' : 'Kayıt girişi yapılıyor.'} {/* 🚨 AÇIKLAMA EKLENDİ */}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -209,10 +243,19 @@ export default function Dashboard({ onLogout }: any) {
             <ServisKayitlari /> 
           ) : aktifSayfa === 'TamamlananIsler' ? (
             <TamamlananIsler /> 
+          ) : aktifSayfa === 'YeniRandevu' ? (
+            <YeniRandevu /> 
+          ) : aktifSayfa === 'RandevuTakvimi' ? (
+            <RandevuTakvimi /> 
+          ) : aktifSayfa === 'TamamlananRandevular' ? (  /* 🚨 İŞTE EKSİK OLAN KABLO BURASI */
+            <TamamlananRandevular /> 
           ) : null}
+
+
+         
         </div>
 
-        {/* SAĞ BÖLÜM: MOBİL DURUM */}
+        {/* ---------------- SAĞ BÖLÜM: MOBİL DURUM ---------------- */}
         <div className="w-72 border-l border-white/5 bg-black/40 backdrop-blur-md p-6 flex flex-col shrink-0 relative overflow-hidden">
            <div className="absolute top-[-5%] right-[-5%] w-32 h-32 bg-[#8E052C]/10 blur-3xl rounded-full pointer-events-none"></div>
 
@@ -221,18 +264,34 @@ export default function Dashboard({ onLogout }: any) {
              Mobil İşlem
            </h3>
            
-           <div className="flex flex-col gap-4 relative z-10">
+
+            <div className="flex flex-col gap-4 relative z-10">
+              {/* 1. BUTON: YENİ SERVİS KAYDI LİNKİ */}
               <button 
                 onClick={() => setAktifSayfa('YeniServisKaydi')}
                 className="bg-black/50 hover:bg-[#8E052C]/10 border border-white/5 hover:border-[#8E052C]/50 p-4 rounded-2xl flex items-center gap-4 transition-all duration-300 text-left group relative overflow-hidden">
                  <div className="absolute left-0 top-0 w-1 h-full bg-[#8E052C] opacity-0 group-hover:opacity-100 transition-all"></div>
                  <div className="w-10 h-10 bg-white/5 group-hover:bg-[#8E052C]/20 rounded-xl flex items-center justify-center text-xl transition-all duration-300 shadow-inner">📝</div>
                  <div>
-                    <div className="font-bold text-sm text-white group-hover:text-[#8E052C] transition-colors">Yeni Kayıt Aç</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Hızlı servis formu</div>
+                    <div className="font-bold text-sm text-white group-hover:text-[#8E052C] transition-colors">Yeni Servis Kaydı</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Atölye servis formu</div>
+                 </div>
+              </button>
+
+              {/* 2. BUTON: YENİ RANDEVU KAYDI LİNKİ */}
+              <button 
+                onClick={() => setAktifSayfa('YeniRandevu')}
+                className="bg-black/50 hover:bg-[#8E052C]/10 border border-white/5 hover:border-[#8E052C]/50 p-4 rounded-2xl flex items-center gap-4 transition-all duration-300 text-left group relative overflow-hidden">
+                 <div className="absolute left-0 top-0 w-1 h-full bg-[#8E052C] opacity-0 group-hover:opacity-100 transition-all"></div>
+                 <div className="w-10 h-10 bg-white/5 group-hover:bg-[#8E052C]/20 rounded-xl flex items-center justify-center text-xl transition-all duration-300 shadow-inner">📅</div>
+                 <div>
+                    <div className="font-bold text-sm text-white group-hover:text-[#8E052C] transition-colors">Yeni Randevu</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Saha randevu formu</div>
                  </div>
               </button>
            </div>
+
+
 
            <div className="mt-auto bg-black/40 border border-green-500/20 rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
               <div className="absolute right-[-20px] bottom-[-20px] w-20 h-20 bg-green-500/10 rounded-full blur-xl pointer-events-none"></div>

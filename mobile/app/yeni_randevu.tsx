@@ -11,6 +11,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker'; 
 import axios from 'axios';
 import { BlurView } from 'expo-blur'; // MÜDÜR: Blur için bunu ekledik
+import { fetchWithAuth } from '../services/api';
+
+
+
 
 const API_BASE = `${process.env.EXPO_PUBLIC_API_URL}/api`;
 
@@ -69,6 +73,38 @@ export default function YeniRandevu() {
     fetchAllCustomers();
   }, []);
 
+
+
+const fetchAllCustomers = async () => {
+  try {
+    // 🚨 MÜDÜR: axios ile kaçak girmek yok! fetchWithAuth ile yaka kartımızı gösterip giriyoruz.
+    const response = await fetchWithAuth(`${API_BASE}/customers/all`); 
+    const data = await response.json();
+
+    // Kargo kutusundan veriyi güvenle çıkarıyoruz
+    const musteriListesi = data.data ? data.data : data;
+
+    if (Array.isArray(musteriListesi)) {
+      setAllCustomers(musteriListesi);
+    } else {
+      console.log("Backend'den garip liste geldi:", data);
+    }
+    
+  } catch (err) {
+    console.log("🚨 Rehber verisi çekilemedi (Güvenlik veya Bağlantı):", err);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+/*
   const fetchAllCustomers = async () => {
     try {
       const res = await axios.get(`${API_BASE}/customers/all`); 
@@ -79,6 +115,9 @@ export default function YeniRandevu() {
       console.log("Rehber verisi çekilemedi.");
     }
   };
+*/
+
+
 
 
 
@@ -111,6 +150,62 @@ const handleSelectFromGuide = (item: any) => {
   router.back();
 };
 
+
+
+const handleSearchCustomer = async (val: string) => {
+  setPhone(val);
+  if (val.length >= 10) {
+    setLoading(true);
+    try {
+      // 🚨 MÜDÜR: axios gitti, fetchWithAuth geldi. Veriyi .json() ile açıyoruz.
+      const res = await fetchWithAuth(`${API_BASE}/appointments/search-customer?phone=${val}`);
+      const data = await res.json();
+      
+      if (data.success && data.data) {
+        setCustomerInfo({ 
+          id: data.data.id, 
+          name: data.data.name, 
+          exists: true 
+        });
+        setCustomerType(data.data.tip || 'bireysel'); 
+        
+        // MÜDÜR: Numaradan ararken adresi yakalıyoruz
+        const gelenAdres = data.data.adres || data.data.address || '';
+        if (gelenAdres) {
+           setAddress(gelenAdres);
+           setTimeout(() => deviceTypeRef.current?.focus(), 100);
+        } else {
+           setAddress('');
+           addressRef.current?.focus(); 
+        }
+
+        setUnregistered(false); 
+      } else {
+        setCustomerInfo({ id: null, name: '', exists: false });
+        setAddress(''); // Müşteri yoksa adresi de temizle
+        setUnregistered(true); 
+      }
+    } catch (err) {
+      console.log("Müşteri bulunamadı.");
+      setCustomerInfo({ id: null, name: '', exists: false });
+      setAddress('');
+      setUnregistered(true);
+    } finally {
+      setLoading(false);
+    }
+  } else {
+    setCustomerInfo({ id: null, name: '', exists: false });
+    setAddress(''); // Numara 10 haneden kısaysa kutuları sıfırla
+    setUnregistered(false);
+  }
+};
+
+
+
+
+
+
+/*
 
 const handleSearchCustomer = async (val: string) => {
   setPhone(val);
@@ -160,6 +255,9 @@ const handleSearchCustomer = async (val: string) => {
 };
 
 
+*/
+
+
 
 
 
@@ -199,7 +297,94 @@ const onChangeDate = (event: any, selectedDate?: Date) => {
 
 
 
+const handleSave = async () => {
+    if (!phone || !date || !time) {
+      Alert.alert("Hata", "Lütfen zorunlu alanları doldur!");
+      return;
+    }
 
+    if (unregistered) {
+      Alert.alert("Dur!", "Bu numara kayıtlı değil. Lütfen önce müşteri kaydı yapın.");
+      return;
+    }
+
+    setLoading(true);
+    setSaveStatus(null);
+    Keyboard.dismiss();
+
+    let dbDate = date;
+    if (date.length === 10 && date.includes('-')) {
+      const parts = date.split('-');
+      if (parts.length === 3) {
+        dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`; 
+      }
+    }
+
+    const girilenAdres = address ? address.trim() : "Adres Girilmedi";
+    const girilenNot = issue ? issue.trim() : "Arıza Notu Yok";
+    
+    const paketlenmisVeri = `📍 ADRES: ${girilenAdres}\n🔧 CİHAZ: ${deviceType} ${brand} ${model}\n📝 NOT: ${girilenNot}`;
+
+    try {
+      // 🚨 1. ÇAKIŞMA KONTROLÜ (fetchWithAuth kullanıyoruz)
+      const conflictRes = await fetchWithAuth(`${API_BASE}/appointments/check-conflict?date=${dbDate}&time=${time}`);
+      const conflictData = await conflictRes.json();
+      
+      if (conflictData.isOccupied) {
+        setLoading(false);
+        Alert.alert("Randevu Çakışması", "Bu tarih ve saatte zaten bir randevu mevcut. Lütfen başka bir zaman seçin.");
+        return;
+      }
+
+      // 🚨 2. KAYDETME İŞLEMİ (fetchWithAuth kullanıyoruz)
+      const res = await fetchWithAuth(`${API_BASE}/appointments/ekle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: customerInfo.id,
+          type: customerType, 
+          device_brand: brand, 
+          device_model: model,
+          date: dbDate, 
+          time,
+          usta: usta, 
+          issue: paketlenmisVeri 
+        })
+      });
+      
+      const resData = await res.json();
+      
+      if (resData.success) {
+        setAssignedServiceNo(resData.servis_no || 'Atandı');
+        setSaveStatus('success'); 
+        setSuccessModalVisible(true); // ŞIK EKRANI AÇ
+      } else {
+        throw new Error(resData.error || "Sunucudan ret yedik");
+      }
+    } catch (err: any) {
+      setSaveStatus('error'); 
+      const errMsg = err.message || "Bağlantı veya Yetki Hatası";
+      Alert.alert("Kayıt Başarısız", `Hata Detayı: ${errMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /*
 
 const handleSave = async () => {
     if (!phone || !date || !time) {
@@ -264,6 +449,19 @@ const handleSave = async () => {
       setLoading(false);
     }
   };
+*/
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   return (
