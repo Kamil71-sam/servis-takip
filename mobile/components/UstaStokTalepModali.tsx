@@ -28,10 +28,61 @@ export default function UstaStokTalepModali({ visible, onClose, onSuccess, servi
   const [partName, setPartName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [desc, setDesc] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]> ([]); // Radardan gelen liste
+  const [isSearching, setIsSearching] = useState(false); // Yükleniyor yazısı için
+
   const [loading, setLoading] = useState(false);
   
   // MÜDÜR: Sınırsız Sepet burada tutuluyor
   const [cart, setCart] = useState<CartItem[]>([]);
+
+
+
+
+
+// RADAR MOTORU: Usta yazdıkça arkadan veri çeker
+  const searchParca = async (text:string) => {
+    setPartName(text);
+    if (text.length < 3) {
+      setSearchResults([]); // 3 harften azsa listeyi temizle
+      return;
+    }
+    setIsSearching(true);
+    try {
+      // 🚨 MÜDÜR: BURADAKİ İP ADRESİNİ KENDİ BACKEND'İNE GÖRE DÜZELT!
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/stok/search?malzeme_adi=${text}`);
+     
+     // const response = await fetch(`http://SENIN_BACKEND_IP_ADRESIN:PORT/api/stok/search?malzeme_adi=${text}`);
+      const json = await response.json();
+      
+      if (json.success && json.data) {
+        const sonuclar = Array.isArray(json.data) ? json.data : (json.data ? [json.data] : []);
+        setSearchResults(sonuclar);
+      }
+    } catch (error) {
+      console.log("Radar hatası:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // USTA LİSTEDEN SEÇTİĞİNDE ÇALIŞACAK MÜHÜR
+  const handleSelectPart = (item:any) => {
+    setPartName(item.malzeme_adi); // Kutunun içine tam resmi adı yaz
+    setSearchResults([]); // Seçim yapılınca listeyi kapat
+  };
+
+
+
+
+
+
+
+
+
+
+
+
 
   const theme = {
     bg: isDarkMode ? '#1E1E1E' : '#FFFFFF',
@@ -169,14 +220,44 @@ export default function UstaStokTalepModali({ visible, onClose, onSuccess, servi
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+          
+          
+          
             <Text style={styles.label}>Malzeme Adı / Parça Adı</Text>
             <TextInput 
               style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]} 
-              placeholder="Örn: Samsung A52 Ekran"
+              placeholder="Örn: Ekr yazın ve listeden seçin..."
               placeholderTextColor="#888"
               value={partName}
-              onChangeText={setPartName}
+              onChangeText={searchParca} // Yeni radar motoruna bağladık
             />
+            
+            {/* 🚨 AÇILIR LİSTE (RADAR EKRANI) 🚨 */}
+            {isSearching && <Text style={{fontSize:10, color:'#888', marginTop:2, marginLeft:5}}>Aranıyor...</Text>}
+            {searchResults.length > 0 && (
+              <View style={{maxHeight: 160, backgroundColor: theme.inputBg, borderWidth: 1, borderColor: theme.border, borderRadius: 10, marginTop: 5}}>
+                <ScrollView nestedScrollEnabled={true}>
+                  {searchResults.map((item, index) => (
+                    <TouchableOpacity 
+                      key={index} 
+                      style={{padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border}}
+                      onPress={() => handleSelectPart(item)}
+                    >
+                      <Text style={{color: theme.text, fontWeight: 'bold', fontSize: 14}}>{item.malzeme_adi}</Text>
+                      <Text style={{color: '#FF3B30', fontSize: 11, marginTop: 2}}>
+                        Depoda: {item.miktar} Adet | Barkod: {item.barkod || 'Yok'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          
+          
+          
+      
+
+
 
             <View style={{flexDirection: 'row', gap: 10, alignItems: 'flex-end'}}>
               <View style={{flex: 1}}>

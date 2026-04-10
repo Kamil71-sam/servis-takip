@@ -11,7 +11,9 @@ import {
   Modal, 
   StatusBar,
   useColorScheme,
-  Platform 
+  Platform,
+  KeyboardAvoidingView, // 🚨 EKLENDİ
+  ScrollView         // 🚨 EKLENDİ
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -225,46 +227,65 @@ export default function UstaPaneli() {
         />
       )}
 
-      {/* 🚨 MÜDÜR: ÜCRET KAYDI MODALI (Geceye Uyandı) */}
+
+
+
+
+
+      {/* 🚨 MÜDÜR: ÜCRET KAYDI MODALI (Klavyeye Karşı Zırhlı) */}
       <Modal visible={modalVisible} animationType="slide" transparent={false}>
         <SafeAreaView style={[styles.modalContainer, isDarkMode && { backgroundColor: '#121212' }]}>
-          <View style={[styles.modalHeader, isDarkMode && { borderBottomColor: '#333' }]}>
-            <View style={{ width: 40 }} /> 
-            <Text style={[styles.modalTitle, isDarkMode && { color: '#fff' }]}>ÜCRET KAYDI</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeCircle}>
-              <Ionicons name="close" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          
+          {/* 🛡️ KLAVYE ZIRHI BAŞLANGICI */}
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1 }}
+          >
+            <View style={[styles.modalHeader, isDarkMode && { borderBottomColor: '#333' }]}>
+              <View style={{ width: 40 }} /> 
+              <Text style={[styles.modalTitle, isDarkMode && { color: '#fff' }]}>ÜCRET KAYDI</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeCircle}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
-          <View style={{padding: 25}}>
-            <Text style={[styles.label, isDarkMode && { color: '#AAA' }]}>Alınan Ücret</Text>
-            <TextInput 
-              style={[styles.input, isDarkMode && { backgroundColor: '#1E1E1E', color: '#fff', borderColor: '#333' }]} 
-              placeholder="0.00 TL" 
-              placeholderTextColor={isDarkMode ? "#666" : "#999"}
-              keyboardType="numeric" 
-              value={price} 
-              onChangeText={setPrice} 
-              autoFocus 
-            />
-
-            <Text style={[styles.label, isDarkMode && { color: '#AAA' }]}>Usta Notu</Text>
-            <TextInput 
-              style={[styles.input, isDarkMode && { backgroundColor: '#1E1E1E', color: '#fff', borderColor: '#333', height: 120, textAlignVertical: 'top' }]} 
-              placeholder="Not yazın..." 
-              placeholderTextColor={isDarkMode ? "#666" : "#999"}
-              multiline
-              value={note} 
-              onChangeText={setNote} 
-            />
-
-            <TouchableOpacity 
-              style={[styles.saveBtn, isDarkMode && { backgroundColor: '#FF3B30', shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8 }]} 
-              onPress={handleCompleteJob}
+            {/* 🛡️ ESNEME YAYI (İçerik yukarı kayabilsin diye) */}
+            <ScrollView 
+              contentContainerStyle={{ padding: 25, paddingBottom: 100 }} 
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={{color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 1}}>KAYDET</Text>
-            </TouchableOpacity>
-          </View>
+              <Text style={[styles.label, isDarkMode && { color: '#AAA' }]}>Alınan Ücret</Text>
+              <TextInput 
+                style={[styles.input, isDarkMode && { backgroundColor: '#1E1E1E', color: '#fff', borderColor: '#333' }]} 
+                placeholder="0.00 TL" 
+                placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                keyboardType="numeric" 
+                value={price} 
+                onChangeText={setPrice} 
+                autoFocus 
+              />
+
+              <Text style={[styles.label, isDarkMode && { color: '#AAA' }]}>Usta Notu</Text>
+              <TextInput 
+                style={[styles.input, isDarkMode && { backgroundColor: '#1E1E1E', color: '#fff', borderColor: '#333', height: 120, textAlignVertical: 'top' }]} 
+                placeholder="Not yazın..." 
+                placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                multiline
+                value={note} 
+                onChangeText={setNote} 
+              />
+
+              <TouchableOpacity 
+                style={[styles.saveBtn, isDarkMode && { backgroundColor: '#FF3B30', shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8 }]} 
+                onPress={handleCompleteJob}
+              >
+                <Text style={{color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 1}}>KAYDET</Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+          </KeyboardAvoidingView>
+          {/* 🛡️ KLAVYE ZIRHI BİTİŞİ */}
+
         </SafeAreaView>
       </Modal>
     </SafeAreaView>

@@ -127,6 +127,40 @@ export default function DashboardScreen() {
 
 
 
+// --- 🍩 AKILLI SİMİT GRAFİĞİ (GERÇEK ORANTI MATEMATİĞİ) ---
+  const toplamIs = servisToplam + randevuToplam;
+  
+  const getDonutColors = () => {
+    if (toplamIs === 0) return ['#eaeaea', '#eaeaea', '#eaeaea', '#eaeaea']; // Veri yoksa gri
+    
+    // 1. Gerçek yüzdeyi bul ve 4 dilime (çeyreklere) yuvarla
+    const servisYuzde = servisToplam / toplamIs;
+    let servisDilimSayisi = Math.round(servisYuzde * 4);
+
+    // 2. İNCE AYAR: Eğer birinde 1 tane bile iş varsa ama 0'a yuvarlandıysa, ekranda tamamen yok olmasın!
+    if (servisToplam > 0 && servisDilimSayisi === 0) servisDilimSayisi = 1;
+    if (randevuToplam > 0 && servisDilimSayisi === 4) servisDilimSayisi = 3;
+    
+    let colors = [];
+    for (let i = 0; i < 4; i++) {
+      if (i < servisDilimSayisi) colors.push('#FFCC00'); // Sarı (Servis)
+      else colors.push('#6558dd'); // Mor (Randevu)
+    }
+    return colors; 
+  };
+  
+  const [colorTop, colorRight, colorBottom, colorLeft] = getDonutColors();
+
+
+
+
+
+
+
+
+
+/*
+
 // --- 🍩 AKILLI SİMİT GRAFİĞİ (MAKAM MANTIĞI) ---
   const toplamIs = servisToplam + randevuToplam;
   
@@ -158,6 +192,7 @@ export default function DashboardScreen() {
   
   const [colorTop, colorRight, colorBottom, colorLeft] = getDonutColors();
 
+*/
 
 
 

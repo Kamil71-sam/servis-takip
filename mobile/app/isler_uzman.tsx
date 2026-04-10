@@ -13,7 +13,9 @@ import {
   ScrollView,
   StatusBar,
   useColorScheme,
-  Platform // Platform kontrolü eklendi
+  Platform,
+  KeyboardAvoidingView
+ 
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -171,6 +173,12 @@ export default function IslerUzman() {
         </TouchableOpacity>
       </View>
 
+
+
+
+
+
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -178,137 +186,184 @@ export default function IslerUzman() {
         </View>
       ) : (
 
-<FlatList
-          data={[...tasks].sort((a, b) => {
-            if (filterMode === 'onlyParca') {
-              const aIsTarget = a.status === 'Parça Bekliyor';
-              const bIsTarget = b.status === 'Parça Bekliyor';
-              if (aIsTarget && !bIsTarget) return -1;
-              if (!aIsTarget && bIsTarget) return 1;
-            }
-            return 0;
-          })}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listPadding}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
-          renderItem={({ item }) => {
-            const isDimmed = filterMode === 'onlyParca' && item.status !== 'Parça Bekliyor';
+        
 
-            return (
-              <View 
-                style={[
-                  styles.taskCard, 
-                  { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
-                  isDimmed && { opacity: 0.2 } 
-                ]}
-                pointerEvents={isDimmed ? 'none' : 'auto'} 
-              >
-                <View style={styles.cardTop}>
-                  <View style={[styles.idBadge, { backgroundColor: isDarkMode ? '#3a1010' : '#FEF2F2' }]}>
-                    <Text style={styles.idText}>#{item.servis_no || item.id}</Text>
+
+
+
+
+
+
+
+
+        /* 🛡️ KLAVYE ZIRHI BURADAN BAŞLIYOR */
+        <KeyboardAvoidingView 
+
+          behavior={Platform.OS === "ios" ? "padding" : "padding"} 
+
+          style={{ flex: 1 }}
+
+          keyboardVerticalOffset={10}
+        >
+
+
+
+
+          <FlatList
+            data={[...tasks].sort((a, b) => {
+              if (filterMode === 'onlyParca') {
+                const aIsTarget = a.status === 'Parça Bekliyor';
+                const bIsTarget = b.status === 'Parça Bekliyor';
+                if (aIsTarget && !bIsTarget) return -1;
+                if (!aIsTarget && bIsTarget) return 1;
+              }
+              return 0;
+            })}
+            keyExtractor={(item) => item.id.toString()}
+            
+            // 🚨 MÜDÜRÜN DOKUNUŞU 1: En alta 150px boşluk verdik ki son eleman klavyenin üstüne kadar çıkabilsin!
+            contentContainerStyle={[styles.listPadding, { paddingBottom: 150 }]} 
+            
+            // 🚨 MÜDÜRÜN DOKUNUŞU 2: Klavye açıkken butona tıklandığında klavyenin kapanmasını beklemeden direkt işlemi yapar.
+            keyboardShouldPersistTaps="handled" 
+            
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+            renderItem={({ item }) => {
+              const isDimmed = filterMode === 'onlyParca' && item.status !== 'Parça Bekliyor';
+
+              return (
+                <View 
+                  style={[
+                    styles.taskCard, 
+                    { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
+                    isDimmed && { opacity: 0.2 } 
+                  ]}
+                  pointerEvents={isDimmed ? 'none' : 'auto'} 
+                >
+                  <View style={styles.cardTop}>
+                    <View style={[styles.idBadge, { backgroundColor: isDarkMode ? '#3a1010' : '#FEF2F2' }]}>
+                      <Text style={styles.idText}>#{item.servis_no || item.id}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, {backgroundColor: item.status === 'Yeni Kayıt' ? theme.primary : (isDarkMode ? '#333' : '#F1F5F9')}]}>
+                      <Text style={[styles.statusText, {color: item.status === 'Yeni Kayıt' ? '#FFF' : theme.textColor}]}>
+                        {item.status?.toUpperCase() || 'YENİ KAYIT'}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, {backgroundColor: item.status === 'Yeni Kayıt' ? theme.primary : (isDarkMode ? '#333' : '#F1F5F9')}]}>
-                    <Text style={[styles.statusText, {color: item.status === 'Yeni Kayıt' ? '#FFF' : theme.textColor}]}>
-                      {item.status?.toUpperCase() || 'YENİ KAYIT'}
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <Ionicons name="person-circle" size={20} color={theme.primary} />
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textColor }}>
+                      {item.customer || 'Müşteri Bilgisi Yok'}
                     </Text>
                   </View>
-                </View>
+                  
+                  <Text style={styles.deviceHeaderText}>{item.cihaz_turu || 'Cihaz'}</Text>
+                  <Text style={[styles.markaText, { color: theme.textColor }]}>{item.marka_model}</Text>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <Ionicons name="person-circle" size={20} color={theme.primary} />
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textColor }}>
-                    {item.customer || 'Müşteri Bilgisi Yok'}
-                  </Text>
-                </View>
-                
-                <Text style={styles.deviceHeaderText}>{item.cihaz_turu || 'Cihaz'}</Text>
-                <Text style={[styles.markaText, { color: theme.textColor }]}>{item.marka_model}</Text>
+                  <Text style={[styles.issueText, { color: theme.subText }]} numberOfLines={2}>{item.issue}</Text>
 
-                <Text style={[styles.issueText, { color: theme.subText }]} numberOfLines={2}>{item.issue}</Text>
-
-                <View style={[styles.actionContainer, { backgroundColor: isDarkMode ? '#252525' : '#F9F9F9' }]}>
-                  {item.status === 'Yeni Kayıt' && (
-                    <View style={styles.priceRow}>
-                      <TextInput 
-                        style={[styles.priceInput, { backgroundColor: theme.inputBg, color: theme.textColor, borderColor: theme.borderColor }]}
-                        placeholder="Maliyet (TL)"
-                        placeholderTextColor={theme.subText}
-                        keyboardType="numeric"
-                        value={prices[item.id] || ''}
-                        onChangeText={(val) => setPrices({...prices, [item.id]: val})}
-                      />
-                      <TouchableOpacity 
-                        style={[styles.btnFiyat, { backgroundColor: isDarkMode ? '#444' : '#1A1A1A' }]} 
-                        onPress={() => handleUpdateStatus(item, 'Onay Bekliyor')}
-                      >
-                        <Text style={styles.btnText}>Fiyat Bildir</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {item.status === 'Onaylandı' && (
-                    <TouchableOpacity 
-                      style={styles.btnBasla} 
-                      onPress={() => handleUpdateStatus(item, 'Tamirde')}
-                    >
-                      <Text style={styles.btnText}>TAMİRİ BAŞLAT (İŞE GİRİŞ)</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {item.status === 'Tamirde' && (
-                    <View>
-                      <Text style={{ fontSize: 13, fontWeight: '900', color: theme.textColor, marginBottom: 12, textAlign: 'center' }}>
-                        🛠️ CİHAZ TEZGAHTA / TAMİR EDİLİYOR
-                      </Text>
-                      <View style={{flexDirection: 'row', gap: 10}}>
+                  <View style={[styles.actionContainer, { backgroundColor: isDarkMode ? '#252525' : '#F9F9F9' }]}>
+                    {item.status === 'Yeni Kayıt' && (
+                      <View style={styles.priceRow}>
+                        <TextInput 
+                          style={[styles.priceInput, { backgroundColor: theme.inputBg, color: theme.textColor, borderColor: theme.borderColor }]}
+                          placeholder="Maliyet (TL)"
+                          placeholderTextColor={theme.subText}
+                          keyboardType="numeric"
+                          value={prices[item.id] || ''}
+                          onChangeText={(val) => setPrices({...prices, [item.id]: val})}
+                        />
                         <TouchableOpacity 
-                          style={[styles.btnBasla, {backgroundColor: '#FF9500', flex: 1}]} 
-                          onPress={() => handleUpdateStatus(item, 'Parça Bekliyor')}
+                          style={[styles.btnFiyat, { backgroundColor: isDarkMode ? '#444' : '#1A1A1A' }]} 
+                          onPress={() => handleUpdateStatus(item, 'Onay Bekliyor')}
                         >
-                          <Text style={styles.btnText}>Malzeme/Parça İste</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.btnBasla, {backgroundColor: '#34C759', flex: 1}]} 
-                          onPress={() => handleUpdateStatus(item, 'Hazır')}
-                        >
-                          <Text style={styles.btnText}>Tamir Bitti (Hazır)</Text>
+                          <Text style={styles.btnText}>Fiyat Bildir</Text>
                         </TouchableOpacity>
                       </View>
-                    </View>
-                  )}
-                  
-                  {item.status === 'Parça Bekliyor' && (
-                     <View style={[styles.btnBasla, {backgroundColor: isDarkMode ? '#333' : '#E5E5EA', paddingVertical: 14, borderWidth: 1, borderColor: theme.borderColor}]}>
-                        <Ionicons name="time-outline" size={18} color={isDarkMode ? "#AAA" : "#888"} style={{marginBottom: 4}} />
-                        <Text style={[styles.btnText, {color: isDarkMode ? '#AAA' : '#666', fontWeight: '900', fontSize: 12}]}>
-                          SİPARİŞ BANKOYA İLETİLDİ - ONAY BEKLENİYOR
-                        </Text>
-                     </View>
-                  )}
-                </View>
+                    )}
 
-                <View style={[styles.cardFooterRevize, { borderTopColor: theme.borderColor }]}>
-                  <View style={styles.detailInfoRow}>
-                    <Ionicons name="clipboard-outline" size={16} color={theme.subText} />
-                    <Text style={[styles.detailInfoText, { color: theme.subText }]}>İş Detayı</Text>
+                    {item.status === 'Onaylandı' && (
+                      <TouchableOpacity 
+                        style={styles.btnBasla} 
+                        onPress={() => handleUpdateStatus(item, 'Tamirde')}
+                      >
+                        <Text style={styles.btnText}>TAMİRİ BAŞLAT (İŞE GİRİŞ)</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {item.status === 'Tamirde' && (
+                      <View>
+                        <Text style={{ fontSize: 13, fontWeight: '900', color: theme.textColor, marginBottom: 12, textAlign: 'center' }}>
+                          🛠️ CİHAZ TEZGAHTA / TAMİR EDİLİYOR
+                        </Text>
+                        <View style={{flexDirection: 'row', gap: 10}}>
+                          <TouchableOpacity 
+                            style={[styles.btnBasla, {backgroundColor: '#FF9500', flex: 1}]} 
+                            onPress={() => handleUpdateStatus(item, 'Parça Bekliyor')}
+                          >
+                            <Text style={styles.btnText}>Malzeme/Parça İste</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.btnBasla, {backgroundColor: '#34C759', flex: 1}]} 
+                            onPress={() => handleUpdateStatus(item, 'Hazır')}
+                          >
+                            <Text style={styles.btnText}>Tamir Bitti (Hazır)</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                    
+                    {item.status === 'Parça Bekliyor' && (
+                       <View style={[styles.btnBasla, {backgroundColor: isDarkMode ? '#333' : '#E5E5EA', paddingVertical: 14, borderWidth: 1, borderColor: theme.borderColor}]}>
+                          <Ionicons name="time-outline" size={18} color={isDarkMode ? "#AAA" : "#888"} style={{marginBottom: 4}} />
+                          <Text style={[styles.btnText, {color: isDarkMode ? '#AAA' : '#666', fontWeight: '900', fontSize: 12}]}>
+                            SİPARİŞ BANKOYA İLETİLDİ - ONAY BEKLENİYOR
+                          </Text>
+                       </View>
+                    )}
                   </View>
-                  
-                  <TouchableOpacity 
-                    style={styles.btnAcBox}
-                    onPress={() => { 
-                      setSelectedTask(item); 
-                      setTimeout(() => setModalVisible(true), 50);
-                    }}
-                  >
-                    <Text style={styles.btnAcText}>DETAYLARI AÇ</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#FFF" />
-                  </TouchableOpacity>
+
+                  <View style={[styles.cardFooterRevize, { borderTopColor: theme.borderColor }]}>
+                    <View style={styles.detailInfoRow}>
+                      <Ionicons name="clipboard-outline" size={16} color={theme.subText} />
+                      <Text style={[styles.detailInfoText, { color: theme.subText }]}>İş Detayı</Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      style={styles.btnAcBox}
+                      onPress={() => { 
+                        setSelectedTask(item); 
+                        setTimeout(() => setModalVisible(true), 50);
+                      }}
+                    >
+                      <Text style={styles.btnAcText}>DETAYLARI AÇ</Text>
+                      <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            );
-          }}
-        />
+              );
+            }}
+          />
+        </KeyboardAvoidingView>
+        /* 🛡️ KLAVYE ZIRHI BURADA BİTİYOR */
       )}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       {/* DETAY MODALI */}
       <Modal 
