@@ -27,6 +27,20 @@ export default function TamamlananRandevular() {
     }
   };
 
+  // 🚨 YENİ EKLENEN: Yönetici Notunu Arka Plana Kaydetme Fonksiyonu
+  const hizliNotKaydet = async (id: number, yeniNot: string) => {
+    if (!id) return;
+    try {
+      await axios.put(`${API_URL}/api/appointments/${id}/hizli-not`, { 
+        yonetici_notu: yeniNot 
+      }, { headers });
+      
+      console.log(`✅ Not başarıyla kaydedildi (ID: ${id}): ${yeniNot}`);
+    } catch (err) {
+      console.error("🚨 Not kaydedilirken hata oluştu:", err);
+    }
+  };
+
   useEffect(() => { verileriGetir(); }, []);
 
   // 🚨 TERTEMİZ FİLTRE: Backend zaten sadece İptal ve Teslim yolladığı için kod çok sadeleşti.
@@ -37,7 +51,7 @@ export default function TamamlananRandevular() {
     let durumUyuyor = false;
     if (durumFiltresi === 'Tümü') {
       durumUyuyor = true;
-    } else if (durumFiltresi === 'Teslim Edildi' && durum.includes('TESLİM')) {
+    } else if (durumFiltresi === 'Teslim Edildi' && (durum.includes('TESLİM') || durum.includes('TESLIM'))) {
       durumUyuyor = true;
     } else if (durumFiltresi === 'İptal' && (durum.includes('İPTAL') || durum.includes('IPTAL'))) {
       durumUyuyor = true;
@@ -92,7 +106,7 @@ export default function TamamlananRandevular() {
           <div className="flex items-center justify-center h-full text-gray-500 font-bold uppercase tracking-widest text-sm">Veriler Getiriliyor...</div>
         ) : (
           <div className="flex flex-col gap-3">
-            {filtrelenmisRandevular.map((r, index) => {
+            {filtrelenmisRandevular.map((r) => {
               
               const kayitNo = r.servis_no || 'Belirsiz';
               const musteri = r.customer_name || r.musteri_adi || 'İsimsiz';
@@ -117,8 +131,14 @@ export default function TamamlananRandevular() {
               const formatliSaat = rSaatiRaw ? String(rSaatiRaw).substring(0, 5) : 'Saat Yok';
 
               return (
-                <div key={index} className={`bg-black/20 border ${iptalMi ? 'border-red-900/40 shadow-[0_0_15px_rgba(142,5,44,0.1)]' : 'border-white/5'} rounded-2xl p-5 hover:bg-white/[0.02] transition-all flex items-start gap-6 group relative opacity-90 hover:opacity-100`}>
+                <div key={r.id} className={`bg-black/20 border ${iptalMi ? 'border-red-900/40 shadow-[0_0_15px_rgba(142,5,44,0.1)]' : 'border-white/5'} rounded-2xl p-5 hover:bg-white/[0.02] transition-all flex items-start gap-6 group relative opacity-90 hover:opacity-100`}>
                   
+
+
+
+
+
+
                   <div className="bg-[#1A1A1E] border border-white/5 rounded-xl p-3 flex flex-col items-center justify-center min-w-[120px] shrink-0">
                     <span className={`text-[10px] font-black uppercase tracking-widest mb-1 leading-tight ${iptalMi ? 'text-red-500' : 'text-gray-600'}`}>
                       {iptalMi ? 'İPTAL EDİLDİ' : 'TAMAMLANDI'}
@@ -132,8 +152,27 @@ export default function TamamlananRandevular() {
                   </div>
 
                   <div className="flex-1 flex flex-col gap-3 mt-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl font-black text-gray-300 uppercase tracking-tight">{musteri}</span>
+                    
+                    {/* 🚨 YENİ EKLENEN: Müşteri İsmi ve Yönetici Notu Alanı */}
+                    <div className="flex items-center gap-3 w-full">
+                      <span className="text-xl font-black text-gray-300 uppercase tracking-tight whitespace-nowrap">
+                        {musteri}
+                      </span>
+                      
+                      <div className="flex-1 ml-4 pr-4">
+                        <input 
+                          type="text" 
+                          placeholder="Yönetici Notu (Enter'a bas veya tıklayıp çık kaydetsin)..." 
+                          defaultValue={r.yonetici_notu || ''} 
+                          onBlur={(e) => hizliNotKaydet(r.id, e.target.value)} 
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur(); 
+                            }
+                          }}
+                          className="w-full bg-[#0F0F12]/80 border border-sky-900/30 rounded-lg px-4 py-2 text-sm text-sky-400 font-bold outline-none focus:border-sky-500/80 focus:bg-black/60 transition-all placeholder:text-gray-700 shadow-inner"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
 export default function TamamlananIsler() {
@@ -22,6 +22,21 @@ export default function TamamlananIsler() {
       console.error("Tamamlanan işler çekilemedi:", err); 
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🚨 YENİ EKLENEN: Servisler İçin Yönetici Notunu Arka Plana Kaydetme Fonksiyonu
+  const hizliNotKaydet = async (id: number, yeniNot: string) => {
+    if (!id) return;
+    try {
+      // Backend'deki services route'una göre ayarlandı
+      await axios.put(`${API_URL}/services/${id}/hizli-not`, { 
+        yonetici_notu: yeniNot 
+      }, { headers });
+      
+      console.log(`✅ Servis Notu başarıyla kaydedildi (ID: ${id}): ${yeniNot}`);
+    } catch (err) {
+      console.error("🚨 Not kaydedilirken hata oluştu:", err);
     }
   };
 
@@ -106,7 +121,9 @@ export default function TamamlananIsler() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filtrelenmisIslemler.map((s, index) => {
+
+
+              {filtrelenmisIslemler.map((s) => {
                 const sNo = s.plaka;
                 const mAdi = s.musteri_adi;
                 const kayitTarihi = s.tarih; 
@@ -120,84 +137,107 @@ export default function TamamlananIsler() {
                 const fiyat = s.offer_price;
                 
                 // MÜDÜRÜN İSTEDİĞİ BİTİŞ TARİHİ (updated_at)
-                // Eğer updated_at yoksa "Tarih Yok" yazar, varsa TR formatına çevirir
                 const bitisTarihi = s.updated_at 
                   ? new Date(s.updated_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
                   : 'Bilinmiyor';
 
                 return (
-                  <tr key={index} className="hover:bg-white/[0.02] transition-all group align-top opacity-80 hover:opacity-100">
-                    
-                    {/* 1. KOLON: KAYIT NO VE MÜŞTERİ */}
-                    <td className="p-4 py-5">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-lg font-black text-gray-400 tracking-tight">#{sNo}</span>
-                        <span className="text-sm font-bold text-white leading-tight uppercase">{mAdi}</span>
-                        <span className="text-[10px] text-gray-500 font-bold mt-1">
-                          Geliş: {kayitTarihi || 'Tarih Yok'}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* 2. KOLON: CİHAZ BİLGİSİ */}
-                    <td className="p-4 py-5">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-xs font-black text-gray-400 uppercase tracking-wide">{cTuru || 'TÜR BELİRTİLMEDİ'}</div>
-                        <div className="text-sm font-bold text-gray-300">{markaModel || 'MARKA MODEL YOK'}</div>
-                        <div className="text-[11px] text-gray-600 font-mono mt-1 border bg-white/5 border-white/5 px-2 py-0.5 rounded inline-block w-max">
-                          SN: {seriNo || 'Belirtilmedi'}
+                  <React.Fragment key={s.id}>
+                    <tr className="hover:bg-white/[0.02] transition-all group align-top opacity-80 hover:opacity-100">
+                      
+                      {/* 1. KOLON: KAYIT NO VE MÜŞTERİ */}
+                      <td className="p-4 py-5 w-[30%]">
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <span className="text-lg font-black text-gray-400 tracking-tight">#{sNo}</span>
+                          <span className="text-sm font-bold text-white leading-tight uppercase">{mAdi}</span>
+                          <span className="text-[10px] text-gray-500 font-bold mt-1">
+                            Geliş: {kayitTarihi || 'Tarih Yok'}
+                          </span>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* 3. KOLON: NOTLAR */}
-                    <td className="p-4 py-5 w-1/3">
-                      <div className="flex flex-col gap-3">
-                        <div>
-                          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Müşteri Şikayeti</span>
-                          <p className="text-xs text-gray-300 font-medium leading-relaxed break-words">
-                            {ariza || 'Şikayet girilmemiş.'}
-                          </p>
+                      {/* 2. KOLON: CİHAZ BİLGİSİ */}
+                      <td className="p-4 py-5">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-xs font-black text-gray-400 uppercase tracking-wide">{cTuru || 'TÜR BELİRTİLMEDİ'}</div>
+                          <div className="text-sm font-bold text-gray-300">{markaModel || 'MARKA MODEL YOK'}</div>
+                          <div className="text-[11px] text-gray-600 font-mono mt-1 border bg-white/5 border-white/5 px-2 py-0.5 rounded inline-block w-max">
+                            SN: {seriNo || 'Belirtilmedi'}
+                          </div>
                         </div>
-                        {mNotu && (
-                          <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                            <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest block mb-0.5">Ek Not / Aksesuar</span>
-                            <p className="text-[11px] text-gray-400 font-medium leading-relaxed break-words">
-                              {mNotu}
+                      </td>
+
+                      {/* 3. KOLON: NOTLAR */}
+                      <td className="p-4 py-5 w-[30%]">
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Müşteri Şikayeti</span>
+                            <p className="text-xs text-gray-300 font-medium leading-relaxed break-words">
+                              {ariza || 'Şikayet girilmemiş.'}
                             </p>
                           </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* 4. KOLON: SONUÇ (Durum, Usta, BİTİŞ TARİHİ ve Fiyat) */}
-                    <td className="p-4 py-5">
-                      <div className="flex flex-col items-start gap-2">
-                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${durumRenkleri[durum] || 'bg-gray-800 text-gray-400'}`}>
-                          {durum}
-                        </span>
-                        
-                        <div className="flex items-center gap-1.5 mt-2 bg-black/40 px-2 py-1 rounded-md border border-white/5">
-                          <span className="text-gray-600">🛠️</span>
-                          <span className="text-[10px] font-bold text-gray-400">{usta || 'Atanmadı'}</span>
+                          {mNotu && (
+                            <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                              <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest block mb-0.5">Ek Not / Aksesuar</span>
+                              <p className="text-[11px] text-gray-400 font-medium leading-relaxed break-words">
+                                {mNotu}
+                              </p>
+                            </div>
+                          )}
                         </div>
+                      </td>
 
-                        {/* YENİ EKLENEN BİTİŞ TARİHİ ALANI */}
-                        <div className="flex items-center gap-1.5 bg-[#8E052C]/10 px-2 py-1 rounded-md border border-[#8E052C]/20">
-                          <span className="text-[#8E052C]">🏁</span>
-                          <span className="text-[10px] font-bold text-gray-300">Bitiş: {bitisTarihi}</span>
-                        </div>
-
-                        {parseFloat(fiyat) > 0 && durum === 'Teslim Edildi' && (
-                          <div className="text-xs font-black text-green-600/80 mt-1 flex items-center gap-1">
-                            <span>Tahsil Edildi:</span>
-                            <span className="text-green-500 text-sm">₺{fiyat}</span>
+                      {/* 4. KOLON: SONUÇ */}
+                      <td className="p-4 py-5">
+                        <div className="flex flex-col items-start gap-2">
+                          <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${durumRenkleri[durum] || 'bg-gray-800 text-gray-400'}`}>
+                            {durum}
+                          </span>
+                          
+                          <div className="flex items-center gap-1.5 mt-2 bg-black/40 px-2 py-1 rounded-md border border-white/5">
+                            <span className="text-gray-600">🛠️</span>
+                            <span className="text-[10px] font-bold text-gray-400">{usta || 'Atanmadı'}</span>
                           </div>
-                        )}
-                      </div>
-                    </td>
 
-                  </tr>
+                          <div className="flex items-center gap-1.5 bg-[#8E052C]/10 px-2 py-1 rounded-md border border-[#8E052C]/20">
+                            <span className="text-[#8E052C]">🏁</span>
+                            <span className="text-[10px] font-bold text-gray-300">Bitiş: {bitisTarihi}</span>
+                          </div>
+
+                          {parseFloat(fiyat) > 0 && durum === 'Teslim Edildi' && (
+                            <div className="text-xs font-black text-green-600/80 mt-1 flex items-center gap-1">
+                              <span>Tahsil Edildi:</span>
+                              <span className="text-green-500 text-sm">₺{fiyat}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* 🚨 YENİ ÇÖZÜM: YÖNETİCİ NOTU İÇİN ÖZEL UZUN SATIR 🚨 */}
+                    {/* colSpan={4} ile tüm kolonları birleştirip uçtan uca esnek bir alan yaratıyoruz */}
+                    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-all opacity-90 hover:opacity-100">
+                      <td colSpan={4} className="px-4 pb-5 pt-0">
+                        <div className="flex items-center gap-3 w-full bg-black/20 p-2 rounded-lg border border-white/5">
+                          <span className="text-[10px] font-black text-sky-600 uppercase tracking-widest shrink-0 pl-1">
+                            ↳ Yönetici Notu:
+                          </span>
+                          <input 
+                            type="text" 
+                            placeholder="Buraya not girin..." 
+                            defaultValue={s.yonetici_notu || ''} 
+                            onBlur={(e) => hizliNotKaydet(s.id, e.target.value)} 
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur(); 
+                              }
+                            }}
+                            className="flex-1 w-full bg-[#0F0F12]/80 border border-sky-900/40 rounded-md px-3 py-1.5 text-xs text-sky-400 font-bold outline-none focus:border-sky-500 focus:bg-black/80 transition-all placeholder:text-gray-700 shadow-inner"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 );
               })}
               

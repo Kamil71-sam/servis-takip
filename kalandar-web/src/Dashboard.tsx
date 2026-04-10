@@ -8,9 +8,10 @@ import MusteriListesi from './pages/MusteriListesi';
 import YeniServisKaydi from './pages/YeniServisKaydi'; 
 import ServisKayitlari from './pages/ServisKayitlari'; 
 import TamamlananIsler from './pages/TamamlananIsler';
-import YeniRandevu from './pages/YeniRandevu'; // 🚨 YENİ EKLENDİ
-import RandevuTakvimi from './pages/RandevuTakvimi'; // YENİ EKLENDİ
+import YeniRandevu from './pages/YeniRandevu'; 
+import RandevuTakvimi from './pages/RandevuTakvimi'; 
 import TamamlananRandevular from './pages/TamamlananRandevular';
+import StokDurumu from './pages/StokDurumu'; // 🚨 YENİ EKLENDİ: STOK DURUMU
 
 
 
@@ -51,21 +52,11 @@ export default function Dashboard({ onLogout }: any) {
             {[
               { isim: 'Müşteri İşlemleri', ikon: '👥', altMenuler: ['Bireysel Müşteri Kaydı', 'Firma Kaydı', 'Müşteri Listesi'] },
               { isim: 'Servis İşlemleri', ikon: '🛠️', altMenuler: ['Yeni Servis Kaydı', 'Servis Kayıtları', 'Tamamlanan İşler'] },
-              { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Takvimi', 'Tamamlanan Randevular'] }, // 🚨 TEK VE DOĞRU OLAN BU!
+              { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Takvimi', 'Tamamlanan Randevular'] }, 
               { isim: 'Envanter İşlemleri', ikon: '📦', altMenuler: ['Stok Durumu', 'Malzeme Girişi', 'Depo Sayımı'] },
               { isim: 'Mali İşlemler', ikon: '💳', altMenuler: ['Faturalar', 'Tahsilatlar', 'Cari Hesaplar'] },
               { isim: 'Çıktı İşlemleri', ikon: '🖨️', altMenuler: ['Servis Fişi Yazdır', 'Barkod Oluştur'] },
             ].map((menu) => (
-
-
-            
-
-
-
-
-
-
-
               <div key={menu.isim} className="flex flex-col">
                 <button 
                   onClick={() => menuGecis(menu.isim)}
@@ -82,8 +73,6 @@ export default function Dashboard({ onLogout }: any) {
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${acikMenu === menu.isim ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                   <div className="flex flex-col gap-1 pl-11 pr-2 border-l-2 border-[#8E052C]/20 ml-5">
                     {menu.altMenuler.map((altItem, i) => (
-                      
-                      
                       <button 
                         key={i} 
                         onClick={() => {
@@ -95,9 +84,9 @@ export default function Dashboard({ onLogout }: any) {
                           if(altItem === 'Servis Kayıtları') setAktifSayfa('ServisKayitlari'); 
                           if(altItem === 'Tamamlanan İşler') setAktifSayfa('TamamlananIsler');
                           if(altItem === 'Yeni Randevu') setAktifSayfa('YeniRandevu');
-                          if(altItem === 'Randevu Takvimi') setAktifSayfa('RandevuTakvimi'); // 🚨 İŞTE EKSİK OLAN ŞALTER BUYDU!
+                          if(altItem === 'Randevu Takvimi') setAktifSayfa('RandevuTakvimi'); 
                           if(altItem === 'Tamamlanan Randevular') setAktifSayfa('TamamlananRandevular');
-                       
+                          if(altItem === 'Stok Durumu') setAktifSayfa('StokDurumu'); // 🚨 EKLENDİ
                         }}
                         className={`text-left py-2 px-3 text-xs font-medium rounded-lg transition-all flex items-center gap-2 group ${
                           (aktifSayfa === 'BireyselMusteriKaydi' && altItem === 'Bireysel Müşteri Kaydı') || 
@@ -107,9 +96,10 @@ export default function Dashboard({ onLogout }: any) {
                           (aktifSayfa === 'ServisKayitlari' && altItem === 'Servis Kayıtları') ||
                           (aktifSayfa === 'TamamlananIsler' && altItem === 'Tamamlanan İşler') ||
                           (aktifSayfa === 'YeniRandevu' && altItem === 'Yeni Randevu') ||
-                          (aktifSayfa === 'RandevuTakvimi' && altItem === 'Randevu Takvimi')  ||  // 🚨 CSS İÇİN EKSİK OLAN KISIM DA BUYDU!
-                          (aktifSayfa === 'TamamlananRandevular' && altItem === 'Tamamlanan Randevular')
-                         
+                          (aktifSayfa === 'RandevuTakvimi' && altItem === 'Randevu Takvimi')  ||  
+                          (aktifSayfa === 'TamamlananRandevular' && altItem === 'Tamamlanan Randevular') ||
+                          (aktifSayfa === 'StokDurumu' && altItem === 'Stok Durumu') // 🚨 CSS İÇİN EKLENDİ
+                          
                           ? 'text-white bg-[#8E052C]/20 font-bold'
                           : 'text-gray-500 hover:text-white hover:bg-white/5'
                         }`}>
@@ -118,10 +108,6 @@ export default function Dashboard({ onLogout }: any) {
                         }`}></div>
                         {altItem}
                       </button>
-                      
-                      
-                            
-
                     ))}
                   </div>
                 </div>
@@ -149,7 +135,8 @@ export default function Dashboard({ onLogout }: any) {
                  aktifSayfa === 'YeniServisKaydi' ? 'Servis Girişi' :
                  aktifSayfa === 'ServisKayitlari' ? 'Servis Arşivi' : 
                  aktifSayfa === 'TamamlananIsler' ? 'Tamamlanan İşler' : 
-                 aktifSayfa === 'YeniRandevu' ? 'Yeni Randevu' : 'İşlemler'} {/* 🚨 BAŞLIK EKLENDİ */}
+                 aktifSayfa === 'YeniRandevu' ? 'Yeni Randevu' : 
+                 aktifSayfa === 'StokDurumu' ? 'Stok Durumu' : 'İşlemler'} {/* 🚨 BAŞLIK EKLENDİ */}
               </h1>
               <p className="text-gray-500 text-sm mt-1 font-medium">
                 {aktifSayfa === 'Dashboard' ? 'Sistem jilet gibi çalışıyor müdür.' : 
@@ -157,7 +144,8 @@ export default function Dashboard({ onLogout }: any) {
                  aktifSayfa === 'YeniServisKaydi' ? 'Yeni servis formu dolduruluyor.' :
                  aktifSayfa === 'ServisKayitlari' ? 'Aktif ve geçmiş servis süreçleri.' : 
                  aktifSayfa === 'TamamlananIsler' ? 'Teslim ve iptal edilen işlerin arşivi.' : 
-                 aktifSayfa === 'YeniRandevu' ? 'Sahaya yeni randevu ve iş emri açılıyor.' : 'Kayıt girişi yapılıyor.'} {/* 🚨 AÇIKLAMA EKLENDİ */}
+                 aktifSayfa === 'YeniRandevu' ? 'Sahaya yeni randevu ve iş emri açılıyor.' : 
+                 aktifSayfa === 'StokDurumu' ? 'Depodaki tüm malzemeler ve güncel stok durumları.' : 'Kayıt girişi yapılıyor.'} {/* 🚨 AÇIKLAMA EKLENDİ */}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -247,8 +235,10 @@ export default function Dashboard({ onLogout }: any) {
             <YeniRandevu /> 
           ) : aktifSayfa === 'RandevuTakvimi' ? (
             <RandevuTakvimi /> 
-          ) : aktifSayfa === 'TamamlananRandevular' ? (  /* 🚨 İŞTE EKSİK OLAN KABLO BURASI */
+          ) : aktifSayfa === 'TamamlananRandevular' ? ( 
             <TamamlananRandevular /> 
+          ) : aktifSayfa === 'StokDurumu' ? ( /* 🚨 İŞTE EKSİK OLAN KABLO BURASI */
+            <StokDurumu /> 
           ) : null}
 
 
