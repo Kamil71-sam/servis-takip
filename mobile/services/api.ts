@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'; // MÜDÜR: Yaka kartını cebinden çıkarmak için ekledik
 
-// export const API_URL = process.env.EXPO_PUBLIC_API_URL;
-export const API_URL = 'http://192.168.1.50:3000';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL;
+// export const API_URL = 'http://192.168.1.51:3000';
 if (!API_URL) {
   console.error("⚠️ HATA: .env dosyasında EXPO_PUBLIC_API_URL bulunamadı!");
 }

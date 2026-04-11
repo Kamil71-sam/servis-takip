@@ -193,7 +193,7 @@ export default function Dashboard({ onLogout }: any) {
                          <div className="absolute inset-[-20px] border-[20px] border-[#8E052C] rounded-full [clip-path:polygon(50%_50%,100%_0,100%_100%,35%_100%)] drop-shadow-[0_0_20px_rgba(142,5,44,0.6)] animate-pulse"></div>
                          <div className="text-center z-10">
                             <div className="text-4xl font-black text-white">%68</div>
-                            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Klima/Kombi</div>
+                            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Cihaz/Randevu</div>
                          </div>
                       </div>
                    </div>
@@ -203,8 +203,8 @@ export default function Dashboard({ onLogout }: any) {
                   <h3 className="font-bold text-lg mb-6 text-white">Son İşlemler</h3>
                   <div className="flex flex-col gap-4 overflow-y-auto pr-2 max-h-[250px] scrollbar-hide">
                     {[
-                      { user: "Ahmet Y.", task: "Kombi Bakımı", status: "Tamamlandı", color: "text-green-500" },
-                      { user: "Mehmet K.", task: "Klima Montaj", status: "Beklemede", color: "text-yellow-500" },
+                      { user: "Ahmet Y.", task: "Bilgisayar Bakımı", status: "Tamamlandı", color: "text-green-500" },
+                      { user: "Mehmet K.", task: "Tablet Montajı", status: "Beklemede", color: "text-yellow-500" },
                     ].map((item, i) => (
                       <div key={i} className="flex items-center justify-between border-b border-white/5 pb-3">
                         <div className="min-w-0">
