@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // 🚨 MÜDÜR: Eski axios gitti, ana santralimiz geldi!
 
 export default function ServisKayitlari() {
   const [servisler, setServisler] = useState<any[]>([]);
@@ -17,13 +17,11 @@ export default function ServisKayitlari() {
     musteri_notu: ''
   });
 
-  const API_URL = "http://localhost:3000";
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
+  // 1. GETİRME MOTORU (Temizlendi)
   const verileriGetir = async () => {
     try {
-      const res = await axios.get(`${API_URL}/services/all`, { headers });
+      // 🚨 ZIRHLI HAMLE: Sadece rotayı yazıyoruz
+      const res = await api.get('/services/all');
       setServisler(res.data);
     } catch (err) { 
       console.error("Servis listesi gelmedi:", err); 
@@ -34,16 +32,18 @@ export default function ServisKayitlari() {
 
   useEffect(() => { verileriGetir(); }, []);
 
+  // 2. SİLME (ARŞİVE KALDIRMA) MOTORU (Temizlendi)
   const silmeIslemi = async (id: number, plaka: string) => {
     const onay = window.confirm(`${plaka} numaralı kaydı arşive kaldırmak istediğine emin misin müdür?`);
     if (!onay) return;
 
     try {
-      await axios.delete(`${API_URL}/services/${id}`, { headers });
+      // 🚨 ZIRHLI HAMLE
+      await api.delete(`/services/${id}`);
       alert("Kayıt başarıyla arşive kaldırıldı.");
       verileriGetir(); 
     } catch (err: any) {
-      alert("Silme işlemi başarısız: " + (err.response?.data?.error || err.message));
+      alert("Silme işlemi başarısız: " + (err.response?.data?.error || err.message || err.error));
     }
   };
 
@@ -60,14 +60,16 @@ export default function ServisKayitlari() {
     setShowEditModal(true);
   };
 
+  // 3. GÜNCELLEME MOTORU (Temizlendi)
   const guncellemeIslemi = async () => {
     try {
-      await axios.put(`${API_URL}/services/${seciliServis.id}`, editForm, { headers });
+      // 🚨 ZIRHLI HAMLE
+      await api.put(`/services/${seciliServis.id}`, editForm);
       alert("Kayıt jilet gibi güncellendi!");
       setShowEditModal(false);
       verileriGetir(); 
     } catch (err: any) {
-      alert("Güncelleme hatası: " + (err.response?.data?.error || err.message));
+      alert("Güncelleme hatası: " + (err.response?.data?.error || err.message || err.error));
     }
   };
 

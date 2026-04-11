@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api'; 
 
 export default function TamamlananIsler() {
   const [islemler, setIslemler] = useState<any[]>([]);
@@ -10,13 +10,9 @@ export default function TamamlananIsler() {
   const [arama, setArama] = useState(''); 
   const [tarihArama, setTarihArama] = useState(''); 
 
-  const API_URL = "http://localhost:3000";
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const verileriGetir = async () => {
     try {
-      const res = await axios.get(`${API_URL}/services/tamamlanan`, { headers });
+      const res = await api.get('/services/tamamlanan');
       setIslemler(res.data);
     } catch (err) { 
       console.error("Tamamlanan işler çekilemedi:", err); 
@@ -25,15 +21,12 @@ export default function TamamlananIsler() {
     }
   };
 
-  // 🚨 YENİ EKLENEN: Servisler İçin Yönetici Notunu Arka Plana Kaydetme Fonksiyonu
   const hizliNotKaydet = async (id: number, yeniNot: string) => {
     if (!id) return;
     try {
-      // Backend'deki services route'una göre ayarlandı
-      await axios.put(`${API_URL}/services/${id}/hizli-not`, { 
+      await api.put(`/services/${id}/hizli-not`, { 
         yonetici_notu: yeniNot 
-      }, { headers });
-      
+      });
       console.log(`✅ Servis Notu başarıyla kaydedildi (ID: ${id}): ${yeniNot}`);
     } catch (err) {
       console.error("🚨 Not kaydedilirken hata oluştu:", err);
@@ -42,22 +35,26 @@ export default function TamamlananIsler() {
 
   useEffect(() => { verileriGetir(); }, []);
 
-  // Rozet Renkleri
   const durumRenkleri: any = {
     'Teslim Edildi': 'bg-gray-600 text-gray-100 border border-gray-400/30',
     'İptal Edildi': 'bg-red-900/80 text-red-100 border border-red-500/30'
   };
 
-  // FİLTRELEME MOTORU
+  // 🚨 MÜDÜRÜN FİLTRELEME MOTORU (Çökme Hatası Düzeltildi!)
   const filtrelenmisIslemler = islemler.filter(islem => {
     const durum = islem.durum || '';
     const durumUyuyor = durumFiltresi === 'Tümü' || durum === durumFiltresi;
 
-    const plaka = islem.plaka || '';
-    const musteri = islem.musteri_adi || '';
-    const metinUyuyor = plaka.includes(arama) || musteri.toLowerCase().includes(arama.toLowerCase());
+    // 🛡️ İŞTE DÜZELTİLEN YER: Rakamları önce zorla metne (String) çeviriyoruz ki çökmesin!
+    const plaka = String(islem.plaka || '');
+    const musteri = String(islem.musteri_adi || '');
+    const aramaKucuk = String(arama).toLocaleLowerCase('tr-TR');
+    
+    const metinUyuyor = 
+      plaka.toLocaleLowerCase('tr-TR').includes(aramaKucuk) || 
+      musteri.toLocaleLowerCase('tr-TR').includes(aramaKucuk);
 
-    const tarih = islem.tarih || ''; 
+    const tarih = String(islem.tarih || ''); 
     const tarihUyuyor = tarih.includes(tarihArama);
 
     return durumUyuyor && metinUyuyor && tarihUyuyor;
@@ -122,7 +119,6 @@ export default function TamamlananIsler() {
             </thead>
             <tbody className="divide-y divide-white/5">
 
-
               {filtrelenmisIslemler.map((s) => {
                 const sNo = s.plaka;
                 const mAdi = s.musteri_adi;
@@ -136,7 +132,6 @@ export default function TamamlananIsler() {
                 const usta = s.usta;
                 const fiyat = s.offer_price;
                 
-                // MÜDÜRÜN İSTEDİĞİ BİTİŞ TARİHİ (updated_at)
                 const bitisTarihi = s.updated_at 
                   ? new Date(s.updated_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
                   : 'Bilinmiyor';
@@ -145,7 +140,6 @@ export default function TamamlananIsler() {
                   <React.Fragment key={s.id}>
                     <tr className="hover:bg-white/[0.02] transition-all group align-top opacity-80 hover:opacity-100">
                       
-                      {/* 1. KOLON: KAYIT NO VE MÜŞTERİ */}
                       <td className="p-4 py-5 w-[30%]">
                         <div className="flex flex-col gap-1.5 w-full">
                           <span className="text-lg font-black text-gray-400 tracking-tight">#{sNo}</span>
@@ -156,7 +150,6 @@ export default function TamamlananIsler() {
                         </div>
                       </td>
 
-                      {/* 2. KOLON: CİHAZ BİLGİSİ */}
                       <td className="p-4 py-5">
                         <div className="flex flex-col gap-1">
                           <div className="text-xs font-black text-gray-400 uppercase tracking-wide">{cTuru || 'TÜR BELİRTİLMEDİ'}</div>
@@ -167,7 +160,6 @@ export default function TamamlananIsler() {
                         </div>
                       </td>
 
-                      {/* 3. KOLON: NOTLAR */}
                       <td className="p-4 py-5 w-[30%]">
                         <div className="flex flex-col gap-3">
                           <div>
@@ -187,7 +179,6 @@ export default function TamamlananIsler() {
                         </div>
                       </td>
 
-                      {/* 4. KOLON: SONUÇ */}
                       <td className="p-4 py-5">
                         <div className="flex flex-col items-start gap-2">
                           <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${durumRenkleri[durum] || 'bg-gray-800 text-gray-400'}`}>
@@ -214,8 +205,6 @@ export default function TamamlananIsler() {
                       </td>
                     </tr>
 
-                    {/* 🚨 YENİ ÇÖZÜM: YÖNETİCİ NOTU İÇİN ÖZEL UZUN SATIR 🚨 */}
-                    {/* colSpan={4} ile tüm kolonları birleştirip uçtan uca esnek bir alan yaratıyoruz */}
                     <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-all opacity-90 hover:opacity-100">
                       <td colSpan={4} className="px-4 pb-5 pt-0">
                         <div className="flex items-center gap-3 w-full bg-black/20 p-2 rounded-lg border border-white/5">

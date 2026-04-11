@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL;
+// 🚨 MÜDÜR: '/api' takıntısını sildik ve adresini direkt 3000'e sabitledik!
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_URL, // <-- BURADAKİ '/api' UÇTU!
 });
 
 api.interceptors.request.use((config) => {
@@ -14,13 +15,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 🚨 MÜDÜRÜN YALAN MAKİNESİ (Sarı Uyarılar Temizlendi)
+// Yalan Makinesi (Aynı kalıyor)
 api.interceptors.response.use(
   (response) => {
     const data = response.data;
     const msg = (data?.message || "").toLowerCase();
 
-    // 🔍 KONTROL: Mesajda "key", "constraint", "hata" geçiyorsa veya success false ise ÇÖK!
     if (
       msg.includes("foreign") || 
       msg.includes("key") || 

@@ -1,42 +1,40 @@
 import { useEffect, useState } from 'react';
-import api from '../api'; // 🚨 MÜDÜR: Axios yerine kendi merkezimizi getirdik
+import api from '../api'; 
 
 export default function MusteriListesi() {
   const [liste, setListe] = useState<any[]>([]);
   const [arama, setArama] = useState('');
   const [seciliMusteri, setSeciliMusteri] = useState<any>(null);
 
-  // 1. LİSTEYİ GETİRME MOTORU (Temizlendi)
+  // 1. LİSTEYİ GETİRME MOTORU (Çift Motorlu ve Zırhlı)
   const verileriGetir = async () => {
     try {
-      // 🚨 MÜDÜR: Token ve Headers yok, api.ts hallediyor!
-      const [resCust, resFirm] = await Promise.all([
-        api.get('/customers'),
-        api.get('/firm/all')
-      ]);
+      // 🚨 ÇİFT MOTOR: Dükkanın arkası dağınıksa diye hem api'siz hem api'li adresi dener! Garantili vuruş.
+      const resCust = await api.get('/customers').catch(() => api.get('/api/customers'));
+      const resFirm = await api.get('/firm/all').catch(() => api.get('/api/firm/all'));
+
+      // 🚨 ÇELİK YELEK: Backend {success: true, data: [...]} dönerse patlamasın diye güvenlik kontrolü
+      const custData = Array.isArray(resCust.data) ? resCust.data : (resCust.data?.data || []);
+      const firmData = Array.isArray(resFirm.data) ? resFirm.data : (resFirm.data?.data || []);
 
       const birlestirilmis = [
-        ...resCust.data.map((c: any) => ({ 
-          ...c, tip: 'B', isim: c.name, yetkili: '-', tel: c.phone, mail: c.email, vno: '-', fks: c.fax || '-', adr: c.address 
+        ...custData.map((c: any) => ({ 
+          ...c, tip: 'B', isim: c.name || 'İSİMSİZ', yetkili: '-', tel: c.phone || '', mail: c.email || '', vno: '-', fks: c.fax || '-', adr: c.address || '' 
         })),
-        ...resFirm.data.map((f: any) => ({ 
-          ...f, tip: 'F', isim: f.firma_adi, yetkili: f.yetkili_ad_soyad, tel: f.telefon, mail: f.eposta, vno: f.vergi_no, fks: f.faks || '-', adr: f.adres 
+        ...firmData.map((f: any) => ({ 
+          ...f, tip: 'F', isim: f.firma_adi || 'İSİMSİZ FİRMA', yetkili: f.yetkili_ad_soyad || '-', tel: f.telefon || '', mail: f.eposta || '', vno: f.vergi_no || '-', fks: f.faks || '-', adr: f.adres || '' 
         }))
       ];
-      setListe(birlestirilmis.sort((a, b) => a.isim.localeCompare(b.isim)));
-    } catch (err) { console.error("Liste hatası:", err); }
+      
+      setListe(birlestirilmis.sort((a, b) => String(a.isim).localeCompare(String(b.isim))));
+    } catch (err) { 
+      console.error("Liste hatası (Sunucu kapalı olabilir):", err); 
+    }
   };
 
   useEffect(() => { verileriGetir(); }, []);
 
-
-
-
-
-
-  
-
-// 2. SİLME İNFAZ MEKANİZMASI (Yalancı Backend'e Karşı Zırhlı)
+  // 2. SİLME İNFAZ MEKANİZMASI 
   const silmeIslemi = async (id: number, tip: string) => {
     const uyariMesaji = "🚨 DİKKAT: SİLME İŞLEMİ KONTROLÜ\n\nSistem sadece hiç işlem görmemiş (taze) kayıtları silmenize izin verir.\nEğer bu kişinin sistemde geçmiş bir randevusu veya servis kaydı varsa, muhasebe ve arşiv bütünlüğünü korumak için SİLİNMEYECEKTİR.\n\nSilmeyi denemek istiyor musunuz?";
 
@@ -44,62 +42,42 @@ export default function MusteriListesi() {
       try {
         const rota = tip === 'B' ? `/customers/${id}` : `/firm/${id}`;
         
-        // Mermiyi ateşliyoruz
-        const res = await api.delete(rota);
+        // Mermiyi ateşle (Yine çift motor güvenlikli)
+        const res = await api.delete(rota).catch(() => api.delete(`/api${rota}`));
         
-        // 🚨 MÜDÜRÜN ZIRHI: Backend bize "Tamam" dese bile paketin içine bakıyoruz!
-        // Eğer pakette "success: false" veya "error" yazıyorsa bizi yiyordur, hemen hataya fırlatıyoruz!
-        if (res.data && (res.data.success === false || res.data.error)) {
-          throw new Error(res.data.message || res.data.error || "Backend silmeyi reddetti");
+        if (res.data && res.data.uyariVar) {
+          alert(`❌ SİLME REDDEDİLDİ!\n\n${res.data.message}`);
+          return; 
         }
 
-        // Pakette gerçekten yalan yoksa burası çalışır
         alert("✅ Başarılı: Kayıt tertemiz silindi!");
-        verileriGetir(); // Listeyi tazele
+        verileriGetir(); 
         
       } catch (err: any) {
-        // 🚨 SİNSİ SUNUCU BURADA ENSELENDİ!
-        alert("❌ SİLME REDDEDİLDİ!\n\nBu müşterinin sistemde geçmiş işlemleri (randevu, arıza, vb.) var! Arşivin ve kasanın bozulmaması için bu kaydı silemezsiniz.");
+        alert("❌ BİR HATA OLUŞTU!\n\nSunucu ile iletişim kurulamadı veya işlem reddedildi.");
         console.error("Gerçek Hata Sebebi:", err);
       }
     }
   };
 
-
-
-
-
-
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-  // 🚨 MÜDÜR: YENİ GÜNCELLEME MOTORU EKLENDİ 🚨
+  // 3. GÜNCELLEME MOTORU
   const kaydetIslemi = async () => {
     if (!seciliMusteri) return;
 
     try {
-      // Bireysel ve Firma için farklı rotalara ve alanlara göre veri paketliyoruz
+      const rotaCust = `/customers/${seciliMusteri.id}`;
+      const rotaFirm = `/firm/${seciliMusteri.id}`;
+
       if (seciliMusteri.tip === 'B') {
-        await api.put(`/customers/${seciliMusteri.id}`, {
+        await api.put(rotaCust, {
           name: seciliMusteri.isim,
           phone: seciliMusteri.tel,
           email: seciliMusteri.mail,
           fax: seciliMusteri.fks === '-' ? '' : seciliMusteri.fks,
           address: seciliMusteri.adr
-        });
+        }).catch(() => api.put(`/api${rotaCust}`, { /* Fallback */ name: seciliMusteri.isim, phone: seciliMusteri.tel, email: seciliMusteri.mail, fax: seciliMusteri.fks === '-' ? '' : seciliMusteri.fks, address: seciliMusteri.adr }));
       } else {
-        await api.put(`/firm/${seciliMusteri.id}`, {
+        await api.put(rotaFirm, {
           firma_adi: seciliMusteri.isim,
           yetkili_ad_soyad: seciliMusteri.yetkili,
           telefon: seciliMusteri.tel,
@@ -107,25 +85,29 @@ export default function MusteriListesi() {
           vergi_no: seciliMusteri.vno === '-' ? '' : seciliMusteri.vno,
           faks: seciliMusteri.fks === '-' ? '' : seciliMusteri.fks,
           adres: seciliMusteri.adr
-        });
+        }).catch(() => api.put(`/api${rotaFirm}`, { /* Fallback */ firma_adi: seciliMusteri.isim, yetkili_ad_soyad: seciliMusteri.yetkili, telefon: seciliMusteri.tel, eposta: seciliMusteri.mail, vergi_no: seciliMusteri.vno === '-' ? '' : seciliMusteri.vno, faks: seciliMusteri.fks === '-' ? '' : seciliMusteri.fks, adres: seciliMusteri.adr }));
       }
 
       alert("Kayıt başarıyla güncellendi!");
-      setSeciliMusteri(null); // Modalı Kapat
-      verileriGetir(); // Listeyi Tazele
+      setSeciliMusteri(null); 
+      verileriGetir(); 
     } catch (err: any) {
       alert("Güncelleme hatası: " + (err.response?.data?.message || err.message));
     }
   };
 
-  // GÜNCELLEME İÇİN MODAL İÇİ VERİ DEĞİŞTİRİCİ
   const handleGuncelle = (alan: string, deger: string) => {
     setSeciliMusteri({ ...seciliMusteri, [alan]: deger });
   };
 
-  const filtrelenmis = liste.filter(m => 
-    m.isim.toLowerCase().includes(arama.toLowerCase()) || m.tel?.includes(arama)
-  );
+  // 🚨 TÜRKÇE VE ÇÖKMEZ FİLTRELEME MOTORU 🚨
+  const filtrelenmis = liste.filter(m => {
+    const isim = String(m.isim || '').toLocaleLowerCase('tr-TR');
+    const tel = String(m.tel || '');
+    const aranan = String(arama || '').toLocaleLowerCase('tr-TR');
+    
+    return isim.includes(aranan) || tel.includes(aranan);
+  });
 
   return (
     <div className="bg-black/40 backdrop-blur-xl border border-white/5 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative">
@@ -272,7 +254,6 @@ export default function MusteriListesi() {
             <div className="p-8 border-t border-white/5 bg-black/40 flex justify-end items-center gap-8">
               <button onClick={() => setSeciliMusteri(null)} className="text-gray-400 font-black uppercase text-xs hover:text-white transition-all">VAZGEÇ</button>
               
-              {/* 🚨 MÜDÜR: MOTOR BURAYA BAĞLANDI */}
               <button 
                 onClick={kaydetIslemi} 
                 className="bg-[#8E052C] hover:bg-[#A10632] text-white px-10 py-4 rounded-2xl font-black text-sm uppercase shadow-lg shadow-red-950/30 transition-all active:scale-95"

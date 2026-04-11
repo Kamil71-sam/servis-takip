@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import axios from 'axios';
+import api from '../api'; // 🚨 MÜDÜR: Axios yerine kendi merkezimiz
 
 export default function StokDurumu() {
   const [envanter, setEnvanter] = useState<any[]>([]);
@@ -15,17 +15,18 @@ export default function StokDurumu() {
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const API_URL = "http://localhost:3000"; 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
-  // 1. VERİLERİ GETİR
+  // 1. VERİLERİ GETİR (Santrale Bağlandı)
   const fetchEnvanter = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/api/stok/all`, { headers });
-      if (res.data.success) {
-        setEnvanter(res.data.data);
+      // 🚨 MÜDÜR: Çift motor güvenliği. Adres /stok/all veya /api/stok/all olabilir.
+      const res = await api.get(`/stok/all`).catch(() => api.get(`/api/stok/all`));
+      
+      if (res.data && res.data.success) {
+        setEnvanter(res.data.data || []);
+      } else if (Array.isArray(res.data)) {
+        // Fallback: Backend belki de direkt array dönüyordur
+        setEnvanter(res.data);
       }
     } catch (e) {
       console.error("Envanter çekilemedi:", e);
@@ -38,12 +39,12 @@ export default function StokDurumu() {
     fetchEnvanter();
   }, []);
 
-  // 2. SİLME İŞLEMİ
+  // 2. SİLME İŞLEMİ (Santrale Bağlandı)
   const handleSil = async (id: number, malzeme_adi: string) => {
     if (window.confirm(`🛑 DİKKAT!\n\n"${malzeme_adi}" isimli ürünü envanterden KALICI olarak silmek istediğinize emin misiniz?`)) {
       try {
-        const res = await axios.delete(`${API_URL}/api/stok/delete/${id}`, { headers });
-        if (res.data.success) {
+        const res = await api.delete(`/stok/delete/${id}`).catch(() => api.delete(`/api/stok/delete/${id}`));
+        if (res.data && res.data.success !== false) {
           fetchEnvanter(); // Listeyi yenile
         }
       } catch (e) {
@@ -52,22 +53,25 @@ export default function StokDurumu() {
     }
   };
 
-  // 3. GÜNCELLEME İŞLEMİ
+  // 3. GÜNCELLEME İŞLEMİ (Santrale Bağlandı)
   const handleGuncelle = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!selectedItem) return;
 
     try {
-      const res = await axios.put(`${API_URL}/api/stok/update/${selectedItem.id}`, {
+      const payload = {
         malzeme_adi: selectedItem.malzeme_adi,
         marka: selectedItem.marka,
         uyumlu_cihaz: selectedItem.uyumlu_cihaz,
         miktar: parseInt(selectedItem.miktar) || 0,
         alis_fiyati: parseFloat(selectedItem.alis_fiyati) || 0,
         barkod: selectedItem.barkod
-      }, { headers });
+      };
 
-      if (res.data.success) {
+      const res = await api.put(`/stok/update/${selectedItem.id}`, payload)
+                           .catch(() => api.put(`/api/stok/update/${selectedItem.id}`, payload));
+
+      if (res.data && res.data.success !== false) {
         setEditModalVisible(false);
         fetchEnvanter();
       }
@@ -76,15 +80,18 @@ export default function StokDurumu() {
     }
   };
 
-  // FİYAT GEÇMİŞİNİ GETİR
+  // FİYAT GEÇMİŞİNİ GETİR (Santrale Bağlandı)
   const handleHistory = async (item: any) => {
     setSelectedItem(item);
     setHistoryModalVisible(true);
     setHistoryLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/api/stok/history/${item.id}`, { headers });
-      if (res.data.success) {
-        setPriceHistory(res.data.data);
+      const res = await api.get(`/stok/history/${item.id}`).catch(() => api.get(`/api/stok/history/${item.id}`));
+      
+      if (res.data && res.data.success) {
+        setPriceHistory(res.data.data || []);
+      } else if (Array.isArray(res.data)) {
+        setPriceHistory(res.data);
       }
     } catch (e) {
       console.error("Geçmiş çekilemedi:", e);
@@ -93,18 +100,19 @@ export default function StokDurumu() {
     }
   };
 
-  // 4. ARAMA MOTORU
+  // 4. ARAMA MOTORU (🚨 Türkçe Kalkanı Eklendi)
   const filtrelenmisListe = useMemo(() => {
     return envanter.filter(i => {
-      const isimMatch = (i.malzeme_adi || '').toLowerCase().includes(arama.toLowerCase());
-      const barkodMatch = (i.barkod || '').toLowerCase().includes(arama.toLowerCase());
+      const aranan = String(arama || '').toLocaleLowerCase('tr-TR');
+      const isimMatch = String(i.malzeme_adi || '').toLocaleLowerCase('tr-TR').includes(aranan);
+      const barkodMatch = String(i.barkod || '').toLocaleLowerCase('tr-TR').includes(aranan);
       return isimMatch || barkodMatch;
     });
   }, [arama, envanter]);
 
-  // 🚨 YENİ: MATEMATİK (GLCK ve DİĞER SAYILARI)
+  // YENİ: MATEMATİK (GLCK ve DİĞER SAYILARI)
   const toplamKalem = filtrelenmisListe.length;
-  const glckSayisi = filtrelenmisListe.filter(i => (i.barkod || '').toUpperCase().startsWith('GLCK')).length;
+  const glckSayisi = filtrelenmisListe.filter(i => String(i.barkod || '').toUpperCase().startsWith('GLCK')).length;
   const digerSayisi = toplamKalem - glckSayisi;
 
   return (
@@ -117,7 +125,7 @@ export default function StokDurumu() {
             <span className="text-[#8E052C] text-2xl">📦</span> Stok Durumu
           </h2>
           
-          {/* 🚨 YENİ: İSTATİSTİK ÇUBUĞU */}
+          {/* İSTATİSTİK ÇUBUĞU */}
           <div className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-4">
             <div className="bg-black/30 border border-white/5 px-4 py-2 rounded-lg flex items-center gap-3 shadow-inner">
               <span>TOPLAM KALEM: <span className="text-white font-black">{toplamKalem}</span></span>
@@ -162,14 +170,23 @@ export default function StokDurumu() {
               {filtrelenmisListe.map((item) => (
                 <tr key={item.id} className="hover:bg-white/[0.02] transition-all align-middle opacity-90 hover:opacity-100">
                   
-                  {/* 🚨 GÜNCELLENEN: KUTU İÇİNE SIĞAN ŞIK BARKOD */}
+
+
+                  {/* BARKOD */}
                   <td className="p-4 py-5">
-                    <div className="text-[15px] font-black text-white tracking-widest bg-[#0a0a0c] border border-white/5 p-4 rounded-xl shadow-inner break-all w-[180px] leading-relaxed">
+                    <div className="text-[14px] font-black text-white tracking-widest bg-[#0a0a0c] border border-white/5 px-3 py-3 rounded-xl shadow-inner whitespace-nowrap w-max">
                       {item.barkod || 'BARKOD YOK'}
                     </div>
                   </td>
 
-                  {/* 🚨 GÜNCELLENEN: TASARIMA UYGUN SIFIR SERİ NO'LU DETAYLAR */}
+
+
+
+
+
+
+
+                  {/* DETAYLAR */}
                   <td className="p-4 py-5">
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center gap-2">
@@ -184,26 +201,26 @@ export default function StokDurumu() {
                       
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] font-black text-sky-700 uppercase tracking-widest w-28 shrink-0">UYUMLU CİHAZ:</span>
-                        <span className="text-xs font-bold text-sky-400 bg-[#0a192f] border border-sky-900/50 px-2.5 py-1 rounded-md shadow-sm">{item.uyumlu_cihaz || 'Casped 1'}</span>
+                        <span className="text-xs font-bold text-sky-400 bg-[#0a192f] border border-sky-900/50 px-2.5 py-1 rounded-md shadow-sm">{item.uyumlu_cihaz || 'Belirtilmedi'}</span>
                       </div>
                     </div>
                   </td>
 
-                  {/* 3. KOLON: Stok Miktarı */}
+                  {/* Stok Miktarı */}
                   <td className="p-4 py-5 text-center">
                     <span className={`px-4 py-2 rounded-xl text-sm font-black shadow-sm inline-block ${item.miktar < 5 ? 'bg-red-900/40 text-red-400 border border-red-500/30' : 'bg-[#1A1A1E] text-green-500 border border-white/5'}`}>
                       {item.miktar}
                     </span>
                   </td>
 
-                  {/* 4. KOLON: Alış Fiyatı */}
+                  {/* Alış Fiyatı */}
                   <td className="p-4 py-5 text-right">
                     <span className="text-lg font-black text-gray-300">
                       ₺{parseFloat(item.alis_fiyati || 0).toFixed(2)}
                     </span>
                   </td>
 
-                  {/* 5. KOLON: Aksiyon Butonları (Sabit) */}
+                  {/* Aksiyon Butonları */}
                   <td className="p-4 py-5 text-right pr-6">
                     <div className="flex justify-end gap-3">
                       <button 
@@ -306,7 +323,7 @@ export default function StokDurumu() {
             <div className="flex justify-between items-start mb-6 border-b border-white/5 pb-4">
               <div>
                 <h3 className="text-lg font-black text-white uppercase tracking-tighter flex items-center gap-2">
-                  <span>🕒</span> Terminal Gözü - Tarihçe
+                  <span>🕒</span> Fiyat Tarihçesi
                 </h3>
                 <p className="text-xs text-sky-400 font-bold mt-2 bg-sky-900/20 px-2 py-1 rounded inline-block">
                   {selectedItem?.malzeme_adi}
@@ -325,8 +342,13 @@ export default function StokDurumu() {
                   const tarih = h.degisim_tarihi || h.created_at;
                   const formatliTarih = tarih ? new Date(tarih).toLocaleString('tr-TR') : 'Tarih Bilinmiyor';
                   
-                  const eski = parseFloat(h.eski_fiyat || h.old_price || 0).toFixed(2);
-                  const yeni = parseFloat(h.yeni_fiyat || h.new_price || 0).toFixed(2);
+
+                  const eski = parseFloat(h.eski_alis_fiyati || h.eski_alis || 0).toFixed(2);
+                  const yeni = parseFloat(h.yeni_alis_fiyati || h.yeni_alis || 0).toFixed(2);
+
+
+                 // const eski = parseFloat(h.eski_fiyat || h.old_price || 0).toFixed(2);
+                 // const yeni = parseFloat(h.yeni_fiyat || h.new_price || 0).toFixed(2);
                   const artisMi = parseFloat(yeni) > parseFloat(eski);
 
                   return (
