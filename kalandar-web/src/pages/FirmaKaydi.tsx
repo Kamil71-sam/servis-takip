@@ -1,6 +1,6 @@
 // src/pages/FirmaKaydi.tsx
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // 🚨 MÜDÜR: Eski axios gitti, ana santral (api.ts) geldi!
 
 export default function FirmaKaydi({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
@@ -30,6 +30,7 @@ export default function FirmaKaydi({ onClose }: { onClose: () => void }) {
       return;
     }
 
+    // Token'ı ekranda hemen uyarı versin diye tuttuk ama api.ts zaten bunu arka planda gönderiyor
     const token = localStorage.getItem('token');
     if (!token) {
       setHata('Oturum kartınız bulunamadı. Lütfen tekrar giriş yapın.');
@@ -39,10 +40,9 @@ export default function FirmaKaydi({ onClose }: { onClose: () => void }) {
     setYukleniyor(true);
 
     try {
-      // DİKKAT: Adresi senin backend'e göre /add olarak güncelledim!
-      await axios.post('http://localhost:3000/api/firm/add', formData, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // 🚨 MÜDÜR: ZIRHLI HAMLE! Sadece rotayı yazıyoruz (/firm/add). 
+      // localhost, port ve Authorization header kısmını api.ts hallediyor!
+      await api.post('/firm/add', formData);
       
       setBasari('Firma kaydı başarıyla oluşturuldu!');
       setFormData({ firma_adi: '', yetkili_ad_soyad: '', telefon: '', eposta: '', adres: '', vergi_no: '' });

@@ -15,7 +15,6 @@ import {
   useColorScheme,
   Platform,
   KeyboardAvoidingView
- 
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,7 +68,14 @@ export default function IslerUzman() {
   const [stokModalVisible, setStokModalVisible] = useState(false);
   const [currentTaskForStok, setCurrentTaskForStok] = useState<Task | null>(null);
 
+  // 🚨 MÜDÜR: FİYAT RADARI STATELERİ 🚨
+  const [fiyatModalVisible, setFiyatModalVisible] = useState(false);
+  const [aramaMetni, setAramaMetni] = useState('');
+  const [aramaSonuclari, setAramaSonuclari] = useState<any[]>([]);
+  const [araniyor, setAraniyor] = useState(false);
+
   const ustaAdi = 'Usta_1'; 
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   const loadTasks = async () => {
     try {
@@ -98,11 +104,8 @@ export default function IslerUzman() {
       return;
     }
 
-    // MÜDÜR: PARÇA BEKLEME AKIŞI GÜNCELLENDİ
     if (nextStatus === 'Parça Bekliyor') {
       const startSiparisHazirla = () => {
-          // MÜDÜR: Windows/Web tarafında state güncelleme ve modal açma çakışmasın diye
-          // Önce veriyi set ediyoruz, sonra 50ms bekleyip modalı ateşliyoruz.
           setCurrentTaskForStok(item);
           setTimeout(() => {
             setStokModalVisible(true);
@@ -110,12 +113,10 @@ export default function IslerUzman() {
       };
 
       if (Platform.OS === 'web') {
-        // Laptop tarafında Alert.alert bazen takılır, tarayıcı onayı kullanıyoruz
         if (window.confirm("Bu cihaz için sipariş listesini oluşturmak istiyor musunuz?")) {
             startSiparisHazirla();
         }
       } else {
-        // Telefon tarafında orijinal şık Alert
         Alert.alert(
           "Malzeme / Parça Talebi",
           "Bu cihaz için sipariş listesini oluşturun. (Sipariş girmeden durum değişmez)",
@@ -159,6 +160,33 @@ export default function IslerUzman() {
     loadTasks();
   };
 
+  // 🚨 MÜDÜR: FİYAT ARAMA MOTORU 🚨
+  const fiyatAra = async (text: string) => {
+    setAramaMetni(text);
+    if (text.length < 3) {
+      setAramaSonuclari([]);
+      return;
+    }
+    
+    setAraniyor(true);
+    try {
+      const queryParam = !isNaN(Number(text)) && text.length > 5 ? `barkod=${text}` : `malzeme_adi=${text}`;
+      const response = await fetch(`${API_URL}/api/stok/search?${queryParam}`);
+      const json = await response.json();
+      
+      if (json.success && json.data) {
+        const sonuclar = Array.isArray(json.data) ? json.data : (json.data ? [json.data] : []);
+        setAramaSonuclari(sonuclar);
+      } else {
+        setAramaSonuclari([]);
+      }
+    } catch (error) {
+      console.log("Fiyat Radar Hatası:", error);
+    } finally {
+      setAraniyor(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
@@ -173,42 +201,17 @@ export default function IslerUzman() {
         </TouchableOpacity>
       </View>
 
-
-
-
-
-
-
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.subText }]}>Şantiye Yükleniyor...</Text>
         </View>
       ) : (
-
-        
-
-
-
-
-
-
-
-
-
-        /* 🛡️ KLAVYE ZIRHI BURADAN BAŞLIYOR */
         <KeyboardAvoidingView 
-
           behavior={Platform.OS === "ios" ? "padding" : "padding"} 
-
           style={{ flex: 1 }}
-
           keyboardVerticalOffset={10}
         >
-
-
-
-
           <FlatList
             data={[...tasks].sort((a, b) => {
               if (filterMode === 'onlyParca') {
@@ -220,13 +223,8 @@ export default function IslerUzman() {
               return 0;
             })}
             keyExtractor={(item) => item.id.toString()}
-            
-            // 🚨 MÜDÜRÜN DOKUNUŞU 1: En alta 150px boşluk verdik ki son eleman klavyenin üstüne kadar çıkabilsin!
             contentContainerStyle={[styles.listPadding, { paddingBottom: 150 }]} 
-            
-            // 🚨 MÜDÜRÜN DOKUNUŞU 2: Klavye açıkken butona tıklandığında klavyenin kapanmasını beklemeden direkt işlemi yapar.
             keyboardShouldPersistTaps="handled" 
-            
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
             renderItem={({ item }) => {
               const isDimmed = filterMode === 'onlyParca' && item.status !== 'Parça Bekliyor';
@@ -264,6 +262,7 @@ export default function IslerUzman() {
                   <Text style={[styles.issueText, { color: theme.subText }]} numberOfLines={2}>{item.issue}</Text>
 
                   <View style={[styles.actionContainer, { backgroundColor: isDarkMode ? '#252525' : '#F9F9F9' }]}>
+                    
                     {item.status === 'Yeni Kayıt' && (
                       <View style={styles.priceRow}>
                         <TextInput 
@@ -274,6 +273,18 @@ export default function IslerUzman() {
                           value={prices[item.id] || ''}
                           onChangeText={(val) => setPrices({...prices, [item.id]: val})}
                         />
+                        
+                        {/* 🚨 MÜDÜR: YEŞİL "FİYAT GÖR" BUTONU BURAYA EKLENDİ 🚨 */}
+                        <TouchableOpacity 
+                          style={styles.btnFiyatGor} 
+                          onPress={() => {
+                            setSelectedTask(item);
+                            setFiyatModalVisible(true);
+                          }}
+                        >
+                          <Ionicons name="pricetags-outline" size={22} color="#fff" />
+                        </TouchableOpacity>
+
                         <TouchableOpacity 
                           style={[styles.btnFiyat, { backgroundColor: isDarkMode ? '#444' : '#1A1A1A' }]} 
                           onPress={() => handleUpdateStatus(item, 'Onay Bekliyor')}
@@ -346,24 +357,7 @@ export default function IslerUzman() {
             }}
           />
         </KeyboardAvoidingView>
-        /* 🛡️ KLAVYE ZIRHI BURADA BİTİYOR */
       )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
       {/* DETAY MODALI */}
       <Modal 
@@ -397,6 +391,60 @@ export default function IslerUzman() {
                  <Text style={styles.btnText}>KAPAT</Text>
                </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 🚨 MÜDÜR: YENİ "FİYAT GÖR" RADAR MODALI 🚨 */}
+      <Modal visible={fiyatModalVisible} animationType="fade" transparent={true}>
+        <View style={styles.fiyatOverlay}>
+          <View style={[styles.fiyatContent, isDarkMode && { backgroundColor: '#1E1E1E', borderColor: '#333' }]}>
+            
+            <View style={styles.fiyatHeader}>
+              <Text style={[styles.fiyatTitle, isDarkMode && { color: '#fff' }]}>Envanter Fiyat Radarı</Text>
+              <TouchableOpacity onPress={() => { setFiyatModalVisible(false); setAramaMetni(''); setAramaSonuclari([]); }}>
+                <Ionicons name="close-circle" size={28} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.fiyatInfoBox}>
+              <Text style={styles.fiyatInfoText}>Kayıt No: <Text style={{fontWeight: '900'}}>{selectedTask?.servis_no || selectedTask?.id}</Text></Text>
+              <Text style={styles.fiyatInfoText}>Cihaz: {selectedTask?.marka_model || "Bilinmiyor"}</Text>
+            </View>
+
+            <View style={styles.fiyatSearchContainer}>
+              <Ionicons name="search" size={20} color="#888" style={{marginLeft: 10}} />
+              <TextInput 
+                style={[styles.fiyatSearchInput, isDarkMode && { color: '#fff' }]}
+                placeholder="Barkod veya Malzeme İsmi Ara..."
+                placeholderTextColor="#888"
+                value={aramaMetni}
+                onChangeText={fiyatAra}
+                autoFocus
+              />
+            </View>
+
+            {araniyor && <ActivityIndicator size="small" color="#FF3B30" style={{ marginVertical: 10 }} />}
+
+            <ScrollView style={{ marginTop: 10, maxHeight: 300 }} keyboardShouldPersistTaps="handled">
+              {aramaSonuclari.map((item, index) => (
+                <View key={index} style={[styles.fiyatResultItem, isDarkMode && { borderBottomColor: '#333' }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.fiyatItemName, isDarkMode && { color: '#fff' }]}>{item.malzeme_adi}</Text>
+                    <Text style={styles.fiyatItemDetails}>{item.marka} {item.model ? `- ${item.model}` : ''}</Text>
+                    <Text style={styles.fiyatItemBarkod}>Barkod: {item.barkod}</Text>
+                  </View>
+                  <View style={styles.fiyatTag}>
+                    <Text style={styles.fiyatTagText}>{item.alis_fiyati} ₺</Text>
+                  </View>
+                </View>
+              ))}
+              
+              {!araniyor && aramaMetni.length >= 3 && aramaSonuclari.length === 0 && (
+                <Text style={{ textAlign: 'center', color: '#888', marginTop: 20 }}>Malzeme bulunamadı.</Text>
+              )}
+            </ScrollView>
+
           </View>
         </View>
       </Modal>
@@ -446,9 +494,13 @@ const styles = StyleSheet.create({
   markaText: { fontSize: 17, fontWeight: '900', marginBottom: 6 },
   issueText: { fontSize: 14, marginBottom: 15, fontStyle: 'italic' },
   actionContainer: { marginBottom: 15, padding: 12, borderRadius: 12 },
-  priceRow: { flexDirection: 'row', gap: 10 },
+  priceRow: { flexDirection: 'row', gap: 8 },
   priceInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 45, fontSize: 16 },
-  btnFiyat: { paddingHorizontal: 20, borderRadius: 10, justifyContent: 'center' },
+  btnFiyat: { paddingHorizontal: 15, borderRadius: 10, justifyContent: 'center' },
+  
+  // 🚨 MÜDÜR: YENİ BUTON STİLİ 🚨
+  btnFiyatGor: { backgroundColor: '#34C759', width: 45, height: 45, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+
   btnBasla: { backgroundColor: '#007AFF', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   btnText: { color: '#fff', fontWeight: 'bold' },
   cardFooterRevize: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1 },
@@ -466,5 +518,21 @@ const styles = StyleSheet.create({
   noteBox: { padding: 12, borderRadius: 10, marginBottom: 15, borderLeftWidth: 4 }, 
   noteLabel: { fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
   noteValue: { fontSize: 13, fontWeight: '500' },
-  modalCloseBtn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 5 } 
+  modalCloseBtn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 5 },
+
+  // 🚨 MÜDÜR: FİYAT RADARI STİLLERİ 🚨
+  fiyatOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 },
+  fiyatContent: { backgroundColor: '#fff', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#eee' },
+  fiyatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  fiyatTitle: { fontSize: 18, fontWeight: '900', color: '#333' },
+  fiyatInfoBox: { backgroundColor: '#FF3B3015', padding: 12, borderRadius: 10, marginBottom: 15, borderLeftWidth: 4, borderLeftColor: '#FF3B30' },
+  fiyatInfoText: { fontSize: 13, color: '#FF3B30', fontWeight: 'bold' },
+  fiyatSearchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10, paddingHorizontal: 10, borderWidth: 1, borderColor: '#ddd' },
+  fiyatSearchInput: { flex: 1, padding: 12, fontSize: 15 },
+  fiyatResultItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  fiyatItemName: { fontSize: 14, fontWeight: 'bold', color: '#333' },
+  fiyatItemDetails: { fontSize: 11, color: '#666', marginTop: 2 },
+  fiyatItemBarkod: { fontSize: 10, color: '#999', marginTop: 2 },
+  fiyatTag: { backgroundColor: '#FF3B30', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  fiyatTagText: { color: '#fff', fontWeight: '900', fontSize: 14 }
 });

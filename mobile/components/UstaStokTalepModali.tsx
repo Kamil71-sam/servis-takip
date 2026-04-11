@@ -160,45 +160,6 @@ export default function UstaStokTalepModali({ visible, onClose, onSuccess, servi
 
   
 
-  /*
-  // 3. Tüm Sepeti Tek Seferde Fırlatma
-  const handleSendAll = async () => {
-    if (cart.length === 0) {
-      Alert.alert("Sepet Boş", "Lütfen önce sepete malzeme ekleyin.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      for (const item of cart) {
-        await sendMaterialRequest({
-          service_id: serviceId,
-          usta_email: 'Usta_1', 
-          part_name: item.partName,
-          quantity: item.quantity,
-          description: `Cihaz: ${markaModel} - Not: ${item.desc}`
-        });
-      }
-      
-      Alert.alert("Başarılı", `${cart.length} adet malzeme talebi iletildi.`);
-      setCart([]); 
-      onSuccess(); // MÜDÜR: İşte o kritik şalter! Parçalar gittiyse ana ekrana haber ver.
-      onClose();   
-    } catch (err) {
-      Alert.alert("Hata", "Taleplerin tamamı veya bir kısmı gönderilemedi.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-*/
-
-
-
-
-
-
   // Modalı kapatırken her şeyi sıfırla
   const handleClose = () => {
     setPartName('');

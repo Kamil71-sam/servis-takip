@@ -131,10 +131,10 @@ export default function YeniRandevu() {
         
         <div className="p-5 border-b border-white/5 bg-white/5 flex justify-between items-center relative overflow-hidden">
           <h2 className="text-lg font-black text-white tracking-tighter uppercase flex items-center gap-3 relative z-10">
-            <span className="text-[#8E052C] text-2xl">📅</span> Yeni Randevu Oluştur
+            <span className="text-[#8E052C] text-2xl">📅</span> Yeni Randevu Oluşturma
           </h2>
           <div className="bg-black/50 border border-white/10 px-3 py-1.5 rounded-xl text-[10px] font-bold text-gray-400">
-            KAYIT NO: <span className="text-white">OTOMATİK</span>
+            SERVİS NO : <span className="text-white">OTOMATİK</span>
           </div>
         </div>
 

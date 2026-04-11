@@ -99,10 +99,7 @@ export default function ServisListesi() {
     }
   };
 
-
-
-
-const handleStatusChange = async (newStatus: string, serviceId?: number) => {
+  const handleStatusChange = async (newStatus: string, serviceId?: number) => {
     const id = serviceId || selectedForStatus?.id;
     const item = selectedForStatus; 
     if (!id) return;
@@ -150,13 +147,13 @@ const handleStatusChange = async (newStatus: string, serviceId?: number) => {
       try {
         await updateService(id, { status: newStatus });
         setStatusModalVisible(false);
-        fetchServisler();
+        // 🚨 MÜDÜR: İPTAL EDİLİNCE LİSTEYİ ANINDA YENİLEYİP EKRANDAN YOK EDECEK SİHİR BURADA 🚨
+        await fetchServisler();
       } catch (error) {
         Alert.alert("Hata", "Güncelleme yapılamadı.");
       }
     }
   };
-
 
   /*
   const handleStatusChange = async (newStatus: string, serviceId?: number) => {
@@ -218,14 +215,7 @@ const handleStatusChange = async (newStatus: string, serviceId?: number) => {
       }
     }
   };
-
-
   */
-
-
-
-
-
 
   const filtered = (servisler || []).filter((s: any) => {
     const val = search.toLowerCase().trim();
@@ -251,9 +241,20 @@ const handleStatusChange = async (newStatus: string, serviceId?: number) => {
 
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.textColor }]}>Servis Kayıtları</Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close-circle-outline" size={35} color={theme.primary} />
-        </TouchableOpacity>
+        
+        {/* 🚨 MÜDÜR: YENİLEME VE KAPATMA TUŞU YAN YANA 🚨 */}
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity 
+            style={[styles.refreshIconBtn, { borderColor: theme.primary }]} 
+            onPress={() => fetchServisler()}
+          >
+            <Ionicons name="refresh" size={22} color={theme.primary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="close-circle-outline" size={35} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }]}>
@@ -469,6 +470,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 15 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 12 },
   title: { fontSize: 20, fontWeight: '700' },
+  
+  // 🚨 MÜDÜR: EKLENEN YENİLEME BUTONU STİLLERİ
+  headerRightButtons: { flexDirection: 'row', alignItems: 'center' },
+  refreshIconBtn: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    borderWidth: 1.5, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginRight: 15
+  },
+
   searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, height: 45, borderRadius: 10, marginBottom: 15, borderWidth: 1 },
   input: { flex: 1, marginLeft: 6, fontSize: 15 },
   card: { flexDirection: 'row', borderRadius: 12, padding: 15, marginBottom: 12, borderWidth: 1, alignItems: 'center' },
@@ -513,6 +527,4 @@ const styles = StyleSheet.create({
   closeModalBtn: { marginTop: 15, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   priceContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: '#EEE' },
   priceText: { marginLeft: 5, fontSize: 13 }
-}); 
-  
-
+});

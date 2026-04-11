@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // 🚨 MÜDÜR: Ana santralimizi çağırdık, axios'a gerek kalmadı
 
 export default function RandevuTakvimi() {
   const [randevular, setRandevular] = useState<any[]>([]);
@@ -7,13 +7,17 @@ export default function RandevuTakvimi() {
   
   const [arama, setArama] = useState(''); 
 
-  const API_URL = "http://localhost:3000"; 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
+  // 🚨 MÜDÜR: İPTAL MODALI İÇİN GEREKLİ STATELER
+  const [statusModalAcik, setStatusModalAcik] = useState(false);
+  const [seciliRandevu, setSeciliRandevu] = useState<any>(null);
+  const [islemde, setIslemde] = useState(false);
 
+  // 1. VERİ ÇEKME MOTORU (Temizlendi)
   const verileriGetir = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/appointments/liste/aktif`, { headers });
+      // 🚨 ZIRHLI HAMLE: Uzun URL ve headers yok! api.ts hallediyor.
+      const res = await api.get('/appointments/liste/aktif');
+
       const data = res.data.data ? res.data.data : res.data;
       if(Array.isArray(data)) {
         setRandevular(data);
@@ -28,19 +32,42 @@ export default function RandevuTakvimi() {
   useEffect(() => { verileriGetir(); }, []);
 
   const durumRenkleri: any = {
-    'Beklemede': 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30'
+    'Beklemede': 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30 hover:border-yellow-500',
+    'Mali Onay Bekliyor': 'bg-blue-900/80 text-blue-100 border-blue-500/30 hover:border-blue-500'
   };
 
-  // 🚨 MÜDÜR: FİLTRE MOTORU SADECE "BEKLEMEDE" OLANLARI ALACAK ŞEKİLDE AYARLANDI
+  // 2. İPTAL MOTORU (Temizlendi)
+  const handleMüdürİptal = async () => {
+    if (!seciliRandevu) return;
+    if (!window.confirm("Bu randevu iptal edilecek ve listeden düşecektir. Emin misiniz?")) return;
+
+    setIslemde(true);
+    try {
+      // 🚨 ZIRHLI HAMLE: Sadece hedefi yazıyoruz, gerisini api.ts hallediyor!
+      const res = await api.put(`/appointments/iptal/${seciliRandevu.id}`);
+      if (res.data.success) {
+        await verileriGetir(); // Listeyi tazele
+        setStatusModalAcik(false);
+        setSeciliRandevu(null);
+      }
+    } catch (error) {
+      alert("İptal işlemi sırasında bir hata oluştu.");
+      console.error(error);
+    } finally {
+      setIslemde(false);
+    }
+  };
+
+  // 🚨 MÜDÜR: FİLTRE MOTORU SADECE "BEKLEMEDE" VE "MALİ ONAY" OLANLARI ALIR
   const filtrelenmisRandevular = randevular.filter(r => {
-    const durum = r.status || r['Durum'] || r.durum || 'Beklemede';
-    const sadeceBekleyenler = durum.toLowerCase() === 'beklemede'; // İptal ve Teslim'i çöpe at
+    const durum = (r.status || r['Durum'] || r.durum || 'Beklemede').toLowerCase();
+    const aktifMi = durum === 'beklemede' || durum === 'mali onay bekliyor';
 
     const musteri = r.musteri_adi || r['Müşteri Adı'] || r.musteri || r.name || r.customer_name || r.firma_adi || '';
     const kayitNo = r.servis_no || r['Kayıt No'] || '';
     const metinUyuyor = kayitNo.includes(arama) || musteri.toLowerCase().includes(arama.toLowerCase());
 
-    return sadeceBekleyenler && metinUyuyor;
+    return aktifMi && metinUyuyor;
   });
 
   return (
@@ -50,14 +77,13 @@ export default function RandevuTakvimi() {
       <div className="p-5 border-b border-white/5 bg-white/5 flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
-            <span className="text-[#8E052C] text-2xl">🗓️</span> Yaklaşan Randevular
+            <span className="text-[#8E052C] text-2xl">🗓️</span> Randevu Kayıtları
           </h2>
           <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">
             Bekleyen: <span className="text-white">{filtrelenmisRandevular.length}</span> Randevu
           </div>
         </div>
 
-        {/* AÇILIR KUTU (FİLTRE) KALDIRILDI, SADECE ARAMA ÇUBUĞU KALDI */}
         <div className="flex gap-4 items-center">
           <input 
             type="text" 
@@ -114,31 +140,25 @@ export default function RandevuTakvimi() {
 
               const formatliSaat = rSaatiRaw ? rSaatiRaw.substring(0, 5) : 'Saat Yok';
 
-              // TEYİT ALARMI MOTORU (Randevu Yarın mı?)
               let yarinMi = false;
               if (randevuTarihiObj) {
                 const bugun = new Date();
                 bugun.setHours(0, 0, 0, 0);
                 randevuTarihiObj.setHours(0, 0, 0, 0);
-                
                 const farkZaman = randevuTarihiObj.getTime() - bugun.getTime();
                 const farkGun = Math.ceil(farkZaman / (1000 * 60 * 60 * 24));
-                
-                // Tam 1 gün varsa alarm öter!
                 if (farkGun === 1) yarinMi = true; 
               }
 
               return (
                 <div key={index} className={`bg-black/40 border ${yarinMi ? 'border-red-900/50 shadow-[0_0_15px_rgba(142,5,44,0.1)]' : 'border-white/5'} rounded-2xl p-5 hover:border-[#8E052C]/50 transition-all flex items-start gap-6 group relative overflow-hidden`}>
                   
-                  {/* ALARM BARKODU */}
                   {yarinMi && (
                     <div className="absolute top-0 right-0 bg-[#8E052C] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-lg animate-pulse">
                       ⚠️ YARIN: TEYİT ARAMASI YAP!
                     </div>
                   )}
 
-                  {/* SOL: TARİH & SAAT & SERVİS NO */}
                   <div className="bg-[#1A1A1E] border border-white/10 rounded-xl p-3 flex flex-col items-center justify-center min-w-[120px] shrink-0 group-hover:bg-[#8E052C]/10 group-hover:border-[#8E052C]/30 transition-all">
                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">RANDEVU</span>
                     <span className="text-lg font-black text-white leading-none">{formatliTarih}</span>
@@ -149,7 +169,6 @@ export default function RandevuTakvimi() {
                     </div>
                   </div>
 
-                  {/* ORTA: MÜŞTERİ & DETAYLAR */}
                   <div className="flex-1 flex flex-col gap-3 mt-1">
                     <div className="flex items-center gap-3">
                       <span className="text-xl font-black text-white uppercase tracking-tight">{musteri}</span>
@@ -174,9 +193,11 @@ export default function RandevuTakvimi() {
 
                   {/* SAĞ: DURUM & USTA */}
                   <div className="flex flex-col items-end gap-3 min-w-[140px] shrink-0 mt-1">
-                    <span className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-sm text-center w-full ${durumRenkleri[durum] || 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30'}`}>
+                    <button 
+                      onClick={() => { setSeciliRandevu(r); setStatusModalAcik(true); }}
+                      className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-sm text-center w-full transition-all cursor-pointer ${durumRenkleri[durum] || 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30'}`}>
                       {durum}
-                    </span>
+                    </button>
                     
                     <div className="flex items-center gap-2 bg-black/40 px-3 py-2.5 rounded-xl border border-white/5 w-full justify-center mt-1">
                       <span className="text-gray-500">🛠️</span>
@@ -196,6 +217,38 @@ export default function RandevuTakvimi() {
           </div>
         )}
       </div>
+
+      {/* 🚨 MÜDÜR: İPTAL PANELİ (SADECE MÜDAHALE ODAKLI) */}
+      {statusModalAcik && seciliRandevu && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#1A1A1E] border border-white/10 rounded-[2rem] w-full max-w-sm p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#8E052C]/10 blur-3xl rounded-full pointer-events-none"></div>
+            
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-lg font-black text-white uppercase tracking-tight">İşlemi Durdur</h3>
+               <button onClick={() => setStatusModalAcik(false)} className="text-gray-500 hover:text-white transition-colors">✕</button>
+            </div>
+
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5 mb-6">
+               <div className="text-[10px] font-black text-[#8E052C] uppercase tracking-widest mb-1">Müşteri</div>
+               <div className="text-sm font-bold text-white uppercase">{seciliRandevu.musteri_adi || seciliRandevu.customer_name}</div>
+               <div className="text-[10px] font-bold text-gray-500 mt-2">Kayıt No: #{seciliRandevu.servis_no}</div>
+            </div>
+
+            <button 
+              disabled={islemde}
+              onClick={handleMüdürİptal}
+              className="w-full bg-red-900/20 hover:bg-red-600 border border-red-900/50 hover:border-red-500 text-red-500 hover:text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-3">
+              {islemde ? "İşleniyor..." : "🚫 Randevuyu İptal Et"}
+            </button>
+
+            <p className="text-[9px] text-gray-600 text-center mt-4 font-bold uppercase tracking-widest leading-relaxed">
+              İptal edilen işler mali işlemlere yansımaz,<br/>direkt arşive gönderilir.
+            </p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

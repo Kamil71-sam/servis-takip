@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // 🚨 MÜDÜR: Eski axios gitti, bizim ana santral (api.ts) geldi!
 
 export default function BireyselMusteriKaydi({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
@@ -27,23 +27,13 @@ export default function BireyselMusteriKaydi({ onClose }: { onClose: () => void 
       return;
     }
 
-    // MÜDÜRÜN NOTU: Cebimizdeki Yaka Kartını (Token) alıyoruz
-    const token = localStorage.getItem('token'); 
-    
-    if (!token) {
-      setHata('Güvenlik ihlali! Oturum kartınız (Token) bulunamadı. Lütfen tekrar giriş yapın.');
-      return;
-    }
-
     setYukleniyor(true);
 
     try {
-      // DİKKAT: Adresi 3000 yaptık ve Bekçiye (headers) Yaka Kartını gösterdik!
-      await axios.post('http://localhost:3000/api/customers', formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // 🚨 MÜDÜR: ZIRHLI HAMLE! 
+      // Sadece hedefin adını ('/customers') yazdık. 
+      // Başındaki adresi ve yaka kartını (Token) api.ts otomatik hallediyor!
+      await api.post('/customers', formData);
       
       setBasari('Müşteri başarıyla sisteme kaydedildi!');
       setFormData({ name: '', phone: '', fax: '', email: '', address: '' });

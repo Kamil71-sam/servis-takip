@@ -52,7 +52,7 @@ export default function Dashboard({ onLogout }: any) {
             {[
               { isim: 'Müşteri İşlemleri', ikon: '👥', altMenuler: ['Bireysel Müşteri Kaydı', 'Firma Kaydı', 'Müşteri Listesi'] },
               { isim: 'Servis İşlemleri', ikon: '🛠️', altMenuler: ['Yeni Servis Kaydı', 'Servis Kayıtları', 'Tamamlanan İşler'] },
-              { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Takvimi', 'Tamamlanan Randevular'] }, 
+              { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Kayıtları', 'Tamamlanan Randevular'] }, 
               { isim: 'Envanter İşlemleri', ikon: '📦', altMenuler: ['Stok Durumu', 'Malzeme Girişi', 'Depo Sayımı'] },
               { isim: 'Mali İşlemler', ikon: '💳', altMenuler: ['Faturalar', 'Tahsilatlar', 'Cari Hesaplar'] },
               { isim: 'Çıktı İşlemleri', ikon: '🖨️', altMenuler: ['Servis Fişi Yazdır', 'Barkod Oluştur'] },
@@ -85,6 +85,7 @@ export default function Dashboard({ onLogout }: any) {
                           if(altItem === 'Tamamlanan İşler') setAktifSayfa('TamamlananIsler');
                           if(altItem === 'Yeni Randevu') setAktifSayfa('YeniRandevu');
                           if(altItem === 'Randevu Takvimi') setAktifSayfa('RandevuTakvimi'); 
+                          if(altItem === 'Randevu Kayıtları') setAktifSayfa('RandevuTakvimi');
                           if(altItem === 'Tamamlanan Randevular') setAktifSayfa('TamamlananRandevular');
                           if(altItem === 'Stok Durumu') setAktifSayfa('StokDurumu'); // 🚨 EKLENDİ
                         }}
@@ -130,21 +131,21 @@ export default function Dashboard({ onLogout }: any) {
           <div className="flex justify-between items-center z-10">
             <div>
               <h1 className="text-3xl font-black tracking-tight text-white uppercase">
-                {aktifSayfa === 'Dashboard' ? 'Komuta Merkezi' : 
+                {aktifSayfa === 'Dashboard' ? 'Kontrol Merkezi' : 
                  aktifSayfa === 'MusteriListesi' ? 'Müşteri Rehberi' : 
                  aktifSayfa === 'YeniServisKaydi' ? 'Servis Girişi' :
-                 aktifSayfa === 'ServisKayitlari' ? 'Servis Arşivi' : 
+                 aktifSayfa === 'ServisKayitlari' ? 'Servis işlemleri' : 
                  aktifSayfa === 'TamamlananIsler' ? 'Tamamlanan İşler' : 
                  aktifSayfa === 'YeniRandevu' ? 'Yeni Randevu' : 
                  aktifSayfa === 'StokDurumu' ? 'Stok Durumu' : 'İşlemler'} {/* 🚨 BAŞLIK EKLENDİ */}
               </h1>
               <p className="text-gray-500 text-sm mt-1 font-medium">
-                {aktifSayfa === 'Dashboard' ? 'Sistem jilet gibi çalışıyor müdür.' : 
+                {aktifSayfa === 'Dashboard' ? 'Sistem Devrede' : 
                  aktifSayfa === 'MusteriListesi' ? 'Tüm cari kayıtlar burada listeleniyor.' : 
-                 aktifSayfa === 'YeniServisKaydi' ? 'Yeni servis formu dolduruluyor.' :
-                 aktifSayfa === 'ServisKayitlari' ? 'Aktif ve geçmiş servis süreçleri.' : 
+                 aktifSayfa === 'YeniServisKaydi' ? 'Yeni Servis Açma form Alanı' :
+                 aktifSayfa === 'ServisKayitlari' ? 'Akif Servis kayıtları' : 
                  aktifSayfa === 'TamamlananIsler' ? 'Teslim ve iptal edilen işlerin arşivi.' : 
-                 aktifSayfa === 'YeniRandevu' ? 'Sahaya yeni randevu ve iş emri açılıyor.' : 
+                 aktifSayfa === 'YeniRandevu' ? 'Randevu Kaydı' : 
                  aktifSayfa === 'StokDurumu' ? 'Depodaki tüm malzemeler ve güncel stok durumları.' : 'Kayıt girişi yapılıyor.'} {/* 🚨 AÇIKLAMA EKLENDİ */}
               </p>
             </div>

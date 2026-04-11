@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // 🚨 MÜDÜR: Axios yerine kendi merkezimizi getirdik
 
 export default function MusteriListesi() {
   const [liste, setListe] = useState<any[]>([]);
   const [arama, setArama] = useState('');
   const [seciliMusteri, setSeciliMusteri] = useState<any>(null);
 
-  const API_URL = "http://localhost:3000"; 
-
-  // 1. LİSTEYİ GETİRME MOTORU
+  // 1. LİSTEYİ GETİRME MOTORU (Temizlendi)
   const verileriGetir = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-      
+      // 🚨 MÜDÜR: Token ve Headers yok, api.ts hallediyor!
       const [resCust, resFirm] = await Promise.all([
-        axios.get(`${API_URL}/api/customers`, { headers }),
-        axios.get(`${API_URL}/api/firm/all`, { headers })
+        api.get('/customers'),
+        api.get('/firm/all')
       ]);
 
       const birlestirilmis = [
@@ -33,20 +29,98 @@ export default function MusteriListesi() {
 
   useEffect(() => { verileriGetir(); }, []);
 
-  // 2. SİLME İNFAZ MEKANİZMASI (DÜZELTİLDİ)
+
+
+
+
+
+  
+
+// 2. SİLME İNFAZ MEKANİZMASI (Yalancı Backend'e Karşı Zırhlı)
   const silmeIslemi = async (id: number, tip: string) => {
-    if (window.confirm("Bu kayıt ve tüm geçmişi sonsuza kadar silinecek. Emin misin müdür?")) {
+    const uyariMesaji = "🚨 DİKKAT: SİLME İŞLEMİ KONTROLÜ\n\nSistem sadece hiç işlem görmemiş (taze) kayıtları silmenize izin verir.\nEğer bu kişinin sistemde geçmiş bir randevusu veya servis kaydı varsa, muhasebe ve arşiv bütünlüğünü korumak için SİLİNMEYECEKTİR.\n\nSilmeyi denemek istiyor musunuz?";
+
+    if (window.confirm(uyariMesaji)) {
       try {
-        const token = localStorage.getItem('token');
-        const headers = { Authorization: `Bearer ${token}` };
-        const rota = tip === 'B' ? `${API_URL}/api/customers/${id}` : `${API_URL}/api/firm/${id}`;
+        const rota = tip === 'B' ? `/customers/${id}` : `/firm/${id}`;
         
-        await axios.delete(rota, { headers });
+        // Mermiyi ateşliyoruz
+        const res = await api.delete(rota);
+        
+        // 🚨 MÜDÜRÜN ZIRHI: Backend bize "Tamam" dese bile paketin içine bakıyoruz!
+        // Eğer pakette "success: false" veya "error" yazıyorsa bizi yiyordur, hemen hataya fırlatıyoruz!
+        if (res.data && (res.data.success === false || res.data.error)) {
+          throw new Error(res.data.message || res.data.error || "Backend silmeyi reddetti");
+        }
+
+        // Pakette gerçekten yalan yoksa burası çalışır
+        alert("✅ Başarılı: Kayıt tertemiz silindi!");
         verileriGetir(); // Listeyi tazele
+        
       } catch (err: any) {
-        alert("Silme hatası: " + (err.response?.data?.message || err.message));
+        // 🚨 SİNSİ SUNUCU BURADA ENSELENDİ!
+        alert("❌ SİLME REDDEDİLDİ!\n\nBu müşterinin sistemde geçmiş işlemleri (randevu, arıza, vb.) var! Arşivin ve kasanın bozulmaması için bu kaydı silemezsiniz.");
+        console.error("Gerçek Hata Sebebi:", err);
       }
     }
+  };
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  // 🚨 MÜDÜR: YENİ GÜNCELLEME MOTORU EKLENDİ 🚨
+  const kaydetIslemi = async () => {
+    if (!seciliMusteri) return;
+
+    try {
+      // Bireysel ve Firma için farklı rotalara ve alanlara göre veri paketliyoruz
+      if (seciliMusteri.tip === 'B') {
+        await api.put(`/customers/${seciliMusteri.id}`, {
+          name: seciliMusteri.isim,
+          phone: seciliMusteri.tel,
+          email: seciliMusteri.mail,
+          fax: seciliMusteri.fks === '-' ? '' : seciliMusteri.fks,
+          address: seciliMusteri.adr
+        });
+      } else {
+        await api.put(`/firm/${seciliMusteri.id}`, {
+          firma_adi: seciliMusteri.isim,
+          yetkili_ad_soyad: seciliMusteri.yetkili,
+          telefon: seciliMusteri.tel,
+          eposta: seciliMusteri.mail,
+          vergi_no: seciliMusteri.vno === '-' ? '' : seciliMusteri.vno,
+          faks: seciliMusteri.fks === '-' ? '' : seciliMusteri.fks,
+          adres: seciliMusteri.adr
+        });
+      }
+
+      alert("Kayıt başarıyla güncellendi!");
+      setSeciliMusteri(null); // Modalı Kapat
+      verileriGetir(); // Listeyi Tazele
+    } catch (err: any) {
+      alert("Güncelleme hatası: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // GÜNCELLEME İÇİN MODAL İÇİ VERİ DEĞİŞTİRİCİ
+  const handleGuncelle = (alan: string, deger: string) => {
+    setSeciliMusteri({ ...seciliMusteri, [alan]: deger });
   };
 
   const filtrelenmis = liste.filter(m => 
@@ -66,7 +140,7 @@ export default function MusteriListesi() {
         />
       </div>
 
-      {/* TABLO: Fontlar text-[13px] ve font-semibold yapıldı */}
+      {/* TABLO */}
       <div className="flex-1 overflow-auto scrollbar-hide">
         <table className="w-full text-left border-collapse">
           <thead className="sticky top-0 bg-[#0F0F12] z-10">
@@ -109,7 +183,7 @@ export default function MusteriListesi() {
         </table>
       </div>
 
-      {/* DÜZENLEME MODALI: EKRANIN TEPESİNE ÇİVİLENDİ (items-start pt-20) */}
+      {/* DÜZENLEME MODALI */}
       {seciliMusteri && (
         <div className="fixed inset-0 z-[999999] flex justify-center items-start pt-20 bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
           <div className="bg-[#0F0F12] border-2 border-[#8E052C]/30 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-scale-up relative">
@@ -123,45 +197,88 @@ export default function MusteriListesi() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">İsim / Ünvan</label>
-                  <input type="text" defaultValue={seciliMusteri.isim} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" />
+                  <input 
+                    type="text" 
+                    value={seciliMusteri.isim} 
+                    onChange={(e) => handleGuncelle('isim', e.target.value)} 
+                    className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" 
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">Yetkili Şahıs</label>
-                  <input type="text" defaultValue={seciliMusteri.yetkili} disabled={seciliMusteri.tip === 'B'} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none disabled:opacity-20" />
+                  <input 
+                    type="text" 
+                    value={seciliMusteri.yetkili} 
+                    onChange={(e) => handleGuncelle('yetkili', e.target.value)} 
+                    disabled={seciliMusteri.tip === 'B'} 
+                    className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none disabled:opacity-20" 
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">Telefon</label>
-                  <input type="text" defaultValue={seciliMusteri.tel} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" />
+                  <input 
+                    type="text" 
+                    value={seciliMusteri.tel} 
+                    onChange={(e) => handleGuncelle('tel', e.target.value)} 
+                    className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" 
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">Faks</label>
-                  <input type="text" defaultValue={seciliMusteri.fks} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" />
+                  <input 
+                    type="text" 
+                    value={seciliMusteri.fks} 
+                    onChange={(e) => handleGuncelle('fks', e.target.value)} 
+                    className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" 
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">E-Posta</label>
-                  <input type="text" defaultValue={seciliMusteri.mail} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" />
+                  <input 
+                    type="text" 
+                    value={seciliMusteri.mail} 
+                    onChange={(e) => handleGuncelle('mail', e.target.value)} 
+                    className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none focus:border-[#8E052C]" 
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">Vergi No</label>
-                  <input type="text" defaultValue={seciliMusteri.vno} disabled={seciliMusteri.tip === 'B'} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none disabled:opacity-20" />
+                  <input 
+                    type="text" 
+                    value={seciliMusteri.vno} 
+                    onChange={(e) => handleGuncelle('vno', e.target.value)} 
+                    disabled={seciliMusteri.tip === 'B'} 
+                    className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold outline-none disabled:opacity-20" 
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] text-gray-500 font-black uppercase mb-2 block">Adres Bilgisi</label>
-                <textarea defaultValue={seciliMusteri.adr} className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold h-28 focus:border-[#8E052C] resize-none outline-none"></textarea>
+                <textarea 
+                  value={seciliMusteri.adr} 
+                  onChange={(e) => handleGuncelle('adr', e.target.value)} 
+                  className="w-full bg-white/5 border border-white/20 rounded-2xl p-4 text-sm text-white font-semibold h-28 focus:border-[#8E052C] resize-none outline-none"
+                ></textarea>
               </div>
             </div>
 
             <div className="p-8 border-t border-white/5 bg-black/40 flex justify-end items-center gap-8">
               <button onClick={() => setSeciliMusteri(null)} className="text-gray-400 font-black uppercase text-xs hover:text-white transition-all">VAZGEÇ</button>
-              <button className="bg-[#8E052C] text-white px-10 py-4 rounded-2xl font-black text-sm uppercase shadow-lg shadow-red-950/30">KAYDET</button>
+              
+              {/* 🚨 MÜDÜR: MOTOR BURAYA BAĞLANDI */}
+              <button 
+                onClick={kaydetIslemi} 
+                className="bg-[#8E052C] hover:bg-[#A10632] text-white px-10 py-4 rounded-2xl font-black text-sm uppercase shadow-lg shadow-red-950/30 transition-all active:scale-95"
+              >
+                KAYDET
+              </button>
             </div>
           </div>
         </div>
