@@ -331,6 +331,10 @@ export default function Dashboard({ onLogout }: any) {
                 {/* GRAFİKLER VE LİSTELER */}
                 <div className="grid grid-cols-5 gap-6 flex-1 min-h-[350px]">
                   
+
+
+
+
                   {/* SİMİT GRAFİĞİ */}
                   <div className="col-span-2 bg-black/40 border border-white/5 p-8 rounded-[2.5rem] flex flex-col relative overflow-hidden shadow-2xl">
                      <div className="absolute top-0 left-0 w-40 h-40 bg-[#8E052C]/10 blur-3xl rounded-full pointer-events-none"></div>
@@ -342,7 +346,7 @@ export default function Dashboard({ onLogout }: any) {
                           className="w-56 h-56 rounded-full relative flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]"
                           style={{ background: `conic-gradient(#8E052C 0% ${randevuYuzde}%, #27272A ${randevuYuzde}% 100%)` }}
                         >
-                           <div className="absolute inset-[20px] bg-[#0F0F12] rounded-full border border-white/5 flex flex-col items-center justify-center shadow-inner">
+                           <div className="absolute inset-[60px] bg-[#0F0F12] rounded-full border border-white/5 flex flex-col items-center justify-center shadow-inner">
                               <div className="text-5xl font-black text-white">{toplamAktif}</div>
                               <div className="text-[9px] text-gray-500 font-black uppercase tracking-widest mt-1">Aktif İşlem</div>
                               <div className="flex gap-3 mt-4">
