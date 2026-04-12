@@ -58,7 +58,7 @@ export default function TamamlananRandevular() {
     const kayitNo = String(r.servis_no || '').toLocaleUpperCase('tr-TR');
     const aramaBuyuk = String(arama || '').toLocaleUpperCase('tr-TR');
 
-    return durumUyuyor && kayitNo.includes(aramaBuyuk) || musteri.includes(aramaBuyuk) && tarihUyuyor;
+    return durumUyuyor && (kayitNo.includes(aramaBuyuk) || musteri.includes(aramaBuyuk)) && tarihUyuyor;
   });
 
   return (
@@ -117,37 +117,6 @@ export default function TamamlananRandevular() {
               const durumOrijinal = r.status || 'Bilinmiyor';
               const iptalMi = String(durumOrijinal).toLocaleUpperCase('tr-TR').includes('İPTAL') || String(durumOrijinal).toLocaleUpperCase('tr-TR').includes('IPTAL');
               
-
-
-
-              // 🚨 MÜDÜR: BİTİŞ TARİHİ İÇİN ÜÇLÜ EMNİYET KİLİDİ
-                  // Önce updated_at'e bak, yoksa appointment_date'e bak, o da yoksa Bilinmiyor de!
-                  const bitisTarihiRaw = r.updated_at || r.appointment_date || r.tarih;
-
-                  const bitisTarihi = bitisTarihiRaw 
-                    ? new Date(bitisTarihiRaw).toLocaleDateString('tr-TR', { 
-                        day: '2-digit', 
-                        month: '2-digit', 
-                        year: 'numeric', 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      }) 
-                    : 'Bilinmiyor';
-
-
-
-
-
-
-            
-
-
-
-
-
-
-
-
               const finalAdres = r.parca_adres || r.adres || 'Adres belirtilmemiş';
               const finalCihaz = r.parca_cihaz || r.cihaz || 'Cihaz bilgisi yok';
               const finalNot = r.parca_not || r.issue_text || 'Not girilmemiş';
@@ -162,14 +131,16 @@ export default function TamamlananRandevular() {
               }
               const formatliSaat = rSaatiRaw ? String(rSaatiRaw).substring(0, 5) : 'Saat Yok';
 
+              const bitisTarihi = formatliTarih;
+              
+              // 🚨 MÜDÜRÜN PARASI: Backend'den gelen 'usta_fiyati' veya 'price'ı yakaladık
+              const fiyat = r.usta_fiyati || r.price || 0;
+
               return (
                 <div key={r.id} className={`bg-black/20 border ${iptalMi ? 'border-red-900/40 shadow-[0_0_15px_rgba(142,5,44,0.1)]' : 'border-white/5'} rounded-2xl p-5 hover:bg-white/[0.02] transition-all flex items-start gap-6 group relative opacity-90 hover:opacity-100`}>
                   
                   <div className="bg-[#1A1A1E] border border-white/5 rounded-xl p-3 flex flex-col items-center justify-center min-w-[120px] shrink-0">
-                    <span className={`text-[10px] font-black uppercase tracking-widest mb-1 leading-tight ${iptalMi ? 'text-red-500' : 'text-gray-600'}`}>
-                      {iptalMi ? 'İPTAL EDİLDİ' : 'TAMAMLANDI'}
-                    </span>
-                    <span className="text-lg font-black text-gray-400 leading-none">{formatliTarih}</span>
+                    <span className="text-lg font-black text-gray-400 leading-none mt-1">{formatliTarih}</span>
                     <span className="text-sm font-black text-gray-500 mt-2 bg-black/50 px-2 py-1 rounded-md mb-2">{formatliSaat}</span>
                     <div className="w-full border-t border-white/5 pt-2 text-center mt-1">
                       <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest block leading-tight">Kayıt No</span>
@@ -185,6 +156,7 @@ export default function TamamlananRandevular() {
                       <div className="flex-1 ml-4 pr-4">
                         <input 
                           type="text" 
+                          placeholder="Yönetici Notu (Enter'a bas veya tıklayıp çık kaydetsin)..."
                           defaultValue={r.yonetici_notu || ''} 
                           onBlur={(e) => hizliNotKaydet(r.id, e.target.value)} 
                           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
@@ -220,16 +192,40 @@ export default function TamamlananRandevular() {
                       <span className="text-xs font-black text-gray-500 truncate">{usta}</span>
                     </div>
 
-                    {/* 🚨 İŞTE O YEŞİL KUTUNUN YERİNE GELEN KASLI BİTİŞ ALANI 🚨 */}
                     <div className="flex items-center gap-1.5 bg-[#8E052C]/10 px-2 py-1.5 rounded-md border border-[#8E052C]/20 w-full justify-center">
                       <span className="text-[#8E052C]">🏁</span>
-                      <span className="text-[10px] font-black text-gray-400">Bitiş: {bitisTarihi}</span>
+                      <span className="text-[10px] font-black text-gray-400">Tarih: {bitisTarihi}</span>
                     </div>
+
+                    {/* 🚨 YENİ EKLENEN TAHSİLAT KISMI (İptal edilmemiş ve parası olan işler için) */}
+                    {!iptalMi && parseFloat(fiyat) > 0 && (
+                     
+                     
+                     <div className="text-[11px] font-black text-green-500 mt-1">
+                        Tahsil Edildi: {parseFloat(fiyat || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                      </div>
+                                          
+
+
+                     
+
+
+
+
+
+
+                    )}
                   </div>
 
                 </div>
               );
             })}
+
+            {filtrelenmisRandevular.length === 0 && !loading && (
+              <div className="text-center p-10 text-gray-600 font-black uppercase tracking-widest bg-white/5 rounded-2xl border border-white/5">
+                Arşivde eşleşen kayıt bulunamadı.
+              </div>
+            )}
           </div>
         )}
       </div>

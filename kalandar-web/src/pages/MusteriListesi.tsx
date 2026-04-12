@@ -34,31 +34,59 @@ export default function MusteriListesi() {
 
   useEffect(() => { verileriGetir(); }, []);
 
-  // 2. SİLME İNFAZ MEKANİZMASI 
+
+
+
+  // 2. SİLME İNFAZ MEKANİZMASI (Sadeleştirildi ve Netleştirildi)
   const silmeIslemi = async (id: number, tip: string) => {
-    const uyariMesaji = "🚨 DİKKAT: SİLME İŞLEMİ KONTROLÜ\n\nSistem sadece hiç işlem görmemiş (taze) kayıtları silmenize izin verir.\nEğer bu kişinin sistemde geçmiş bir randevusu veya servis kaydı varsa, muhasebe ve arşiv bütünlüğünü korumak için SİLİNMEYECEKTİR.\n\nSilmeyi denemek istiyor musunuz?";
+    // 1. Önce gayet insani ve kısa bir soru soruyoruz
+    if (!window.confirm("Bu müşteriyi silmek istediğinize emin misiniz?")) {
+      return; // Vazgeçerse işlemi durdur
+    }
 
-    if (window.confirm(uyariMesaji)) {
-      try {
-        const rota = tip === 'B' ? `/customers/${id}` : `/firm/${id}`;
-        
-        // Mermiyi ateşle (Yine çift motor güvenlikli)
-        const res = await api.delete(rota).catch(() => api.delete(`/api${rota}`));
-        
-        if (res.data && res.data.uyariVar) {
-          alert(`❌ SİLME REDDEDİLDİ!\n\n${res.data.message}`);
-          return; 
-        }
-
-        alert("✅ Başarılı: Kayıt tertemiz silindi!");
-        verileriGetir(); 
-        
-      } catch (err: any) {
-        alert("❌ BİR HATA OLUŞTU!\n\nSunucu ile iletişim kurulamadı veya işlem reddedildi.");
-        console.error("Gerçek Hata Sebebi:", err);
+    try {
+      const rota = tip === 'B' ? `/customers/${id}` : `/firm/${id}`;
+      
+      // Mermiyi ateşle
+      const res = await api.delete(rota).catch(() => api.delete(`/api${rota}`));
+      
+      // 🚨 EĞER BACKEND "UYARI VAR" DERSE VEYA KAYIT BULURSA:
+      if (res.data && res.data.uyariVar) {
+        // Backend'in o uzun destan mesajını yoksayıyoruz, kendi net mesajımızı basıyoruz:
+        alert("❌ İŞLEM REDDEDİLDİ!\n\nBu müşterinin üzerinde kayıtlı işlemler (servis/randevu) bulunmaktadır. Üzerinde kayıt olan müşteriler silinemez.");
+        return; 
       }
+
+      // Her şey temizse silinmiştir
+      alert("✅ Başarılı: Müşteri silindi!");
+      verileriGetir(); // Listeyi tazele
+      
+    } catch (err: any) {
+      // 🚨 EĞER VERİTABANI BAĞLANTI HATASI (FOREIGN KEY) FIRLATIRSA:
+      // Sunucu hatası vs. demek yerine direkt asıl sebebi söylüyoruz.
+      alert("❌ İŞLEM REDDEDİLDİ!\n\nBu müşterinin üzerinde kayıtlı işlemler bulunmaktadır. Üzerinde kayıt olan müşteriler silinemez.");
     }
   };
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
 
   // 3. GÜNCELLEME MOTORU
   const kaydetIslemi = async () => {

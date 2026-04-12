@@ -1,23 +1,18 @@
 import { useEffect, useState } from 'react';
-import api from '../api'; // 🚨 MÜDÜR: Ana santralimizi çağırdık, axios'a gerek kalmadı
+import api from '../api'; 
 
 export default function RandevuTakvimi() {
   const [randevular, setRandevular] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
   const [arama, setArama] = useState(''); 
 
-  // 🚨 MÜDÜR: İPTAL MODALI İÇİN GEREKLİ STATELER
   const [statusModalAcik, setStatusModalAcik] = useState(false);
   const [seciliRandevu, setSeciliRandevu] = useState<any>(null);
   const [islemde, setIslemde] = useState(false);
 
-  // 1. VERİ ÇEKME MOTORU (Temizlendi)
   const verileriGetir = async () => {
     try {
-      // 🚨 ZIRHLI HAMLE: Uzun URL ve headers yok! api.ts hallediyor.
-      const res = await api.get('/appointments/liste/aktif');
-
+      const res = await api.get('/api/appointments/liste/aktif');
       const data = res.data.data ? res.data.data : res.data;
       if(Array.isArray(data)) {
         setRandevular(data);
@@ -36,17 +31,17 @@ export default function RandevuTakvimi() {
     'Mali Onay Bekliyor': 'bg-blue-900/80 text-blue-100 border-blue-500/30 hover:border-blue-500'
   };
 
-  // 2. İPTAL MOTORU (Temizlendi)
   const handleMüdürİptal = async () => {
     if (!seciliRandevu) return;
     if (!window.confirm("Bu randevu iptal edilecek ve listeden düşecektir. Emin misiniz?")) return;
 
     setIslemde(true);
     try {
-      // 🚨 ZIRHLI HAMLE: Sadece hedefi yazıyoruz, gerisini api.ts hallediyor!
-      const res = await api.put(`/appointments/iptal/${seciliRandevu.id}`);
+      const kayitId = seciliRandevu.id || seciliRandevu.servis_no; 
+      
+      const res = await api.put(`/api/appointments/iptal/${kayitId}`);
       if (res.data.success) {
-        await verileriGetir(); // Listeyi tazele
+        await verileriGetir(); 
         setStatusModalAcik(false);
         setSeciliRandevu(null);
       }
@@ -58,14 +53,16 @@ export default function RandevuTakvimi() {
     }
   };
 
-  // 🚨 MÜDÜR: FİLTRE MOTORU SADECE "BEKLEMEDE" VE "MALİ ONAY" OLANLARI ALIR
   const filtrelenmisRandevular = randevular.filter(r => {
-    const durum = (r.status || r['Durum'] || r.durum || 'Beklemede').toLowerCase();
+    const durum = (r.status || 'Beklemede').toLowerCase();
     const aktifMi = durum === 'beklemede' || durum === 'mali onay bekliyor';
 
-    const musteri = r.musteri_adi || r['Müşteri Adı'] || r.musteri || r.name || r.customer_name || r.firma_adi || '';
-    const kayitNo = r.servis_no || r['Kayıt No'] || '';
-    const metinUyuyor = kayitNo.includes(arama) || musteri.toLowerCase().includes(arama.toLowerCase());
+    // 🚨 MÜDÜR: Filtreleri API'den gelen GERÇEK isimlere bağladık
+    const musteri = r.customer_name || '';
+    const kayitNo = (r.servis_no || '').toString();
+    
+    const aramaKucuk = arama.toLowerCase();
+    const metinUyuyor = kayitNo.includes(aramaKucuk) || musteri.toLowerCase().includes(aramaKucuk);
 
     return aktifMi && metinUyuyor;
   });
@@ -73,7 +70,6 @@ export default function RandevuTakvimi() {
   return (
     <div className="bg-[#0F0F12] border border-white/10 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative mt-4">
       
-      {/* ÜST BARA */}
       <div className="p-5 border-b border-white/5 bg-white/5 flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
@@ -95,7 +91,6 @@ export default function RandevuTakvimi() {
         </div>
       </div>
 
-      {/* TABLO */}
       <div className="flex-1 overflow-auto scrollbar-hide p-4">
         {loading ? (
           <div className="flex items-center justify-center h-full text-gray-500 font-bold uppercase tracking-widest">Takvim Çekiliyor...</div>
@@ -103,31 +98,25 @@ export default function RandevuTakvimi() {
           <div className="flex flex-col gap-3">
             {filtrelenmisRandevular.map((r, index) => {
               
-              const kayitNo = r.servis_no || r['Kayıt No'] || r.kayit_no || 'Belirsiz';
-              const musteri = r.musteri_adi || r['Müşteri Adı'] || r.musteri || r.name || r.customer_name || r.firma_adi || 'İsimsiz';
-              const usta = r.assigned_usta || r['Atanan Usta'] || r.usta || 'Atanmadı';
-              const durum = r.status || r['Durum'] || r.durum || 'Beklemede';
+              // 🚨 MÜDÜR: İŞTE O GERÇEK KOLON İSİMLERİ BURADA!
+              const kayitNo = r.servis_no || 'Belirsiz';
+              const musteri = r.customer_name || 'İsimsiz Müşteri';
+              const usta = r.assigned_usta || 'Atanmadı';
+              const durum = r.status || 'Beklemede';
               
-              // Ham veriler
-              let finalAdres = r.Adres || r.adres || r.address || 'Adres belirtilmemiş';
-              let finalCihaz = r['Cihaz Bilgisi'] || r.cihaz_bilgisi || r.cihaz || r.device || 'Cihaz bilgisi yok';
-              let finalNot = r['Arıza ve Randevu Notu'] || r.ariza_ve_randevu_notu || r.issue_text || r.not || 'Not girilmemiş';
+              // Backend parçalayıp vermiş, yorulmuyoruz direkt alıyoruz!
+              let finalAdres = r.parca_adres || 'Adres belirtilmemiş';
+              let finalCihaz = r.parca_cihaz || 'Cihaz bilgisi yok';
+              let finalNot = r.parca_not || r.issue_text || 'Not girilmemiş';
 
-              // ÇUVAL BOŞALTMA MOTORU
-              if (finalNot.includes('📍 ADRES:')) {
-                const adresParcasi = finalNot.split('🔧 CİHAZ:')[0].replace('📍 ADRES:', '').trim();
-                const kalan = finalNot.split('🔧 CİHAZ:')[1] || '';
-                const cihazParcasi = kalan.includes('📝 NOT:') ? kalan.split('📝 NOT:')[0].trim() : kalan.split('📝')[0].trim();
-                const notParcasi = finalNot.includes('📝 NOT:') ? finalNot.split('📝 NOT:')[1].trim() : (finalNot.includes('📝') ? finalNot.split('📝')[1].trim() : 'Not yok');
-
-                finalAdres = adresParcasi || finalAdres;
-                finalCihaz = cihazParcasi || finalCihaz;
-                finalNot = notParcasi || 'Not girilmemiş';
-              }
+              // Varsa içindeki emojileri ve başlıkları temizleyelim jilet gibi dursun
+              finalAdres = finalAdres.replace('📍', '').replace('ADRES:', '').trim();
+              finalCihaz = finalCihaz.replace('🔧', '').replace('CİHAZ:', '').trim();
+              finalNot = finalNot.replace('📝', '').replace('NOT:', '').trim();
               
-              // TARİH & SAAT DÜZENLEME
-              const rTarihiRaw = r.appointment_date || r['Randevu Tarihi'] || r.tarih || '';
-              const rSaatiRaw = r.appointment_time || r['Randevu Saati'] || r.saat || '';
+              // TARİH & SAAT
+              const rTarihiRaw = r.appointment_date || '';
+              const rSaatiRaw = r.appointment_time || '';
               
               let formatliTarih = 'Tarih Yok';
               let randevuTarihiObj = null;
@@ -138,7 +127,7 @@ export default function RandevuTakvimi() {
                 randevuTarihiObj = d;
               }
 
-              const formatliSaat = rSaatiRaw ? rSaatiRaw.substring(0, 5) : 'Saat Yok';
+              const formatliSaat = rSaatiRaw ? String(rSaatiRaw).substring(0, 5) : 'Saat Yok';
 
               let yarinMi = false;
               if (randevuTarihiObj) {
@@ -211,14 +200,14 @@ export default function RandevuTakvimi() {
 
             {filtrelenmisRandevular.length === 0 && !loading && (
               <div className="text-center p-10 text-gray-600 font-bold uppercase tracking-widest bg-white/5 rounded-2xl border border-white/5">
-                Şu an ufukta bekleyen bir randevu yok, şantiye rahat!
+                Kayıt bulunamadı
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* 🚨 MÜDÜR: İPTAL PANELİ (SADECE MÜDAHALE ODAKLI) */}
+      {/* İPTAL PANELİ */}
       {statusModalAcik && seciliRandevu && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#1A1A1E] border border-white/10 rounded-[2rem] w-full max-w-sm p-6 shadow-2xl relative overflow-hidden">
@@ -231,8 +220,12 @@ export default function RandevuTakvimi() {
 
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5 mb-6">
                <div className="text-[10px] font-black text-[#8E052C] uppercase tracking-widest mb-1">Müşteri</div>
-               <div className="text-sm font-bold text-white uppercase">{seciliRandevu.musteri_adi || seciliRandevu.customer_name}</div>
-               <div className="text-[10px] font-bold text-gray-500 mt-2">Kayıt No: #{seciliRandevu.servis_no}</div>
+               <div className="text-sm font-bold text-white uppercase">
+                 {seciliRandevu.customer_name || 'İsimsiz'}
+               </div>
+               <div className="text-[10px] font-bold text-gray-500 mt-2">
+                 Kayıt No: #{seciliRandevu.servis_no}
+               </div>
             </div>
 
             <button 

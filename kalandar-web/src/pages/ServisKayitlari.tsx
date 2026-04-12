@@ -89,7 +89,7 @@ export default function ServisKayitlari() {
       
       <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
         <h2 className="text-xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
-          <span className="text-[#8E052C]">📋</span> Servis Arşivi
+          <span className="text-[#8E052C]">📋</span> Aktif Servis Kayıtları
         </h2>
         <input 
           type="text" 
@@ -195,7 +195,12 @@ export default function ServisKayitlari() {
                           </div>
                           {parseFloat(fiyat) > 0 && (
                             <div className="text-[11px] font-black text-green-500 mt-1">
-                              ₺{fiyat}
+
+                              {parseFloat(fiyat || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                              
+
+
+
                             </div>
                           )}
                         </div>
@@ -227,7 +232,7 @@ export default function ServisKayitlari() {
               {servisler.length === 0 && !loading && (
                 <tr>
                   <td colSpan={5} className="text-center p-10 text-gray-500 font-bold uppercase">
-                    Şantiyede kayıt bulunamadı.
+                    Kayıt bulunamadı.
                   </td>
                 </tr>
               )}

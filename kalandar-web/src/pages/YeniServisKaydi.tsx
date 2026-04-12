@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api'; 
 
 export default function YeniServisKaydi() {
-  const API_URL = "http://localhost:3000";
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
   // --- FORM STATE ---
   const [selectedMusteri, setSelectedMusteri] = useState<any>(null);
   const [selectedCihaz, setSelectedCihaz] = useState<any>(null);
@@ -27,12 +23,11 @@ export default function YeniServisKaydi() {
     cihaz_turu: '', brand: '', model: '', serial_no: '', garanti_durumu: 'Yok', muster_notu: ''
   });
 
-  // MÜDÜR: Rehber açıldığında tüm listeyi çeken fonksiyon
   const tumMusterileriGetir = async () => {
     try {
       const [resCust, resFirm] = await Promise.all([
-        axios.get(`${API_URL}/customers`, { headers }),
-        axios.get(`${API_URL}/api/firm/all`, { headers })
+        api.get(`/customers`),
+        api.get(`/api/firm/all`) 
       ]);
       const birlesik = [
         ...resCust.data.map((c: any) => ({ ...c, tip: 'B', gosterim: c.name, phone: c.phone })),
@@ -44,14 +39,13 @@ export default function YeniServisKaydi() {
     }
   };
 
-  // Müşteri Arama (Giriş kutusu için)
   useEffect(() => {
     if (musteriArama.length >= 3 && !selectedMusteri) {
       const aramaYap = async () => {
         try {
           const [resCust, resFirm] = await Promise.all([
-            axios.get(`${API_URL}/customers`, { headers }),
-            axios.get(`${API_URL}/api/firm/all`, { headers })
+            api.get(`/customers`),
+            api.get(`/api/firm/all`)
           ]);
           const birlesik = [
             ...resCust.data.map((c: any) => ({ ...c, tip: 'B', gosterim: c.name })),
@@ -68,7 +62,6 @@ export default function YeniServisKaydi() {
     }
   }, [musteriArama, selectedMusteri]);
 
-  // Müşteri Seçilince Cihazlarını Getir
   const handleMusteriSec = async (m: any) => {
     setSelectedMusteri(m);
     setMusteriArama(m.gosterim);
@@ -76,7 +69,7 @@ export default function YeniServisKaydi() {
     setSelectedCihaz(null); 
     try {
       const backendTipi = m.tip === 'B' ? 'bireysel' : 'kurumsal';
-      const res = await axios.get(`${API_URL}/devices/customer/${m.id}?type=${backendTipi}`, { headers });
+      const res = await api.get(`/devices/customer/${m.id}?type=${backendTipi}`);
       setCihazlar(res.data);
     } catch (err) { 
       console.error("Cihaz çekme hatası:", err);
@@ -93,7 +86,7 @@ export default function YeniServisKaydi() {
         firm_id: selectedMusteri.tip === 'F' ? selectedMusteri.id : null,
         customer_type: selectedMusteri.tip === 'B' ? 'bireysel' : 'kurumsal'
       };
-      const res = await axios.post(`${API_URL}/devices`, veri, { headers });
+      const res = await api.post(`/devices`, veri);
       const eklenenCihaz = { id: res.data.id, ...veri };
       setCihazlar([...cihazlar, eklenenCihaz]);
       setSelectedCihaz(eklenenCihaz);
@@ -117,7 +110,7 @@ export default function YeniServisKaydi() {
         customer_id: selectedMusteri.tip === 'B' ? selectedMusteri.id : null,
         firm_id: selectedMusteri.tip === 'F' ? selectedMusteri.id : null
       };
-      const res = await axios.post(`${API_URL}/services`, isEmriVerisi, { headers });
+      const res = await api.post(`/services`, isEmriVerisi);
       alert(`✅ Kapat Baretleri! İş Emri Açıldı.\nServis No: ${res.data.servis_no}`);
       setSelectedMusteri(null);
       setMusteriArama('');
@@ -126,7 +119,7 @@ export default function YeniServisKaydi() {
       setArizaNotu('');
     } catch (err: any) {
       console.error("Servis Kayıt Hatası:", err);
-      alert("Hata: " + (err.response?.data?.error || "Servis kaydedilemedi."));
+      alert("Hata: " + (err.response?.data?.error || err.error || err.message || "Servis kaydedilemedi."));
     } finally {
       setIsSaving(false);
     }
@@ -136,9 +129,9 @@ export default function YeniServisKaydi() {
     <div className="flex justify-center items-start pt-4 px-4 pb-8">
       <div className="bg-[#0F0F12] border border-white/10 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden p-5 flex flex-col gap-4 relative">
         
+        {/* 🚨 MÜDÜR: ADIM 1/2 YAZISI BURADAN SİLİNDİ */}
         <div className="flex justify-between items-center border-b border-white/5 pb-3">
           <h2 className="text-xl font-black text-white uppercase tracking-tighter">Yeni Servis Kaydı</h2>
-          <span className="bg-[#8E052C] text-white text-[9px] px-2.5 py-1 rounded-full font-black uppercase">Adım 1/2</span>
         </div>
 
         {/* 1. MÜŞTERİ SEÇİMİ */}
@@ -291,7 +284,7 @@ export default function YeniServisKaydi() {
         </div>
       )}
 
-      {/* 🚨 MÜDÜR: REHBER MODALI (RANDAVU SİSTİMİNE BENZETİLDİ & A-Z SIRALANDI) */}
+      {/* REHBER MODALI */}
       {showMusteriRehberi && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 z-50 rounded-[2rem]">
           <div className="bg-[#1A1A1E] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl flex flex-col max-h-full">

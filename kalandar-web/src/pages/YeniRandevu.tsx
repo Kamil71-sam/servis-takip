@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../api'; 
 
-// MÜDÜR: Takvim ve Saat ikonlarını beyaza boyayan stil bloğu
 const calendarStyle = `
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator {
@@ -17,14 +16,14 @@ const calendarStyle = `
 
 export default function YeniRandevu() {
   const [form, setForm] = useState({
-    telefon: '',
-    adres: '',
-    cihaz_cesit: '',
-    cihaz_marka: '',
-    cihaz_model: '',
-    tarih: '',
-    saat: '',
-    usta: '',
+    telefon: '', 
+    adres: '', 
+    cihaz_cesit: '', 
+    cihaz_marka: '', 
+    cihaz_model: '', 
+    tarih: '', 
+    saat: '', 
+    usta: 'Usta 1', // 🚨 MÜDÜR: Varsayılan olarak Usta 1 atandı!
     not: ''
   });
 
@@ -34,10 +33,6 @@ export default function YeniRandevu() {
   const [arama, setArama] = useState('');
   const [seciliMusteri, setSeciliMusteri] = useState<any>(null);
 
-  const API_URL = "http://localhost:3000"; 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -45,8 +40,8 @@ export default function YeniRandevu() {
   const rehberiAc = async () => {
     try {
       const [resCust, resFirm] = await Promise.all([
-        axios.get(`${API_URL}/customers`, { headers }),
-        axios.get(`${API_URL}/api/firm/all`, { headers })
+        api.get(`/customers`), 
+        api.get(`/api/firm/all`)
       ]);
       
       const birlesik = [
@@ -84,7 +79,7 @@ export default function YeniRandevu() {
       const dbDate = form.tarih;
       const paketlenmisVeri = `📍 ADRES: ${form.adres}\n🔧 CİHAZ: ${form.cihaz_cesit} ${form.cihaz_marka} ${form.cihaz_model}\n📝 NOT: ${form.not}`;
 
-      const conflictRes = await axios.get(`${API_URL}/api/appointments/check-conflict?date=${dbDate}&time=${form.saat}`, { headers });
+      const conflictRes = await api.get(`/api/appointments/check-conflict?date=${dbDate}&time=${form.saat}`);
       
       if (conflictRes.data.isOccupied) {
         alert("🚨 Bu saatte başka bir randevu var!");
@@ -92,20 +87,21 @@ export default function YeniRandevu() {
         return;
       }
 
-      const res = await axios.post(`${API_URL}/api/appointments/ekle`, {
+      const res = await api.post(`/api/appointments/ekle`, {
         customer_id: seciliMusteri.id,
-        type: seciliMusteri.tip === 'F' ? 'kurumsal' : 'bireysel', 
+        type: seciliMusteri.tip === 'F' ? 'firma' : 'bireysel', 
         device_brand: form.cihaz_marka, 
         device_model: form.cihaz_model,
         date: dbDate, 
         time: form.saat,
-        usta: form.usta, 
+        usta: form.usta, // 🚨 MÜDÜR: Seçilen usta artık PG'ye akıyor!
         issue: paketlenmisVeri 
-      }, { headers });
+      });
 
       if (res.data.success) {
-        alert(`✅ RANDEVU KAYDEDİLDİ!`);
-        setForm({telefon: '', adres: '', cihaz_cesit: '', cihaz_marka: '', cihaz_model: '', tarih: '', saat: '', usta: '', not: ''});
+        // 🚨 MÜDÜR: Servis No uyarısı geri geldi!
+        alert(`✅ RANDEVU KAYDEDİLDİ! Servis No: ${res.data.servis_no || 'Atandı'}`);
+        setForm({telefon: '', adres: '', cihaz_cesit: '', cihaz_marka: '', cihaz_model: '', tarih: '', saat: '', usta: 'Usta 1', not: ''});
         setSeciliMusteri(null);
       }
     } catch (error: any) {
@@ -124,7 +120,6 @@ export default function YeniRandevu() {
 
   return (
     <>
-      {/* MÜDÜR: CSS'i buraya stil etiketi olarak bastık */}
       <style>{calendarStyle}</style>
 
       <div className="bg-[#0F0F12] border border-white/10 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative mt-4 max-w-2xl mx-auto w-full">
@@ -153,11 +148,7 @@ export default function YeniRandevu() {
                     className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white outline-none focus:border-[#8E052C]"
                   />
                 </div>
-                <button 
-                  type="button" 
-                  onClick={rehberiAc}
-                  className="bg-[#8E052C] hover:bg-red-800 text-white w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-all border border-red-900/50"
-                >
+                <button type="button" onClick={rehberiAc} className="bg-[#8E052C] hover:bg-red-800 text-white w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-all border border-red-900/50">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
@@ -179,9 +170,30 @@ export default function YeniRandevu() {
 
             <div className="bg-black/30 p-4 rounded-xl border border-white/5 space-y-3.5">
               <div className="grid grid-cols-2 gap-3">
-                <input type="date" name="tarih" value={form.tarih} onChange={handleChange} className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white outline-none" />
-                <input type="time" name="saat" value={form.saat} onChange={handleChange} className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white outline-none" />
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase ml-1">Randevu Tarihi</label>
+                  <input type="date" name="tarih" value={form.tarih} onChange={handleChange} className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase ml-1">Randevu Saati</label>
+                  <input type="time" name="saat" value={form.saat} onChange={handleChange} className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white outline-none" />
+                </div>
               </div>
+            </div>
+
+            {/* 🚨 MÜDÜR: USTA SEÇİMİ UI MONTE EDİLDİ! */}
+            <div className="bg-black/30 p-4 rounded-xl border border-white/5 space-y-3.5">
+              <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1.5">Atanan Usta</h3>
+              <select 
+                name="usta" 
+                value={form.usta} 
+                onChange={handleChange}
+                className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white outline-none focus:border-[#8E052C] appearance-none cursor-pointer"
+              >
+                <option value="Usta 1">Usta 1 (Kemal)</option>
+                <option value="Usta 2">Usta 2</option>
+                <option value="Usta 3">Usta 3</option>
+              </select>
             </div>
 
             <textarea 
@@ -203,22 +215,12 @@ export default function YeniRandevu() {
                   <button onClick={() => setRehberAcik(false)} className="text-gray-400 hover:text-white transition-colors bg-white/5 w-7 h-7 rounded-full flex items-center justify-center">✕</button>
                 </div>
                 <div className="p-3 border-b border-white/5">
-                  <input 
-                    type="text" placeholder="İsim veya Telefon Ara..." 
-                    value={arama} onChange={(e) => setArama(e.target.value)}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-sm text-white outline-none focus:border-[#8E052C]"
-                  />
+                  <input type="text" placeholder="İsim veya Telefon Ara..." value={arama} onChange={(e) => setArama(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-sm text-white outline-none focus:border-[#8E052C]" />
                 </div>
                 <div className="overflow-y-auto p-2 scrollbar-hide flex-1">
                   {filtrelenmisRehber.map((m: any, i: number) => (
-                    <button 
-                      key={i} onClick={() => musteriSec(m)}
-                      className="w-full text-left p-2.5 hover:bg-white/5 rounded-xl transition-all border-b border-white/5 last:border-0 flex items-center gap-3 group"
-                    >
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm shadow-inner 
-                        ${m.tip === 'F' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-500'}`}>
-                        {m.tip === 'F' ? '🏢' : '👤'}
-                      </div>
+                    <button key={i} onClick={() => musteriSec(m)} className="w-full text-left p-2.5 hover:bg-white/5 rounded-xl transition-all border-b border-white/5 last:border-0 flex items-center gap-3 group">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm shadow-inner ${m.tip === 'F' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-500'}`}>{m.tip === 'F' ? '🏢' : '👤'}</div>
                       <div>
                         <div className="text-white font-bold text-xs group-hover:text-[#8E052C] transition-colors">{m.gosterim}</div>
                         <div className="text-gray-500 text-[10px] mt-0.5">{m.phone}</div>

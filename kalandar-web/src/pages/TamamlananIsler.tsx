@@ -196,10 +196,20 @@ export default function TamamlananIsler() {
                           </div>
 
                           {parseFloat(fiyat) > 0 && durum === 'Teslim Edildi' && (
-                            <div className="text-xs font-black text-green-600/80 mt-1 flex items-center gap-1">
-                              <span>Tahsil Edildi:</span>
-                              <span className="text-green-500 text-sm">₺{fiyat}</span>
-                            </div>
+                            
+                            
+                         <div className="text-[11px] font-black text-green-500 mt-1">
+                            Tahsil Edildi: {parseFloat(fiyat || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                          </div>
+
+
+
+
+                            
+                            
+
+
+
                           )}
                         </div>
                       </td>
