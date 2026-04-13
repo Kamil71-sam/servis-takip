@@ -10,6 +10,9 @@ export default function RandevuTakvimi() {
   const [seciliRandevu, setSeciliRandevu] = useState<any>(null);
   const [islemde, setIslemde] = useState(false);
 
+  // 🚨 MÜDÜR: TEYİT ARAMASI İÇİN TARAYICI HAFIZASI (LOCALSTORAGE) STATE'İ
+  const [aramaTeyitleri, setAramaTeyitleri] = useState<Record<string, boolean>>({});
+
   const verileriGetir = async () => {
     try {
       const res = await api.get('/api/appointments/liste/aktif');
@@ -24,7 +27,22 @@ export default function RandevuTakvimi() {
     }
   };
 
-  useEffect(() => { verileriGetir(); }, []);
+  useEffect(() => { 
+    verileriGetir(); 
+    
+    // 🚨 Sayfa açıldığında Chrome'un hafızasındaki eski aramaları yükle
+    const kayitliTeyitler = localStorage.getItem('kalandar_arama_teyit');
+    if (kayitliTeyitler) {
+      setAramaTeyitleri(JSON.parse(kayitliTeyitler));
+    }
+  }, []);
+
+  // 🚨 Tıklayınca Chrome hafızasını güncelleyen motor
+  const handleTeyitToggle = (kayitNo: string) => {
+    const yeniDurum = { ...aramaTeyitleri, [kayitNo]: !aramaTeyitleri[kayitNo] };
+    setAramaTeyitleri(yeniDurum);
+    localStorage.setItem('kalandar_arama_teyit', JSON.stringify(yeniDurum));
+  };
 
   const durumRenkleri: any = {
     'Beklemede': 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30 hover:border-yellow-500',
@@ -57,7 +75,6 @@ export default function RandevuTakvimi() {
     const durum = (r.status || 'Beklemede').toLowerCase();
     const aktifMi = durum === 'beklemede' || durum === 'mali onay bekliyor';
 
-    // 🚨 MÜDÜR: Filtreleri API'den gelen GERÇEK isimlere bağladık
     const musteri = r.customer_name || '';
     const kayitNo = (r.servis_no || '').toString();
     
@@ -98,23 +115,19 @@ export default function RandevuTakvimi() {
           <div className="flex flex-col gap-3">
             {filtrelenmisRandevular.map((r, index) => {
               
-              // 🚨 MÜDÜR: İŞTE O GERÇEK KOLON İSİMLERİ BURADA!
               const kayitNo = r.servis_no || 'Belirsiz';
               const musteri = r.customer_name || 'İsimsiz Müşteri';
               const usta = r.assigned_usta || 'Atanmadı';
               const durum = r.status || 'Beklemede';
               
-              // Backend parçalayıp vermiş, yorulmuyoruz direkt alıyoruz!
               let finalAdres = r.parca_adres || 'Adres belirtilmemiş';
               let finalCihaz = r.parca_cihaz || 'Cihaz bilgisi yok';
               let finalNot = r.parca_not || r.issue_text || 'Not girilmemiş';
 
-              // Varsa içindeki emojileri ve başlıkları temizleyelim jilet gibi dursun
               finalAdres = finalAdres.replace('📍', '').replace('ADRES:', '').trim();
               finalCihaz = finalCihaz.replace('🔧', '').replace('CİHAZ:', '').trim();
               finalNot = finalNot.replace('📝', '').replace('NOT:', '').trim();
               
-              // TARİH & SAAT
               const rTarihiRaw = r.appointment_date || '';
               const rSaatiRaw = r.appointment_time || '';
               
@@ -180,18 +193,41 @@ export default function RandevuTakvimi() {
                     </div>
                   </div>
 
-                  {/* SAĞ: DURUM & USTA */}
+                  {/* SAĞ: DURUM, USTA VE TEYİT */}
                   <div className="flex flex-col items-end gap-3 min-w-[140px] shrink-0 mt-1">
+                    
                     <button 
                       onClick={() => { setSeciliRandevu(r); setStatusModalAcik(true); }}
-                      className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-sm text-center w-full transition-all cursor-pointer ${durumRenkleri[durum] || 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30'}`}>
-                      {durum}
+                      className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-sm w-full transition-all duration-300 cursor-pointer group flex items-center justify-between ${durumRenkleri[durum] || 'bg-yellow-900/80 text-yellow-100 border border-yellow-500/30 hover:border-yellow-500'}`}
+                    >
+                      <div className="w-3"></div>
+                      <span className="text-center">{durum}</span>
+                      <span className="text-[16px] opacity-50 group-hover:opacity-100 transition-all transform group-hover:translate-y-0.5 duration-200">
+                        ▾
+                      </span>
                     </button>
                     
                     <div className="flex items-center gap-2 bg-black/40 px-3 py-2.5 rounded-xl border border-white/5 w-full justify-center mt-1">
                       <span className="text-gray-500">🛠️</span>
                       <span className="text-xs font-bold text-gray-300 truncate">{usta}</span>
                     </div>
+
+                    {/* 🚨 YENİ EKLENEN SARI KUTU BÖLGESİ (TEYİT ARAMASI BUTONU) 🚨 */}
+                    <button 
+                      onClick={() => handleTeyitToggle(kayitNo)}
+                      className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-1.5 shadow-sm
+                        ${aramaTeyitleri[kayitNo] 
+                          ? 'bg-green-500/10 border-green-500/30 text-green-500 hover:bg-green-500/20' 
+                          : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/30'
+                        }`}
+                    >
+                      {aramaTeyitleri[kayitNo] ? (
+                        <><span>✅</span> TEYİT ALINDI</>
+                      ) : (
+                        <><span>☎️</span> ARANMADI</>
+                      )}
+                    </button>
+
                   </div>
 
                 </div>
