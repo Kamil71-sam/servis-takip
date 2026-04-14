@@ -19,6 +19,10 @@ import MaliDurum from './pages/MaliDurum';
 import TumMaliHareketler from './pages/TumMaliHareketler'; // 🚨 BUNU EKLE
 import KasaGirisi from './pages/KasaGirisi';
 import KasaCikisi from './pages/KasaCikisi';
+import CiktiIslemleri from './pages/CiktiIslemleri';
+
+
+
 
 const getVal = (obj: any, keys: string[]) => {
   if (!obj) return null;
@@ -222,6 +226,7 @@ export default function Dashboard({ onLogout }: any) {
                       if (altItem === 'Mali Durum') hedefSayfa = 'MaliDurum';
                       if (altItem === 'Kasa Girişi') hedefSayfa = 'KasaGirisi';
                       if (altItem === 'Kasa Çıkışı') hedefSayfa = 'KasaCikisi';
+                      if (altItem === 'Servis Fişi Yazdır') hedefSayfa = 'CiktiIslemleri';
 
                       const isActive = aktifSayfa === hedefSayfa;
 
@@ -482,7 +487,9 @@ export default function Dashboard({ onLogout }: any) {
           ) : aktifSayfa === 'KasaGirisi' ? (  
             <KasaGirisi />                        
           ) : aktifSayfa === 'KasaCikisi' ? ( 
-    <KasaCikisi onYönlendir={(sayfa: string) => setAktifSayfa(sayfa)} />
+           <KasaCikisi onYönlendir={(sayfa: string) => setAktifSayfa(sayfa)} />
+          ) : aktifSayfa === 'CiktiIslemleri' ? ( 
+            <CiktiIslemleri />
 
           ) : null}
 
