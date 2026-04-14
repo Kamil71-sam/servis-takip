@@ -18,6 +18,7 @@ import YedekParcaTakibi from './pages/YedekParcaTakibi';
 import MaliDurum from './pages/MaliDurum';
 import TumMaliHareketler from './pages/TumMaliHareketler'; // 🚨 BUNU EKLE
 import KasaGirisi from './pages/KasaGirisi';
+import KasaCikisi from './pages/KasaCikisi';
 
 const getVal = (obj: any, keys: string[]) => {
   if (!obj) return null;
@@ -480,7 +481,8 @@ export default function Dashboard({ onLogout }: any) {
             <TumMaliHareketler onBack={() => setAktifSayfa('MaliDurum')} />
           ) : aktifSayfa === 'KasaGirisi' ? (  
             <KasaGirisi />                        
-
+          ) : aktifSayfa === 'KasaCikisi' ? ( 
+    <KasaCikisi onYönlendir={(sayfa: string) => setAktifSayfa(sayfa)} />
 
           ) : null}
 

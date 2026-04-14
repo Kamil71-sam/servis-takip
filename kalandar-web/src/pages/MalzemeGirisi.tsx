@@ -3,6 +3,10 @@ import api from '../api';
 
 export default function MalzemeGirisi() {
   const [loading, setLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false); 
+  
+  const [arananMalzeme, setArananMalzeme] = useState<any>(null);
+
   const [form, setForm] = useState({
     islem_turu: 'Stok Tamamlama',
     barkod: '',
@@ -19,37 +23,118 @@ export default function MalzemeGirisi() {
     setForm({ ...form, barkod: `GLCK-${rnd}-${rnd2}` });
   };
 
+  const handleBarkodAra = async () => {
+    if (!form.barkod) {
+      alert("Lütfen aranacak barkodu girin veya okutun!");
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await api.get(`/api/stok/search?barkod=${form.barkod}`);
+      
+      if (res.data && res.data.success && res.data.found) {
+        const mal = res.data.data;
+        
+        setArananMalzeme(mal); 
+
+        setForm({
+          ...form,
+          malzeme_adi: mal.malzeme_adi || '',
+          marka: mal.marka || '',
+          uyumlu_cihaz: mal.uyumlu_cihaz || '',
+          alis_fiyati: mal.alis_fiyati || ''
+        });
+      } else {
+        alert("📦 Bu barkoda ait kayıt bulunamadı. Yeni malzeme olarak bilgilerini doldurabilirsiniz.");
+        setArananMalzeme(null);
+        setForm({
+          ...form,
+          malzeme_adi: '',
+          marka: '',
+          uyumlu_cihaz: '',
+          alis_fiyati: ''
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Sorgulama sırasında bir hata oluştu.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!form.barkod || !form.malzeme_adi || !form.alis_fiyati) {
       alert("Lütfen Barkod, Malzeme Adı ve Alış Fiyatı alanlarını doldurun!");
       return;
     }
+    
     setLoading(true);
+    
     try {
-      const res = await api.post('/api/stok/add', {
-        islem_turu: form.islem_turu,
-        barkod: form.barkod,
-        malzeme_adi: form.malzeme_adi,
-        marka: form.marka,
-        uyumlu_cihaz: form.uyumlu_cihaz,
-        miktar: Number(form.miktar),
-        alis_fiyati: Number(form.alis_fiyati),
-        fiyat_guncelle: true 
+      // 🚨 İADE (STOK SATIŞI) BYPASS OPERASYONU
+      if (form.islem_turu === 'İade (Stok Satışı)') {
+        
+        if (!arananMalzeme) {
+          alert("İade işlemi için lütfen önce Büyüteç butonuna basarak ürünü depodan buldurun!");
+          setLoading(false); return;
+        }
+
+        // 1. ADIM: Sadece Stoğu Güncelle (Artır)
+        const yeniMiktar = Number(arananMalzeme.miktar) + Number(form.miktar);
+        await api.put(`/api/stok/update/${arananMalzeme.id}`, {
+          malzeme_adi: form.malzeme_adi,
+          marka: form.marka,
+          uyumlu_cihaz: form.uyumlu_cihaz,
+          miktar: yeniMiktar,
+          alis_fiyati: Number(form.alis_fiyati),
+          barkod: form.barkod
+        });
+
+        // 2. ADIM: Kasaya Özel Etiketle Çıkış Yap
+        const toplamTutar = Number(form.miktar) * Number(form.alis_fiyati);
+        await api.post('/api/kasa/add', {
+          islem_yonu: 'ÇIKIŞ',
+          kategori: form.islem_turu, 
+          tutar: toplamTutar,
+          aciklama: `${form.islem_turu}: ${form.malzeme_adi} | Adet: ${form.miktar} | İade Alış: ${form.alis_fiyati} ₺`,
+          islem_yapan: 'Banko Stok İade'
+        });
+
+        alert(`✅ İADE BAŞARIYLA ALINDI! Kasa kaydı "${form.islem_turu}" olarak işlendi.`);
+
+      } 
+      // EĞER İADE DEĞİLSE NORMAL STOK ALIMINA DEVAM ET
+      else {
+        const res = await api.post('/api/stok/add', {
+          islem_turu: form.islem_turu,
+          barkod: form.barkod,
+          malzeme_adi: form.malzeme_adi,
+          marka: form.marka,
+          uyumlu_cihaz: form.uyumlu_cihaz,
+          miktar: Number(form.miktar),
+          alis_fiyati: Number(form.alis_fiyati),
+          fiyat_guncelle: true 
+        });
+
+        if (res.data.success) {
+          alert("✅ STOK BAŞARIYLA EKLENDİ VE KASADAN DÜŞÜLDÜ!");
+        }
+      }
+
+      // İŞLEM BİTİNCE FORMU TEMİZLE
+      setArananMalzeme(null);
+      setForm({
+        islem_turu: 'Stok Tamamlama',
+        barkod: '',
+        malzeme_adi: '',
+        marka: '',
+        uyumlu_cihaz: '',
+        miktar: 1,
+        alis_fiyati: ''
       });
 
-      if (res.data.success) {
-        alert("✅ STOK BAŞARIYLA EKLENDİ VE KASADAN DÜŞÜLDÜ!");
-        setForm({
-          islem_turu: 'Stok Tamamlama',
-          barkod: '',
-          malzeme_adi: '',
-          marka: '',
-          uyumlu_cihaz: '',
-          miktar: 1,
-          alis_fiyati: ''
-        });
-      }
     } catch (error: any) {
       alert("Hata: " + (error.response?.data?.error || error.message || "İşlem başarısız"));
       console.error(error);
@@ -71,12 +156,10 @@ export default function MalzemeGirisi() {
         </p>
       </div>
 
-      {/* SIKIŞTIRILMIŞ FORM ALANI */}
       <div className="bg-[#1A1A1E] border border-white/5 rounded-2xl p-5 shadow-2xl flex-1 overflow-y-auto scrollbar-hide">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 h-full justify-between">
           
           <div className="flex flex-col gap-4">
-            {/* 1. SATIR: İşlem Türü & Barkod Yan Yana */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
@@ -86,9 +169,10 @@ export default function MalzemeGirisi() {
                   className="bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-white outline-none focus:border-[#8E052C]/50 transition-all"
                   value={form.islem_turu} onChange={(e) => setForm({...form, islem_turu: e.target.value})}
                 >
-                  <option>Stok Tamamlama</option>
-                  <option>Usta Siparişi Geldi</option>
-                  <option>İade / Geri Alım</option>
+                  {/* 🚨 SADELEŞTİRİLMİŞ AÇILIR MENÜ */}
+                  <option value="Stok Tamamlama">Stok Tamamlama</option>
+                  <option value="Usta Siparişi Geldi">Usta Siparişi Geldi</option>
+                  <option value="İade (Stok Satışı)">İade (Stok Satışı)</option>
                 </select>
               </div>
 
@@ -100,8 +184,18 @@ export default function MalzemeGirisi() {
                   <input
                     type="text" placeholder="Okutun veya yazın..."
                     className="flex-1 bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-white outline-none focus:border-[#8E052C]/50 transition-all"
-                    value={form.barkod} onChange={(e) => setForm({...form, barkod: e.target.value})}
+                    value={form.barkod} 
+                    onChange={(e) => setForm({...form, barkod: e.target.value})}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleBarkodAra(); } }}
                   />
+                  <button 
+                    type="button" 
+                    onClick={handleBarkodAra}
+                    className="bg-[#8E052C] hover:bg-[#A00632] border border-[#8E052C]/50 text-white px-3.5 rounded-xl text-sm transition-colors shadow-md"
+                    title="Depoda Ara"
+                  >
+                    {isSearching ? '⌛' : '🔍'}
+                  </button>
                   <button 
                     type="button" 
                     onClick={handleBarkodUret} 
@@ -113,7 +207,6 @@ export default function MalzemeGirisi() {
               </div>
             </div>
 
-            {/* 2. SATIR: Malzeme Adı & Marka Yan Yana */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
@@ -136,7 +229,6 @@ export default function MalzemeGirisi() {
               </div>
             </div>
 
-            {/* 3. SATIR: Uyumlu Cihaz, Miktar ve Fiyat Yan Yana */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="col-span-1 md:col-span-6 flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Uyumlu Cihaz</label>
@@ -174,7 +266,6 @@ export default function MalzemeGirisi() {
             </div>
           </div>
 
-          {/* KAYDET BUTONU - En altta zımba gibi */}
           <button
             type="submit" disabled={loading}
             className="mt-4 w-full bg-[#8E052C] hover:bg-[#A00632] text-white font-black text-sm py-3.5 rounded-xl uppercase tracking-widest transition-all shadow-lg shadow-[#8E052C]/20 disabled:opacity-50 flex justify-center items-center gap-2"
