@@ -16,12 +16,14 @@ import StokDurumu from './pages/StokDurumu';
 import MalzemeGirisi from './pages/MalzemeGirisi';
 import YedekParcaTakibi from './pages/YedekParcaTakibi';
 import MaliDurum from './pages/MaliDurum';
-import TumMaliHareketler from './pages/TumMaliHareketler'; // 🚨 BUNU EKLE
+import TumMaliHareketler from './pages/TumMaliHareketler'; 
 import KasaGirisi from './pages/KasaGirisi';
 import KasaCikisi from './pages/KasaCikisi';
 import CiktiIslemleri from './pages/CiktiIslemleri';
-
-
+import ServisFisi from './pages/ServisFisi'; 
+import BarkodOlustur from './pages/BarkodOlustur';
+// 🚨 YENİ FİRMA AYARLARI SAYFASI İTHAL EDİLDİ 🚨
+import FirmaAyarlari from './pages/FirmaAyarlari';
 
 
 const getVal = (obj: any, keys: string[]) => {
@@ -52,22 +54,19 @@ export default function Dashboard({ onLogout }: any) {
   });
   
   const [loading, setLoading] = useState(true);
-  
-  // 🚨 MÜDÜRÜN GERÇEK RADARI: Sunucu durumunu tutar
   const [isOnline, setIsOnline] = useState(true);
 
-  // 15 Saniyede bir sunucunun nabzını ölçen motor
   useEffect(() => {
     const checkConnection = async () => {
       try {
         await api.get('/services/all'); 
         setIsOnline(true);
       } catch (error) {
-        setIsOnline(false); // Fiş çekilirse anında yakalar!
+        setIsOnline(false); 
       }
     };
     
-    checkConnection(); // İlk girişte bir kere yokla
+    checkConnection(); 
     const interval = setInterval(checkConnection, 15000); 
     return () => clearInterval(interval);
   }, []);
@@ -76,7 +75,6 @@ export default function Dashboard({ onLogout }: any) {
     if (aktifSayfa !== 'Dashboard') return;
     setLoading(true);
     try {
-      
       const resActive = await api.get('/services/all').catch(() => null);
       const resRandevu = await api.get('/api/appointments/liste/aktif').catch(() => null);
       const resArchive = await api.get('/services/tamamlanan').catch(() => null);
@@ -88,7 +86,6 @@ export default function Dashboard({ onLogout }: any) {
       
       if (resRandevu?.data) {
         const hamListe = Array.isArray(resRandevu.data.data) ? resRandevu.data.data : (Array.isArray(resRandevu.data) ? resRandevu.data : []);
-        
         randevuListesi = hamListe.filter((r: any) => {
            const durum = (getVal(r, ['durum', 'status']) || 'Beklemede').toLowerCase();
            return durum === 'beklemede' || durum === 'mali onay bekliyor';
@@ -134,7 +131,7 @@ export default function Dashboard({ onLogout }: any) {
 
     } catch (error) {
       console.error("Dashboard verileri çekilemedi:", error);
-      setIsOnline(false); // Hata verirse kırmızıya dön
+      setIsOnline(false); 
     } finally {
       setLoading(false);
     }
@@ -181,11 +178,9 @@ export default function Dashboard({ onLogout }: any) {
               { isim: 'Randevu İşlemleri', ikon: '📅', altMenuler: ['Yeni Randevu', 'Randevu Kayıtları', 'Tamamlanan Randevular'] }, 
               { isim: 'Envanter İşlemleri', ikon: '📦', altMenuler: ['Stok Durumu', 'Malzeme Girişi', 'Yedek Parça Takibi'] },
               { isim: 'Mali İşlemler', ikon: '💳', altMenuler: ['Mali Durum', 'Kasa Girişi', 'Kasa Çıkışı'] },
-              
-              
-              
-              //{ isim: 'Mali İşlemler', ikon: '💳', altMenuler: ['Mali Durum', 'Tahsilatlar', 'Cari Hesaplar'] },
-              { isim: 'Çıktı İşlemleri', ikon: '🖨️', altMenuler: ['Servis Fişi Yazdır', 'Barkod Oluştur'] },
+              { isim: 'Çıktı İşlemleri', ikon: '🖨️', altMenuler: ['Fatura Yazdır', 'Cihaz Teslim Fişi', 'Barkod Oluştur'] },
+              // 🚨 SİSTEM AYARLARI MENÜSÜ EKLENDİ 🚨
+              { isim: 'Sistem Ayarları', ikon: '⚙️', altMenuler: ['Firma Ayarları'] }, 
             ].map((menu) => (
               <div key={menu.isim} className="flex flex-col">
                 <button 
@@ -203,13 +198,10 @@ export default function Dashboard({ onLogout }: any) {
                   <span className={`text-xs text-gray-500 transition-transform duration-300 ${acikMenu === menu.isim ? 'rotate-180 text-[#8E052C]' : ''}`}>▼</span>
                 </button>
 
-
-
-                        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${acikMenu === menu.isim ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${acikMenu === menu.isim ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                   <div className="flex flex-col gap-1 pl-11 pr-2 border-l-2 border-[#8E052C]/20 ml-5">
                     {menu.altMenuler.map((altItem, i) => {
                       
-                      // 🚨 MÜDÜR: TÜRKÇE KARAKTER KRİZİNİ ÇÖZEN AKILLI MOTOR 🚨
                       let hedefSayfa = altItem.replace(/ /g, '');
                       if (altItem === 'Bireysel Müşteri Kaydı') hedefSayfa = 'BireyselMusteriKaydi';
                       if (altItem === 'Firma Kaydı') hedefSayfa = 'FirmaKaydi';
@@ -226,7 +218,11 @@ export default function Dashboard({ onLogout }: any) {
                       if (altItem === 'Mali Durum') hedefSayfa = 'MaliDurum';
                       if (altItem === 'Kasa Girişi') hedefSayfa = 'KasaGirisi';
                       if (altItem === 'Kasa Çıkışı') hedefSayfa = 'KasaCikisi';
-                      if (altItem === 'Servis Fişi Yazdır') hedefSayfa = 'CiktiIslemleri';
+                      if (altItem === 'Fatura Yazdır') hedefSayfa = 'CiktiIslemleri';
+                      if (altItem === 'Cihaz Teslim Fişi') hedefSayfa = 'ServisFisi';
+                      if (altItem === 'Barkod Oluştur') hedefSayfa = 'BarkodOlustur'; 
+                      // 🚨 AYARLAR ROTASI BAĞLANDI 🚨
+                      if (altItem === 'Firma Ayarları') hedefSayfa = 'FirmaAyarlari'; 
 
                       const isActive = aktifSayfa === hedefSayfa;
 
@@ -248,19 +244,8 @@ export default function Dashboard({ onLogout }: any) {
                     })}
                   </div>
                 </div>
-              
-
-
-
-
-
-
 
               </div>
-
-
-
-
             ))}
           </div>
 
@@ -278,7 +263,6 @@ export default function Dashboard({ onLogout }: any) {
           
           <div className="flex justify-between items-center z-10 border-b border-white/5 pb-4 mb-2">
             <div>
-              {/* 🚨 ZİNCİRLERİ DÜZELTİLMİŞ BAŞLIK (H1) 🚨 */}
               <h1 className="text-3xl font-black tracking-tighter text-white uppercase flex items-center gap-3">
                 {aktifSayfa === 'Dashboard' ? <><span className="text-[#8E052C]">🚀</span> Kontrol Merkezi</> : 
                     aktifSayfa === 'MusteriListesi' ? <><span className="text-sky-500">👥</span> Müşteri Rehberi</> : 
@@ -291,14 +275,16 @@ export default function Dashboard({ onLogout }: any) {
                     aktifSayfa === 'TumMaliHareketler' ? <><span className="text-yellow-500">📋</span> Kasa Dökümü</> : 
                     aktifSayfa === 'KasaGirisi' ? <><span className="text-green-500">↙</span> Kasa Girişi</> : 
                     aktifSayfa === 'KasaCikisi' ? <><span className="text-red-500">↗</span> Kasa Çıkışı</> : 
+                    aktifSayfa === 'CiktiIslemleri' ? <><span className="text-red-500">🖨️</span> Fatura Yazdır</> : 
+                    aktifSayfa === 'ServisFisi' ? <><span className="text-blue-500">📄</span> Cihaz Teslim Fişi</> : 
+                    aktifSayfa === 'BarkodOlustur' ? <><span className="text-purple-500">🏷️</span> Barkod Oluştur</> : 
+                    // 🚨 AYARLAR BAŞLIĞI EKLENDİ 🚨
+                    aktifSayfa === 'FirmaAyarlari' ? <><span className="text-gray-400">⚙️</span> Firma Ayarları</> : 
                     'Yedek Parça İşlemleri' }
 
               </h1>
               
-              {/* 🚨 ZİNCİRLERİ DÜZELTİLMİŞ AÇIKLAMA (P) 🚨 */}
-              <p className="text-gray-500 text-xs mt-1.5 font-black uppercase tracking-widest">
-                
-                 <p className="text-gray-500 text-xs mt-1.5 font-black uppercase tracking-widest">
+              <div className="text-gray-500 text-xs mt-1.5 font-black uppercase tracking-widest">
                 {aktifSayfa === 'Dashboard' ? 'Sistem Canlı ve Devrede' : 
                 aktifSayfa === 'MusteriListesi' ? 'Tüm cari kayıtlar burada listeleniyor.' : 
                 aktifSayfa === 'YeniServisKaydi' ? 'Yeni Atölye Form Alanı' :
@@ -310,10 +296,13 @@ export default function Dashboard({ onLogout }: any) {
                 aktifSayfa === 'TumMaliHareketler' ? 'Tüm gelir ve gider detayları.' : 
                 aktifSayfa === 'KasaGirisi' ? 'Kasaya manuel para giriş işlemleri.' : 
                 aktifSayfa === 'KasaCikisi' ? 'Kasadan manuel masraf ve gider çıkış işlemleri.' : 
+                aktifSayfa === 'CiktiIslemleri' ? 'Fatura ve matbu evrak yazdırma.' : 
+                aktifSayfa === 'ServisFisi' ? 'Müşteriye verilecek A5 cihaz teslim fişleri.' : 
+                aktifSayfa === 'BarkodOlustur' ? 'Sistemdeki ürünler için termal etiket ve barkod çıktısı.' : 
+                // 🚨 AYARLAR AÇIKLAMASI EKLENDİ 🚨
+                aktifSayfa === 'FirmaAyarlari' ? 'Fatura ve matbu evraklarda görünecek kurumsal bilgileriniz.' : 
                 'Kayıt Takip Listesi'}
-                </p>
-
-              </p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <button onClick={onLogout} className="bg-[#8E052C]/10 hover:bg-[#8E052C] text-[#8E052C] hover:text-white border border-[#8E052C]/50 px-5 py-2.5 rounded-xl text-xs uppercase font-black tracking-widest transition-all shadow-[0_0_15px_rgba(142,5,44,0.2)]">
@@ -365,7 +354,6 @@ export default function Dashboard({ onLogout }: any) {
                 {/* GRAFİKLER VE LİSTELER */}
                 <div className="grid grid-cols-5 gap-6 flex-1 min-h-[350px]">
                   
-                  {/* SİMİT GRAFİĞİ */}
                   <div className="col-span-2 bg-black/40 border border-white/5 p-8 rounded-[2.5rem] flex flex-col relative overflow-hidden shadow-2xl">
                      <div className="absolute top-0 left-0 w-40 h-40 bg-[#8E052C]/10 blur-3xl rounded-full pointer-events-none"></div>
                      <div className="flex justify-between items-center mb-6 shrink-0 z-10">
@@ -396,14 +384,12 @@ export default function Dashboard({ onLogout }: any) {
                      </div>
                   </div>
 
-                  {/* SON İŞLEMLER */}
                   <div className="col-span-3 bg-[#1A1A1E] border border-white/5 p-6 rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl">
                     <h3 className="font-black text-lg mb-6 text-white uppercase tracking-tighter flex items-center justify-center gap-2 border-b border-white/5 pb-4">
                       <span>⚡</span> Son Kayıtlar
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden">
-                      {/* SOL: SERVİS KAYITLARI */}
                       <div className="flex flex-col gap-3 overflow-y-auto pr-2 scrollbar-hide border-r border-white/5">
                         <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sticky top-0 bg-[#1A1A1E] z-10">Servis Kayıtları</h4>
                         {dashboardData.son_islemler.length > 0 ? (
@@ -423,7 +409,6 @@ export default function Dashboard({ onLogout }: any) {
                         )}
                       </div>
 
-                      {/* SAĞ: RANDEVU KAYITLARI */}
                       <div className="flex flex-col gap-3 overflow-y-auto pl-2 pr-2 scrollbar-hide">
                          <h4 className="text-[10px] font-black text-[#8E052C] uppercase tracking-widest mb-2 sticky top-0 bg-[#1A1A1E] z-10">Randevu Kayıtları</h4>
                          {dashboardData.son_randevular.length > 0 ? (
@@ -490,11 +475,14 @@ export default function Dashboard({ onLogout }: any) {
            <KasaCikisi onYönlendir={(sayfa: string) => setAktifSayfa(sayfa)} />
           ) : aktifSayfa === 'CiktiIslemleri' ? ( 
             <CiktiIslemleri />
-
+          ) : aktifSayfa === 'ServisFisi' ? ( 
+            <ServisFisi />
+          ) : aktifSayfa === 'BarkodOlustur' ? ( 
+            <BarkodOlustur />
+          // 🚨 AYARLAR BİLEŞENİ RENDER EDİLİYOR 🚨
+          ) : aktifSayfa === 'FirmaAyarlari' ? ( 
+            <FirmaAyarlari />
           ) : null}
-
-
-
 
         </div>
 

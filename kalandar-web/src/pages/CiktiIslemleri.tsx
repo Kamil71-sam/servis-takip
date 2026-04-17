@@ -45,10 +45,26 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 5;
 
+  // 🚨 DİNAMİK FİRMA AYARLARI HAFIZASI
+  const [firmaAyarlari, setFirmaAyarlari] = useState<any>({
+    firma_adi: 'KALANDAR YAZILIM',
+    firma_adres: 'Gölcük / Kocaeli',
+    firma_vergi: 'Kurtdereli VD / 1234567890',
+    firma_telefon: '0555 123 45 67',
+    fatura_alt_bilgi: 'Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.'
+  });
+
   useEffect(() => {
     const kayitlilar = JSON.parse(localStorage.getItem('kalandar_ciktilar') || '[]');
     setYazdirilanlar(kayitlilar);
     fetchData();
+
+    // 🚨 VERİTABANINDAN FİRMA BİLGİLERİNİ ÇEK (Önbellek Kırıcı ile)
+    api.get(`/api/settings?t=${new Date().getTime()}`).then(res => {
+      if(res.data?.success && res.data?.data) {
+        setFirmaAyarlari((prev: any) => ({...prev, ...res.data.data}));
+      }
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -224,7 +240,8 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
     return pages;
   };
 
-  // 🚨 MÜDÜRÜN KUSURSUZ PDF MOTORU (Sadece PDF Butonu İçin)
+
+// 🚨 MÜDÜRÜN KUSURSUZ PDF MOTORU (Hatasız ve Tek Sayfa Garantili)
   const handlePdfIndir = () => {
     if (!seciliKayit) return;
     const element = document.getElementById('ghost-print-area');
@@ -233,13 +250,13 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
       margin:       0, 
       filename:     `Fatura_${seciliKayit.servis_no}.pdf`,
       image:        { type: 'jpeg', quality: 1 }, 
-      html2canvas:  { scale: 3, useCORS: true, letterRendering: true }, 
-      jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' } 
+      html2canvas:  { scale: 2, useCORS: true }, // Scale 2 yaparak taşma riskini sıfırladık
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
         if (!yazdirilanlar.includes(seciliKayit.id) && activeTab !== 'tamamlanan') {
-            const onay = window.confirm("PDF başarıyla indirildi!\n\nBu evrak 'Geçmiş Çıktılar' arşivine taşınsın mı?");
+            const onay = window.confirm("PDF başarıyla indirildi!\n\nEvet derseniz bu evrak 'Geçmiş Çıktılar' arşivine taşınacaktır.");
             if (onay) {
               const yeniYazdirilanlar = [...yazdirilanlar, seciliKayit.id];
               setYazdirilanlar(yeniYazdirilanlar);
@@ -249,6 +266,7 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
           }
     });
   };
+
 
   // 🚨 İŞTE NÜKLEER SİLAH: SANAL ODADA (IFRAME) YAZDIRMA OPERASYONU 🚨
   const handlePrint = () => {
@@ -330,7 +348,18 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
     }, 500); // HTML'in render olması için bekle
   };
 
-  const genelToplam = seciliKayit ? parseFloat(seciliKayit.tutar || 0) : 0;
+  // 🚨 EKRAN BOŞKEN BİLE ÇÖKMEYİ ENGELLEYEN YEDEK VERİ
+  const aktifKayit = seciliKayit || {
+    servis_no: '------',
+    tarih: new Date().toISOString(),
+    musteri_adi: 'MÜŞTERİ BİLGİSİ YOK',
+    tip: 'HİZMET',
+    aciklama: 'Kayıt seçilmesi bekleniyor...',
+    tutar: '0',
+    raw: {}
+  };
+
+  const genelToplam = parseFloat(aktifKayit.tutar || 0);
   const araToplam = genelToplam / 1.20; 
   const kdvTutari = genelToplam - araToplam;
 
@@ -342,9 +371,11 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
       {/* Bu div sadece PDF motoru ve Iframe'e HTML kopyalamak için arka planda sessizce bekler */}
       <div className="absolute z-[-50] opacity-0 pointer-events-none left-0 top-0">
         {seciliKayit && (
+          
           <div id="ghost-print-area" style={{ 
             width: '794px', /* PDF Motoru için 794px piksel kilidi */
-            minHeight: '1123px', 
+            height: '1122px', /* 🚨 A4 BOYUTUNA TAM KİLİTLENDİ */
+            overflow: 'hidden', /* 🚨 2. SAYFAYA TAŞAN 1 PİKSEL BİLE OLSA KESİP ATAR! */
             padding: '4cm 40px 40px 40px', /* PDF Motoru için 4cm boşluk */
             backgroundColor: 'white', 
             color: 'black', 
@@ -357,8 +388,8 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
               <tbody>
                 <tr>
                   <td style={{ verticalAlign: 'top' }}>
-                    <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, letterSpacing: '-1px' }}>
-                      <span style={{ color: '#a61c24' }}>KALANDAR</span> <span style={{ color: '#666' }}>YAZILIM</span>
+                    <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, letterSpacing: '-1px', textTransform: 'uppercase' }}>
+                      <span style={{ color: '#a61c24' }}>{firmaAyarlari.firma_adi?.split(' ')[0] || 'FİRMA'}</span> <span style={{ color: '#666' }}>{firmaAyarlari.firma_adi?.split(' ').slice(1).join(' ') || 'ADI'}</span>
                     </h1>
                   </td>
                   <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
@@ -389,9 +420,9 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                   <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
                     <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>FİRMA BİLGİLERİ</p>
                     <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                      Adres: Gölcük / Kocaeli<br />
-                      Vergi: Kurtdereli VD / 1234567890<br />
-                      Tel: 0555 123 45 67
+                      Adres: {firmaAyarlari.firma_adres}<br />
+                      Vergi: {firmaAyarlari.firma_vergi}<br />
+                      Tel: {firmaAyarlari.firma_telefon}
                     </div>
                   </td>
                   <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
@@ -480,8 +511,8 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
             </table>
 
             {/* ALT BİLGİ */}
-            <div style={{ textAlign: 'center', fontSize: '12px', color: '#888', borderTop: '2px solid #eee', paddingTop: '20px', marginTop: '50px' }}>
-              Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.
+            <div style={{ textAlign: 'center', fontSize: '12px', color: '#888', borderTop: '2px solid #eee', paddingTop: '20px', marginTop: '50px', whiteSpace: 'pre-line' }}>
+              {firmaAyarlari.fatura_alt_bilgi}
             </div>
 
             {/* YAZDIRILDI DAMGASI */}
@@ -586,133 +617,161 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
               </div>
             </div>
 
-            {/* MİNİ VİTRİN (Sadece Görsel) */}
-            <div className="flex-1 bg-gray-300 rounded-2xl overflow-hidden relative shadow-inner flex justify-center p-4">
-              {seciliKayit ? (
-                <div className="w-full max-w-[480px] bg-white text-[#2a2a2a] font-sans nuke-scrollbar overflow-y-auto shadow-2xl flex flex-col p-5 relative box-border aspect-[1/1.414]">
+            {/* YENİ BLURLU VE ORANTILI VİTRİN EKRANI */}
+            <div className="flex-1 bg-gray-300 rounded-2xl overflow-y-auto nuke-scrollbar relative shadow-inner flex justify-center items-start p-4">
+              
+              <div style={{ width: '437px', height: '617px', position: 'relative' }} className="shrink-0 bg-white shadow-2xl rounded-sm overflow-hidden">
+                
+                <div style={{ width: '794px', height: '1122px', transform: 'scale(0.55)', transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, padding: '4cm 40px 40px 40px', backgroundColor: 'white', color: 'black', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box' }}>
                   
-                  {/* BAŞLIK */}
-                  <div className="flex justify-between items-start border-b-2 border-[#a61c24] pb-3 mb-4 shrink-0">
-                    <div>
-                      <h1 className="text-xl font-black tracking-tighter">
-                        <span className="text-[#a61c24]">KALANDAR</span> <span className="text-gray-600">YAZILIM</span>
-                      </h1>
-                    </div>
-                    <div className="text-right">
-                      <h2 className="text-xs font-black text-[#a61c24] uppercase tracking-widest mb-2">
-                        {activeTab === 'servis' ? 'SERVİS FİŞİ' : 'TEKNİK SERVİS VE SATIŞ BELGESİ'}
-                      </h2>
-                      <div className="flex flex-col items-end gap-1 text-[9px] font-bold">
-                         <div className="flex justify-between w-32"><span>BELGE NO:</span> <span className="font-mono text-black">{generateDateStamp(seciliKayit.tarih)}-{seciliKayit.servis_no}</span></div>
-                         <div className="flex justify-between w-32"><span>TARİH:</span> <span className="font-mono text-black">{seciliKayit.tarih ? new Date(seciliKayit.tarih).toLocaleDateString('tr-TR') : '-'}</span></div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* BAŞLIK TABLOSU */}
+                  <table style={{ width: '100%', borderBottom: '4px solid #a61c24', marginBottom: '25px', paddingBottom: '15px' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ verticalAlign: 'top' }}>
+                          <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, letterSpacing: '-1px', textTransform: 'uppercase' }}>
+                            <span style={{ color: '#a61c24' }}>{firmaAyarlari.firma_adi?.split(' ')[0] || 'FİRMA'}</span> <span style={{ color: '#666' }}>{firmaAyarlari.firma_adi?.split(' ').slice(1).join(' ') || 'ADI'}</span>
+                          </h1>
+                        </td>
+                        <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                          <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#a61c24', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                            {activeTab === 'servis' ? 'SERVİS FİŞİ' : 'TEKNİK SERVİS VE SATIŞ BELGESİ'}
+                          </h2>
+                          <table style={{ width: '240px', marginLeft: 'auto', fontSize: '14px', fontWeight: 'bold' }}>
+                            <tbody>
+                              <tr>
+                                <td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td>
+                                <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(aktifKayit.tarih)}-{aktifKayit.servis_no}</td>
+                              </tr>
+                              <tr>
+                                <td style={{ textAlign: 'left' }}>TARİH:</td>
+                                <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{aktifKayit.tarih ? new Date(aktifKayit.tarih).toLocaleDateString('tr-TR') : '-'}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-                  {/* 3'LÜ BİLGİ KOLONLARI */}
-                  <div className="flex justify-between gap-2 text-[9px] mb-4 shrink-0">
-                    <div className="flex-1">
-                      <p className="font-black text-gray-500 border-b border-gray-300 pb-1 mb-1.5">FİRMA BİLGİLERİ</p>
-                      <div className="font-bold leading-relaxed text-black">
-                        <p>Adres: Gölcük / Kocaeli</p>
-                        <p>Vergi: Kurtdereli VD / 1234567890</p>
-                        <p>Tel: 0555 123 45 67</p>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-black text-gray-500 border-b border-gray-300 pb-1 mb-1.5">MÜŞTERİ BİLGİLERİ</p>
-                      <div className="font-bold leading-relaxed text-black">
-                        <p>SAYIN: <span className="uppercase">{seciliKayit.musteri_adi}</span></p>
-                        <p>Adres: {seciliKayit.raw?.adres || '-'}</p>
-                        <p>GSM: {seciliKayit.raw?.telefon || '-'}</p>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-black text-gray-500 border-b border-gray-300 pb-1 mb-1.5">CİHAZ BİLGİSİ</p>
-                      <div className="font-bold leading-relaxed text-black">
-                        <p>Ürün: {seciliKayit.tip === 'Servis' ? (seciliKayit.cihaz_bilgisi || `${seciliKayit.raw?.brand || ''} ${seciliKayit.raw?.model || ''}`) : seciliKayit.tip}</p>
-                        <p>Seri / Barkod: {getVal(seciliKayit.raw, ['serial_number', 'serial']) || seciliKayit.raw?.barkod || '-'}</p>
-                      </div>
-                    </div>
-                  </div>
+                  {/* 3'LÜ BİLGİ KOLONLARI (TABLE) */}
+                  <table style={{ width: '100%', marginBottom: '40px', fontSize: '14px' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
+                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>FİRMA BİLGİLERİ</p>
+                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                            Adres: {firmaAyarlari.firma_adres}<br />
+                            Vergi: {firmaAyarlari.firma_vergi}<br />
+                            Tel: {firmaAyarlari.firma_telefon}
+                          </div>
+                        </td>
+                        <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
+                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
+                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                            SAYIN: <span style={{ textTransform: 'uppercase' }}>{aktifKayit.musteri_adi}</span><br />
+                            Adres: {aktifKayit.raw?.adres || '-'}<br />
+                            GSM: {aktifKayit.raw?.telefon || '-'}
+                          </div>
+                        </td>
+                        <td style={{ width: '33.33%', verticalAlign: 'top' }}>
+                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
+                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                            Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : aktifKayit.tip}<br />
+                            Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial']) || aktifKayit.raw?.barkod || '-'}
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-                  {/* TABLO */}
-                  <div className="flex-1 mb-4 border-b-2 border-gray-300 min-h-[100px]">
-                    <table className="w-full text-[9px] border-collapse">
-                      <thead>
-                        <tr className="bg-[#444] text-white">
-                          <th className="p-1.5 text-center w-8 font-bold">NO</th>
-                          <th className="p-1.5 text-left font-bold">HİZMET / ÜRÜN ADI</th>
-                          <th className="p-1.5 text-center w-12 font-bold">MİKTAR</th>
-                          <th className="p-1.5 text-right w-24 font-bold">BİRİM FİYAT</th>
-                          <th className="p-1.5 text-center w-10 font-bold">KDV</th>
-                          <th className="p-1.5 text-right w-24 font-bold">TOPLAM</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="p-2 text-center align-top font-bold text-gray-500">1</td>
-                          <td className="p-2 align-top font-semibold whitespace-pre-line text-black">
-                            {seciliKayit.aciklama}
-                            <span className="text-[8px] text-gray-500 font-bold block mt-1">
-                              (Kayıt No: {seciliKayit.servis_no}{seciliKayit.raw?.barkod ? `, Barkod: ${seciliKayit.raw.barkod}` : ''})
-                            </span>
-                          </td>
-                          <td className="p-2 text-center align-top font-bold text-black">1</td>
-                          <td className="p-2 text-right align-top font-mono font-bold text-black whitespace-nowrap">{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                          <td className="p-2 text-center align-top font-bold text-gray-600">%20</td>
-                          <td className="p-2 text-right align-top font-mono font-bold text-black whitespace-nowrap">{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  {/* ANA ÜRÜN TABLOSU (TABLE) */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px', minHeight: '220px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#444', color: 'white', textAlign: 'left', fontSize: '14px' }}>
+                        <th style={{ padding: '12px', border: '1px solid #444', width: '50px', textAlign: 'center' }}>NO</th>
+                        <th style={{ padding: '12px', border: '1px solid #444' }}>HİZMET / ÜRÜN ADI</th>
+                        <th style={{ padding: '12px', border: '1px solid #444', width: '90px', textAlign: 'center' }}>MİKTAR</th>
+                        <th style={{ padding: '12px', border: '1px solid #444', width: '130px', textAlign: 'right' }}>BİRİM FİYAT</th>
+                        <th style={{ padding: '12px', border: '1px solid #444', width: '70px', textAlign: 'center' }}>KDV</th>
+                        <th style={{ padding: '12px', border: '1px solid #444', width: '140px', textAlign: 'right' }}>TOPLAM</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#888', fontSize: '14px' }}>1</td>
+                        <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
+                          <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
+                          <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+                            (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
+                          </div>
+                        </td>
+                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
+                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
+                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-                  {/* MATEMATİK VE BANKA BİLGİLERİ */}
-                  <div className="flex justify-between items-end mb-6 shrink-0 text-black">
-                    <div className="text-[8px] border-l-2 border-gray-800 pl-2 leading-relaxed">
-                      <p className="font-black text-gray-500 mb-1">BANKA HESAP BİLGİLERİMİZ</p>
-                      <div className="flex gap-2 font-bold">
-                        <span className="w-16">Ziraat Bankası:</span>
-                        <span className="font-mono">TR00 0000 0000 0000 0000 00</span>
-                      </div>
-                      <div className="flex gap-2 font-bold">
-                        <span className="w-16">Garanti BBVA:</span>
-                        <span className="font-mono">TR99 9999 9999 9999 9999 99</span>
-                      </div>
-                    </div>
-
-                    <div className="w-48 text-[9px] leading-relaxed">
-                      <div className="flex justify-between py-1">
-                        <span className="font-bold text-gray-600 uppercase">ARA TOPLAM:</span>
-                        <span className="font-mono font-bold whitespace-nowrap">{araToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
-                      </div>
-                      <div className="flex justify-between py-1 border-b-2 border-gray-300">
-                        <span className="font-bold text-gray-600 uppercase">İSKONTO / KDV:</span>
-                        <span className="font-mono font-bold whitespace-nowrap">{kdvTutari.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 text-[#a61c24] border-b-2 border-[#a61c24] mt-1">
-                        <span className="font-black text-xs uppercase">ÖDENECEK TUTAR:</span>
-                        <span className="font-mono font-black text-sm whitespace-nowrap">{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* MATEMATİK VE BANKA BİLGİLERİ (TABLE) */}
+                  <table style={{ width: '100%', marginTop: 'auto' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ verticalAlign: 'bottom', paddingRight: '20px' }}>
+                          <div style={{ fontSize: '13px', borderLeft: '4px solid #888', paddingLeft: '12px', lineHeight: '1.8' }}>
+                            <p style={{ fontWeight: '900', color: '#888', margin: '0 0 6px 0' }}>BANKA HESAP BİLGİLERİMİZ</p>
+                            <table style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                              <tbody>
+                                <tr><td style={{ width: '100px', paddingBottom: '4px' }}>Ziraat Bankası:</td><td style={{ fontFamily: 'monospace', paddingBottom: '4px' }}>TR00 0000 0000 0000 0000 00</td></tr>
+                                <tr><td>Garanti BBVA:</td><td style={{ fontFamily: 'monospace' }}>TR99 9999 9999 9999 9999 99</td></tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                        <td style={{ width: '360px', verticalAlign: 'bottom' }}>
+                          <table style={{ width: '100%', fontSize: '16px', borderCollapse: 'collapse' }}>
+                            <tbody>
+                              <tr>
+                                <td style={{ padding: '8px 0', color: '#666', fontWeight: 'bold' }}>ARA TOPLAM:</td>
+                                <td style={{ textAlign: 'right', fontWeight: 'bold', fontFamily: 'monospace' }}>{araToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                              </tr>
+                              <tr>
+                                <td style={{ padding: '8px 0', color: '#666', fontWeight: 'bold', borderBottom: '2px solid #eee' }}>İSKONTO / KDV:</td>
+                                <td style={{ textAlign: 'right', fontWeight: 'bold', borderBottom: '2px solid #eee', fontFamily: 'monospace' }}>{kdvTutari.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                              </tr>
+                              <tr>
+                                <td style={{ padding: '16px 0', fontWeight: '900', color: '#a61c24', fontSize: '18px' }}>ÖDENECEK TUTAR:</td>
+                                <td style={{ textAlign: 'right', fontWeight: '900', color: '#a61c24', fontSize: '26px', fontFamily: 'monospace', letterSpacing: '-1px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
 
                   {/* ALT BİLGİ */}
-                  <div className="mt-auto text-[7px] text-gray-500 text-center pt-2 pb-1 border-t border-gray-200 shrink-0">
-                    Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#888', borderTop: '2px solid #eee', paddingTop: '20px', marginTop: '50px', whiteSpace: 'pre-line' }}>
+                    {firmaAyarlari.fatura_alt_bilgi}
                   </div>
 
                   {/* YAZDIRILDI DAMGASI */}
-                  {activeTab === 'tamamlanan' && (
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500/10 text-6xl font-black -rotate-45 pointer-events-none border-[8px] border-red-500/10 p-4 uppercase">YAZDIRILDI</div>
+                  {activeTab === 'tamamlanan' && seciliKayit && (
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-45deg)', fontSize: '130px', fontWeight: '900', color: 'rgba(255,0,0,0.05)', border: '20px solid rgba(255,0,0,0.05)', padding: '30px', pointerEvents: 'none', textTransform: 'uppercase' }}>
+                      YAZDIRILDI
+                    </div>
                   )}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-gray-500 relative z-10">
-                   <span className="text-5xl mb-3 opacity-30">🖨️</span>
-                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Önizleme İçin Kayıt Seçin</p>
-                </div>
-              )}
+
+                {!seciliKayit && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white z-20">
+                     <span className="text-5xl mb-3">📄</span>
+                     <p className="text-[12px] font-black uppercase tracking-[0.2em]">BİLGİLERİ DOLDURMAK İÇİN KAYIT SEÇİN</p>
+                  </div>
+                )}
+                
+              </div>
             </div>
 
           </div>
