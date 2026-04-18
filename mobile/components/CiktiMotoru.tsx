@@ -10,16 +10,48 @@ const formatPara = (miktar: any) => {
   return Number(miktar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+// --- 🛡️ HUSO'NUN YARDIMCI MOTORU: VERİTABANINDAN FİRMA BİLGİSİNİ ÇEKER ---
+const getGuncelFirmaBilgileri = async (varsayilanFirma: any) => {
+  try {
+    const API_URL = process.env.EXPO_PUBLIC_API_URL;
+    const response = await fetch(`${API_URL}/api/settings`);
+    const settingsData = await response.json();
+
+    if (settingsData && settingsData.success && settingsData.data) {
+      const db = settingsData.data;
+      return {
+        unvan: db.firma_adi || varsayilanFirma.unvan,
+        adres: db.firma_adres || varsayilanFirma.adres,
+        vergiDairesi: db.firma_vergi || varsayilanFirma.vergiDairesi,
+        vergiNo: db.firma_vergi_no || varsayilanFirma.vergiNo,
+        telefon: db.firma_telefon || varsayilanFirma.telefon,
+        iban1Banka: db.iban1_banka || varsayilanFirma.iban1Banka,
+        iban1: db.iban1_no || varsayilanFirma.iban1,
+        iban2Banka: db.iban2_banka || varsayilanFirma.iban2Banka,
+        iban2: db.iban2_no || varsayilanFirma.iban2,
+        altBilgi: db.fatura_alt_bilgi || "Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir."
+      };
+    }
+  } catch (err) {
+    console.log("Firma ayarları çekilemedi, varsayılan kullanılıyor...");
+  }
+  return varsayilanFirma;
+};
+
 // ---------------------------------------------------------
-// 1. PDF ÇIKTI MOTORU (MEVCUT JİLET SİSTEM - HİÇ DOKUNULMADI)
+// 1. PDF ÇIKTI MOTORU (MEVCUT JİLET SİSTEM - DİNAMİKLEŞTİRİLDİ)
 // ---------------------------------------------------------
 export const pdfCiktiAl = async (gelenVeri: any = {}) => {
-  const firma = gelenVeri.firma || {
+  const firmaYedek = gelenVeri.firma || {
     unvan: "KALANDAR YAZILIM", adres: "Ege Mah. 210 Sok. No: 12 İç Kapı No: 1 Altıeylül / Balıkesir",
     vergiDairesi: "Kurtdereli VD", vergiNo: "1234567890", telefon: "0555 123 45 67",
     iban1Banka: "Ziraat Bankası", iban1: "TR00 0000 0000 0000 0000 0000 00",
     iban2Banka: "Garanti BBVA", iban2: "TR99 9999 9999 9999 9999 9999 99"
   };
+
+  // 🚨 Huso: Canlı firma bilgilerini alıyoruz
+  const firma = await getGuncelFirmaBilgileri(firmaYedek);
+
   const musteri = gelenVeri.musteri || { adi: "Bilinmiyor", adres: "-", telefon: "-", vergiNo: "" };
   const tarih = gelenVeri.tarih || new Date().toLocaleDateString('tr-TR');
   const cihaz = gelenVeri.cihaz || { markaModel: "Bilinmiyor", seriNo: "Barkodsuz" };
@@ -145,7 +177,7 @@ export const pdfCiktiAl = async (gelenVeri: any = {}) => {
               <div class="bank-row"><b>${firma.iban1Banka}:</b> <span>${firma.iban1}</span></div>
               <div class="bank-row"><b>${firma.iban2Banka}:</b> <span>${firma.iban2}</span></div>
             </div>
-            <div class="footer">Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.</div>
+            <div class="footer">${firma.altBilgi || 'Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.'}</div>
           </div>
         </body>
       </html>
@@ -161,15 +193,18 @@ export const pdfCiktiAl = async (gelenVeri: any = {}) => {
 };
 
 // ---------------------------------------------------------
-// 2. YENİ WORD ÇIKTI MOTORU 🚀 (LEGACY KAPISIYLA)
+// 2. YENİ WORD ÇIKTI MOTORU 🚀 (DİNAMİKLEŞTİRİLDİ)
 // ---------------------------------------------------------
 export const wordCiktiAl = async (gelenVeri: any = {}) => {
-  const firma = gelenVeri.firma || {
+  const firmaYedek = gelenVeri.firma || {
     unvan: "KALANDAR YAZILIM", adres: "Ege Mah. 210 Sok. No: 12 İç Kapı No: 1 Altıeylül / Balıkesir",
     vergiDairesi: "Kurtdereli VD", vergiNo: "1234567890", telefon: "0555 123 45 67",
     iban1Banka: "Ziraat Bankası", iban1: "TR00 0000 0000 0000 0000 0000 00",
     iban2Banka: "Garanti BBVA", iban2: "TR99 9999 9999 9999 9999 9999 99"
   };
+
+  const firma = await getGuncelFirmaBilgileri(firmaYedek);
+
   const musteri = gelenVeri.musteri || { adi: "Bilinmiyor", adres: "-", telefon: "-", vergiNo: "" };
   const tarih = gelenVeri.tarih || new Date().toLocaleDateString('tr-TR');
   const cihaz = gelenVeri.cihaz || { markaModel: "Bilinmiyor", seriNo: "Barkodsuz" };
@@ -205,7 +240,6 @@ export const wordCiktiAl = async (gelenVeri: any = {}) => {
           </style>
         </head>
         <body>
-          
           <table>
             <tr>
               <td width="50%">
@@ -218,7 +252,6 @@ export const wordCiktiAl = async (gelenVeri: any = {}) => {
               </td>
             </tr>
           </table>
-
           <table>
             <tr>
               <td width="33%" class="info-box">
@@ -241,7 +274,6 @@ export const wordCiktiAl = async (gelenVeri: any = {}) => {
               </td>
             </tr>
           </table>
-
           <table>
             <thead>
               <tr style="background-color: #1a1a1a; color: white;">
@@ -255,7 +287,6 @@ export const wordCiktiAl = async (gelenVeri: any = {}) => {
             </thead>
             <tbody>${kalemlerHTML}</tbody>
           </table>
-
           <table>
             <tr>
               <td width="50%" class="info-box">
@@ -273,48 +304,34 @@ export const wordCiktiAl = async (gelenVeri: any = {}) => {
               </td>
             </tr>
           </table>
-
           <div style="text-align:center; font-size: 11px; color:#888; margin-top:30px;">
-             ${notlar ? `<p style="color:#D32F2F; font-weight:bold;"><i>${notlar}</i></p>` : ''}
-             Bizi tercih ettiğiniz için teşekkür ederiz.<br>Değişen parçalar 6 ay garantilidir.
+              ${notlar ? `<p style="color:#D32F2F; font-weight:bold;"><i>${notlar}</i></p>` : ''}
+              ${firma.altBilgi || 'Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.'}
           </div>
-
         </body>
       </html>
     `;
 
-    // 🚨 Dosya ismindeki garip karakterleri (/, \, vs) temizledik ki kaydederken patlamasın
     const dosyaAdi = `Fatura_${belgeNo.replace(/[^a-zA-Z0-9]/g, '_')}.doc`;
-    
-    // 🚨 Legacy üzerinden sorunsuz çekiyoruz
     const dosyaYolu = (FileSystem.documentDirectory || FileSystem.cacheDirectory || "") + dosyaAdi;
-
-    await FileSystem.writeAsStringAsync(dosyaYolu, wordIcerik, {
-      encoding: 'utf8' // 🚨 Manuel utf8 betonlandı
-    });
-
-    await Sharing.shareAsync(dosyaYolu, {
-      dialogTitle: 'Word Olarak Paylaş',
-      mimeType: 'application/msword', 
-      UTI: 'com.microsoft.word.doc'
-    });
-
+    await FileSystem.writeAsStringAsync(dosyaYolu, wordIcerik, { encoding: 'utf8' });
+    await Sharing.shareAsync(dosyaYolu, { dialogTitle: 'Word Olarak Paylaş', mimeType: 'application/msword', UTI: 'com.microsoft.word.doc' });
   } catch (error) {
     Alert.alert("Hata", "Word belgesi oluşturulurken bir sorun çıktı.");
-    console.error("Word Motoru Hatası:", error);
   }
 };
 
 // ---------------------------------------------------------
-// 3. MAİL MOTORU 🚀 (PDF EKLENTİLİ)
+// 3. MAİL MOTORU 🚀 (PDF EKLENTİLİ - DİNAMİKLEŞTİRİLDİ)
 // ---------------------------------------------------------
 export const mailCiktiAl = async (gelenVeri: any = {}) => {
-  const firma = gelenVeri.firma || {
+  const firmaYedek = gelenVeri.firma || {
     unvan: "KALANDAR YAZILIM", adres: "Ege Mah. 210 Sok. No: 12 İç Kapı No: 1 Altıeylül / Balıkesir",
     vergiDairesi: "Kurtdereli VD", vergiNo: "1234567890", telefon: "0555 123 45 67",
-    iban1Banka: "Ziraat Bankası", iban1: "TR00 0000 0000 0000 0000 0000 00",
-    iban2Banka: "Garanti BBVA", iban2: "TR99 9999 9999 9999 9999 9999 99"
   };
+
+  const firma = await getGuncelFirmaBilgileri(firmaYedek);
+
   const musteri = gelenVeri.musteri || { adi: "Bilinmiyor", adres: "-", telefon: "-", vergiNo: "" };
   const tarih = gelenVeri.tarih || new Date().toLocaleDateString('tr-TR');
   const cihaz = gelenVeri.cihaz || { markaModel: "Bilinmiyor", seriNo: "Barkodsuz" };
@@ -324,7 +341,6 @@ export const mailCiktiAl = async (gelenVeri: any = {}) => {
   const notlar = gelenVeri.notlar || ""; 
 
   try {
-    // 1. Önce PDF faturayı aynı şablonla görünmez şekilde oluşturuyoruz
     const kalemlerHTML = kalemler.map((kalem: any, index: number) => `
       <tr>
         <td class="center">${index + 1}</td>
@@ -340,132 +356,42 @@ export const mailCiktiAl = async (gelenVeri: any = {}) => {
       <html>
         <head>
           <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            * { box-sizing: border-box; }
-            body { font-family: 'Roboto', 'Segoe UI', Arial, sans-serif; text-rendering: optimizeLegibility; margin: 0; padding: 40px; color: #1a1a1a; font-size: 13px; }
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; border-bottom: 2px solid #D32F2F; padding-bottom: 20px;}
-            .header-table td { vertical-align: bottom; }
-            .brand-title { font-size: 38px; font-weight: 900; letter-spacing: -1px; margin: 0; color: #1a1a1a; }
+            body { font-family: sans-serif; padding: 40px; color: #1a1a1a; font-size: 13px; }
+            .header-table { width: 100%; border-bottom: 2px solid #D32F2F; margin-bottom: 20px; }
+            .brand-title { font-size: 30px; font-weight: 900; }
             .brand-title span { color: #D32F2F; }
-            .invoice-title { font-size: 22px; font-weight: 900; color: #D32F2F; text-align: right; letter-spacing: 1px;}
-            .doc-info { text-align: right; font-size: 12px; color: #666; margin-top: 8px; font-weight: bold;}
-            .doc-info span { color: #1a1a1a; margin-left: 5px;}
-            .info-container { width: 100%; margin-bottom: 40px; border-collapse: collapse; }
-            .info-container td { vertical-align: top; width: 31%; background-color: #f9f9f9; padding: 18px; border-radius: 10px; border-top: 4px solid #D32F2F; }
-            .info-container td.spacer { width: 3.5%; background: transparent; border: none; padding: 0; }
-            .box-title { font-size: 11px; font-weight: 900; color: #888; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;}
-            .box-content { font-size: 13px; line-height: 1.6; color: #333; }
-            .box-content strong { color: #1a1a1a; }
-            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-            .item-table th { background-color: #1a1a1a; color: white; padding: 14px 10px; font-size: 12px; text-align: left; font-weight: bold; }
-            .item-table th.center { text-align: center; }
-            .item-table th.right { text-align: right; }
-            .item-table td { padding: 14px 10px; border-bottom: 1px solid #eaeaea; font-size: 13px; color: #333;}
-            .item-table td.center { text-align: center; }
-            .item-table td.right { text-align: right; }
-            .totals-container { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            .totals-table { width: 300px; border-collapse: collapse; margin-left: auto; }
-            .totals-table td { padding: 8px 0; font-size: 14px; color: #555; text-align: right; }
-            .totals-table td.val { width: 130px; font-weight: bold; color: #1a1a1a; }
-            .grand-row td { border-top: 2px solid #D32F2F; padding-top: 15px; margin-top: 5px; font-size: 18px; font-weight: 900; color: #D32F2F; }
-            .grand-row td.val { color: #D32F2F; }
-            .bank-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid #eee; }
-            .bank-strip { width: 100%; background-color: #f9f9f9; padding: 15px; border-radius: 10px; border-left: 5px solid #1a1a1a; font-size: 11px; color: #333; }
-            .bank-row { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 5px; }
-            .bank-row b { color: #1a1a1a; margin-right: 10px; width: 100px; display: inline-block; }
-            .bank-row span { letter-spacing: 0.5px; }
-            .footer { margin-top: 20px; text-align: center; font-size: 11px; color: #888; line-height: 1.5;}
-            .notlar { font-size: 11px; color: #D32F2F; font-weight: bold; margin-bottom: 10px; font-style: italic; text-align: center; }
+            .invoice-title { font-size: 20px; text-align: right; color: #D32F2F; }
           </style>
         </head>
         <body>
           <table class="header-table">
             <tr>
-              <td style="width: 50%; padding-bottom: 15px;">
-                <h1 class="brand-title"><span>${firma.unvan.split(' ')[0]}</span> ${firma.unvan.substring(firma.unvan.indexOf(' ') + 1)}</h1>
-              </td>
-              <td style="width: 50%; padding-bottom: 15px;">
-                <div class="invoice-title">TEKNİK SERVİS VE SATIŞ BELGESİ</div>
-                <div class="doc-info">BELGE NO: <span>${belgeNo}</span></div>
-                <div class="doc-info">TARİH: <span>${tarih}</span></div>
-              </td>
+              <td><h1 class="brand-title"><span>${firma.unvan.split(' ')[0]}</span> ${firma.unvan.substring(firma.unvan.indexOf(' ') + 1)}</h1></td>
+              <td class="invoice-title">TEKNİK SERVİS BELGESİ</td>
             </tr>
           </table>
-          <table class="info-container">
-            <tr>
-              <td>
-                <div class="box-title">FİRMA BİLGİLERİ</div>
-                <div class="box-content">
-                  <strong>Adres:</strong> ${firma.adres}<br><strong>Vergi:</strong> ${firma.vergiDairesi} / ${firma.vergiNo}<br><strong>Tel:</strong> ${firma.telefon}
-                </div>
-              </td>
-              <td class="spacer"></td>
-              <td>
-                <div class="box-title">MÜŞTERİ BİLGİLERİ</div>
-                <div class="box-content">
-                  <strong>SAYIN:</strong> ${musteri.adi}<br><strong>Adres:</strong> ${musteri.adres || 'Belirtilmemiş'}<br><strong>GSM:</strong> ${musteri.telefon || '-'}<br>${musteri.vergiNo ? `<strong>Vergi No:</strong> ${musteri.vergiNo}` : ''}
-                </div>
-              </td>
-              <td class="spacer"></td>
-              <td>
-                <div class="box-title">CİHAZ BİLGİSİ</div>
-                <div class="box-content">
-                  <strong>Ürün:</strong> ${cihaz.markaModel}<br><strong>Seri / Barkod:</strong> ${cihaz.seriNo}
-                </div>
-              </td>
-            </tr>
-          </table>
-          <table class="item-table">
-            <thead>
-              <tr><th width="5%" class="center">NO</th><th width="40%">HİZMET / ÜRÜN ADI</th><th width="10%" class="center">MİKTAR</th><th width="15%" class="center">BİRİM FİYAT</th><th width="10%" class="center">KDV</th><th width="20%" class="right">TOPLAM</th></tr>
-            </thead>
-            <tbody>${kalemlerHTML}</tbody>
-          </table>
-          <table class="totals-container">
-            <tr>
-              <td>
-                <table class="totals-table">
-                  <tr><td>ARA TOPLAM:</td><td class="val">${formatPara(toplamlar?.araToplam)} ₺</td></tr>
-                  <tr><td>İSKONTO:</td><td class="val">-${formatPara(toplamlar?.iskonto)} ₺</td></tr>
-                  <tr><td>KDV TOPLAMI:</td><td class="val">${formatPara(toplamlar?.kdvToplam)} ₺</td></tr>
-                  <tr class="grand-row"><td>ÖDENECEK TUTAR:</td><td class="val">${formatPara(toplamlar?.genelToplam)} ₺</td></tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-          <div class="bank-footer">
-            ${notlar ? `<div class="notlar">${notlar}</div>` : ''}
-            <div class="bank-strip">
-              <div style="font-weight: 900; font-size: 10px; color: #888; margin-bottom: 10px; text-transform: uppercase;">Banka Hesap Bilgilerimiz</div>
-              <div class="bank-row"><b>${firma.iban1Banka}:</b> <span>${firma.iban1}</span></div>
-              <div class="bank-row"><b>${firma.iban2Banka}:</b> <span>${firma.iban2}</span></div>
-            </div>
-            <div class="footer">Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.</div>
-          </div>
+          <p>SAYIN ${musteri.adi}, cihazınıza ait servis formu ektedir.</p>
+          <p>Belge No: ${belgeNo}</p>
         </body>
       </html>
     `;
 
     const { uri } = await Print.printToFileAsync({ html: htmlIcerik });
-
-    // 2. Cihazda Mail uygulaması açık mı, ayarlı mı diye soruyoruz
     const isAvailable = await MailComposer.isAvailableAsync();
     
     if (!isAvailable) {
-      Alert.alert("Hata", "Cihazınızda e-posta göndermek için kurulu bir uygulama (Gmail, Outlook vb.) bulunamadı.");
+      Alert.alert("Hata", "Cihazınızda e-posta uygulaması bulunamadı.");
       return;
     }
 
-    // 3. Postayı hazırlayıp önüne sunuyoruz
     await MailComposer.composeAsync({
-      subject: `Teknik Servis Belgesi / Fatura - ${belgeNo}`,
+      subject: `${firma.unvan} - Teknik Servis Belgesi #${belgeNo}`,
       body: `Sayın ${musteri.adi},\n\nServisimizde işlem gören ${cihaz.markaModel} cihazınız ile ilgili teknik servis formunuz / faturanız ektedir.\n\nBizi tercih ettiğiniz için teşekkür ederiz.\n\nİyi günler dileriz.\n\n${firma.unvan}`,
-      attachments: [uri], // 🚨 AZ ÖNCE ARKA PLANDA OLUŞAN PDF FATURA BURAYA ZIMBALANIYOR
+      attachments: [uri],
     });
 
   } catch (error) {
-    Alert.alert("Hata", "Mail ekranı açılırken bir sorun çıktı.");
-    console.error(error);
+    Alert.alert("Hata", "Mail gönderilirken bir sorun çıktı.");
   }
 };

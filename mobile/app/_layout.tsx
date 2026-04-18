@@ -41,13 +41,3 @@ export default function RootLayout() {
   // Senin orijinal kodun, dükkanın iskeleti. Hiç dokunmadık.
   return <Stack screenOptions={{ headerShown: false }} />;
 }
-
-
-/*
-import { Stack } from "expo-router";
-
-export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
-}
-
-*/

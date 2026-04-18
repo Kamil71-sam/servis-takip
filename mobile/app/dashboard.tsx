@@ -32,6 +32,21 @@ export default function DashboardScreen() {
   const [parcaBekleyenSayisi, setParcaBekleyenSayisi] = useState(0); 
   const [teyitBekleyenSayisi, setTeyitBekleyenSayisi] = useState(0); 
 
+  // 🚨 HUSO EKLENTİSİ: YETKİ KONTROL STATE'İ 🚨
+  const [yetkiler, setYetkiler] = useState({
+    banko_mali_islem: true, 
+    banko_envanter_islem: true,
+    banko_cikti_islem: true
+  });
+
+  const kilitUyarisiVer = () => {
+    Alert.alert(
+      "Kilitli Alan 🔒",
+      "Bu menüye erişim yetkiniz bulunmamaktadır. Lütfen sistem yöneticinizle görüşün.",
+      [{ text: "Anladım", style: "cancel" }]
+    );
+  };
+
   // --- ASANSÖR KİLİTLERİ (MODALLAR) ---
   const [musteriVisible, setMusteriVisible] = useState(false);
   const [firmaVisible, setFirmaVisible] = useState(false);
@@ -76,33 +91,33 @@ export default function DashboardScreen() {
         setParcaBekleyenSayisi(talepler.length);
       }
 
+      const API_URL = process.env.EXPO_PUBLIC_API_URL;
+      const response = await fetch(`${API_URL}/api/appointments/pending-confirmations`);
+      
+      const teyitData = await response.json();
+      if (teyitData.success) {
+        setTeyitBekleyenSayisi(teyitData.data.length); 
+        setRandevuToplam(teyitData.toplam_aktif);      
+      }
 
-      // operation.js yerine appointments'a bağlıyoruz
-
-
-
-
-          // Artık IP adresi değişse bile kod patlamaz, .env dosyasından otomatik alır!
-          const API_URL = process.env.EXPO_PUBLIC_API_URL;
-          const response = await fetch(`${API_URL}/api/appointments/pending-confirmations`);
-
-
-          //const response = await fetch('http://192.168.1.41:3000/api/appointments/pending-confirmations');
+      // 🚨 HUSO DÜZELTMESİ: BACKEND'İN YENİ YAPISINA GÖRE OBJEYİ DİREKT OKUMA 🚨
+      try {
+        const settingsRes = await fetch(`${API_URL}/api/settings`);
+        const settingsData = await settingsRes.json();
+        
+        if (settingsData && settingsData.success && settingsData.data) {
+          // Backend list (array) değil, direkt kutu (obje) yolluyormuş. O yüzden forEach sildik!
+          const dbData = settingsData.data; 
           
-          
-          
-          
-          const teyitData = await response.json();
-          if (teyitData.success) {
-            setTeyitBekleyenSayisi(teyitData.data.length); // Sadece Yarınkiler (Mor Buton İçin)
-            setRandevuToplam(teyitData.toplam_aktif);      // Bütün Aktifler (Kalın Simit İçin)
-          }
-
-
-     
-
-
-
+          setYetkiler({
+            banko_mali_islem: dbData.banko_mali_islem !== 'false', 
+            banko_envanter_islem: dbData.banko_envanter_islem !== 'false',
+            banko_cikti_islem: dbData.banko_cikti_islem !== 'false'
+          });
+        }
+      } catch(err: any) {
+        console.log("❌ YETKİ ÇEKERKEN PATLADI! Hata Detayı:", err.message);
+      }
 
     } catch (e) { 
       console.log("Dashboard motoru iletişim bekliyor..."); 
@@ -125,84 +140,26 @@ export default function DashboardScreen() {
     else router.replace('/');
   };
 
-
-
-// --- 🍩 AKILLI SİMİT GRAFİĞİ (GERÇEK ORANTI MATEMATİĞİ) ---
   const toplamIs = servisToplam + randevuToplam;
   
   const getDonutColors = () => {
-    if (toplamIs === 0) return ['#eaeaea', '#eaeaea', '#eaeaea', '#eaeaea']; // Veri yoksa gri
+    if (toplamIs === 0) return ['#eaeaea', '#eaeaea', '#eaeaea', '#eaeaea']; 
     
-    // 1. Gerçek yüzdeyi bul ve 4 dilime (çeyreklere) yuvarla
     const servisYuzde = servisToplam / toplamIs;
     let servisDilimSayisi = Math.round(servisYuzde * 4);
 
-    // 2. İNCE AYAR: Eğer birinde 1 tane bile iş varsa ama 0'a yuvarlandıysa, ekranda tamamen yok olmasın!
     if (servisToplam > 0 && servisDilimSayisi === 0) servisDilimSayisi = 1;
     if (randevuToplam > 0 && servisDilimSayisi === 4) servisDilimSayisi = 3;
     
     let colors = [];
     for (let i = 0; i < 4; i++) {
-      if (i < servisDilimSayisi) colors.push('#FFCC00'); // Sarı (Servis)
-      else colors.push('#6558dd'); // Mor (Randevu)
+      if (i < servisDilimSayisi) colors.push('#FFCC00'); 
+      else colors.push('#6558dd'); 
     }
     return colors; 
   };
   
   const [colorTop, colorRight, colorBottom, colorLeft] = getDonutColors();
-
-
-
-
-
-
-
-
-
-/*
-
-// --- 🍩 AKILLI SİMİT GRAFİĞİ (MAKAM MANTIĞI) ---
-  const toplamIs = servisToplam + randevuToplam;
-  
-  const getDonutColors = () => {
-    if (toplamIs === 0) return ['#eaeaea', '#eaeaea', '#eaeaea', '#eaeaea']; // Veri yoksa gri
-    
-    let servisDilimSayisi = 0;
-
-    // MÜDÜR: Kaba matematiği attık, mantıksal terazi kurduk!
-    if (servisToplam === 0) {
-      servisDilimSayisi = 0; // Hepsi Mor (Sadece Randevu var)
-    } else if (randevuToplam === 0) {
-      servisDilimSayisi = 4; // Hepsi Sarı (Sadece Servis var)
-    } else if (servisToplam === randevuToplam) {
-      servisDilimSayisi = 2; // Eşitlik var (2 Sarı, 2 Mor)
-    } else if (servisToplam > randevuToplam) {
-      servisDilimSayisi = 3; // Servis fazla (3 Sarı, 1 Mor)
-    } else {
-      servisDilimSayisi = 1; // Randevu fazla (1 Sarı, 3 Mor)
-    }
-    
-    let colors = [];
-    for (let i = 0; i < 4; i++) {
-      if (i < servisDilimSayisi) colors.push('#FFCC00'); // Sarı (Servis)
-      else colors.push('#6558dd'); // Mor (Randevu)
-    }
-    return colors; 
-  };
-  
-  const [colorTop, colorRight, colorBottom, colorLeft] = getDonutColors();
-
-*/
-
-
-
-
-  
-  
-
-
-
-
 
   return (
     <SafeAreaProvider>
@@ -232,13 +189,10 @@ export default function DashboardScreen() {
             <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
           </View>
 
-          {/* 📊 DİNAMİK KALIN SİMİT GRAFİĞİ (DONUT CHART) */}
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
             <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>İş Durum Dağılımı</Text>
             
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15 }}>
-              
-              {/* KALIN SİMİT KISMI */}
               <View style={{
                 width: 150, height: 150, borderRadius: 75,
                 borderTopColor: colorTop, borderRightColor: colorRight,
@@ -246,14 +200,12 @@ export default function DashboardScreen() {
                 borderWidth: 35,
                 justifyContent: 'center', alignItems: 'center'
               }}>
-                {/* SİMİTİN ORTASI (KIRMIZI TOPLAM RAKAMI) */}
                 <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
                    <Text style={{ fontSize: 26, fontWeight: '900', color: '#FF3B30' }}>{toplamIs}</Text>
                    <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#888' }}>TOPLAM İŞ</Text>
                 </View>
               </View>
 
-              {/* SAĞ TARAF - AÇIKLAMA (LEJANT) KISMI */}
               <View style={{ marginLeft: 30, justifyContent: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                   <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#FF3B30', marginRight: 10 }} />
@@ -268,7 +220,6 @@ export default function DashboardScreen() {
                   <Text style={[{ fontSize: 15, fontWeight: 'bold' }, isDarkMode && styles.darkText]}>Randevu: {randevuToplam}</Text>
                 </View>
               </View>
-
             </View>
           </View>
           
@@ -298,24 +249,50 @@ export default function DashboardScreen() {
             <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
 
+          {/* 🚨 HUSO EKLENTİSİ: ENVANTER YETKİSİ KONTROLÜ VE KİLİT TASARIMI 🚨 */}
           <TouchableOpacity 
-            style={[styles.alertBanner, { backgroundColor: parcaBekleyenSayisi > 0 ? '#FF9500' : '#8E8E93', marginTop: 12 }]} 
+            style={[
+              styles.alertBanner, 
+              { 
+                backgroundColor: yetkiler.banko_envanter_islem 
+                  ? (parcaBekleyenSayisi > 0 ? '#FF9500' : '#8E8E93') 
+                  : '#1A1A1E', 
+                marginTop: 12 
+              }
+            ]} 
             activeOpacity={0.9} 
-            onPress={() => router.push({ 
-              pathname: '/banko_stok_onay', 
-              params: { theme: isDarkMode ? 'dark' : 'light', filterMode: 'onlyStok' } 
-            })}
+            onPress={() => {
+              if (yetkiler.banko_envanter_islem) {
+                router.push({ 
+                  pathname: '/banko_stok_onay', 
+                  params: { theme: isDarkMode ? 'dark' : 'light', filterMode: 'onlyStok' } 
+                });
+              } else {
+                kilitUyarisiVer();
+              }
+            }}
           >
-            <Ionicons name="cube-outline" size={22} color="#fff" />
-            <View style={{ marginLeft: 12, flex: 1 }}>
-              <Text style={styles.alertTitle}>
-                {parcaBekleyenSayisi > 0 ? `${parcaBekleyenSayisi} Adet Parça Siparişi Bekliyor` : "BEKLEYEN PARÇA SİPARİŞİ YOK"}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
+            {yetkiler.banko_envanter_islem ? (
+              <>
+                <Ionicons name="cube-outline" size={22} color="#fff" />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={styles.alertTitle}>
+                    {parcaBekleyenSayisi > 0 ? `${parcaBekleyenSayisi} Adet Parça Siparişi Bekliyor` : "BEKLEYEN PARÇA SİPARİŞİ YOK"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
+              </>
+            ) : (
+              <>
+                <Ionicons name="key" size={22} color="#FF3B30" />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={[styles.alertTitle, { color: '#fff' }]}>Envanter Yetkisi Kilitli</Text>
+                </View>
+                <Ionicons name="lock-closed" size={18} color="#FF3B30" style={{ opacity: 0.8 }} />
+              </>
+            )}
           </TouchableOpacity>
 
-          {/* 🚨 İŞTE GERİ DÖNEN O MEŞHUR MOR BUTON (Sıfır da olsa ekranda kalır!) 🚨 */}
           {teyitBekleyenSayisi >= 0 && (
             <TouchableOpacity 
               style={[styles.alertBanner, { backgroundColor: '#6558dd', marginTop: 12, height: 56 }]} 
@@ -429,21 +406,25 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('envanter')}>
+                {/* 🚨 HUSO EKLENTİSİ: ENVANTER KİLİT KONTROLÜ 🚨 */}
+                <TouchableOpacity 
+                  style={[styles.menuItem, !yetkiler.banko_envanter_islem && { backgroundColor: '#1A1A1E', borderBottomColor: '#2a2a2a' }]} 
+                  onPress={() => yetkiler.banko_envanter_islem ? toggleSubMenu('envanter') : kilitUyarisiVer()}
+                >
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <Ionicons name="file-tray-full-outline" size={24} color={D_COLOR} />
-                    <Text style={[styles.menuItemText, { color: D_COLOR }]}>Envanter İşlemleri</Text>
+                    <Ionicons name="file-tray-full-outline" size={24} color={!yetkiler.banko_envanter_islem ? '#fff' : D_COLOR} />
+                    <Text style={[styles.menuItemText, { color: !yetkiler.banko_envanter_islem ? '#fff' : D_COLOR }]}>Envanter İşlemleri</Text>
                   </View>
-                  <Ionicons name={isEnvanterSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
+                  {!yetkiler.banko_envanter_islem ? (
+                    <Ionicons name="key" size={18} color="#FF3B30" />
+                  ) : (
+                    <Ionicons name={isEnvanterSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
+                  )}
                 </TouchableOpacity>
 
-                {isEnvanterSubMenuOpen && (
+                {yetkiler.banko_envanter_islem && isEnvanterSubMenuOpen && (
                   <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
-
-
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { setIsMenuOpen(false); router.push({ pathname: '/banko_stok_onay', params: { theme: isDarkMode ? 'dark' : 'light' } }); }}>
-
-                                                             
                       <Ionicons name="cube-outline" size={20} color={parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR} style={{ marginRight: 15 }} />
                       <View style={{flexDirection: 'row', alignItems: 'center'}}>
                         <Text style={[styles.subMenuItemText, { color: parcaBekleyenSayisi > 0 ? "#FF3B30" : D_COLOR }]}>Parça Takibi</Text>
@@ -462,28 +443,38 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setMaliVisible(true); setIsMenuOpen(false); }}>
-                  <Ionicons name="wallet-outline" size={24} color={D_COLOR} />
-                  <Text style={[styles.menuItemText, { color: D_COLOR }]}>Mali İşlemler</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.menuItem} onPress={() => toggleSubMenu('cikti')}>
+                {/* 🚨 HUSO EKLENTİSİ: MALİ İŞLEMLER KİLİT KONTROLÜ 🚨 */}
+                <TouchableOpacity 
+                  style={[styles.menuItem, !yetkiler.banko_mali_islem && { backgroundColor: '#1A1A1E', borderBottomColor: '#2a2a2a' }]} 
+                  onPress={() => yetkiler.banko_mali_islem ? (() => { setMaliVisible(true); setIsMenuOpen(false); })() : kilitUyarisiVer()}
+                >
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <Ionicons name="print-outline" size={24} color={D_COLOR} />
-                    <Text style={[styles.menuItemText, { color: D_COLOR }]}>Çıktı İşlemleri</Text>
+                    <Ionicons name="wallet-outline" size={24} color={!yetkiler.banko_mali_islem ? '#fff' : D_COLOR} />
+                    <Text style={[styles.menuItemText, { color: !yetkiler.banko_mali_islem ? '#fff' : D_COLOR }]}>Mali İşlemler</Text>
                   </View>
-                  <Ionicons name={isCiktiSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
+                  {!yetkiler.banko_mali_islem && (
+                    <Ionicons name="key" size={18} color="#FF3B30" />
+                  )}
                 </TouchableOpacity>
 
+                {/* 🚨 HUSO EKLENTİSİ: ÇIKTI İŞLEMLERİ KİLİT KONTROLÜ 🚨 */}
+                <TouchableOpacity 
+                  style={[styles.menuItem, !yetkiler.banko_cikti_islem && { backgroundColor: '#1A1A1E', borderBottomColor: '#2a2a2a' }]} 
+                  onPress={() => yetkiler.banko_cikti_islem ? toggleSubMenu('cikti') : kilitUyarisiVer()}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Ionicons name="print-outline" size={24} color={!yetkiler.banko_cikti_islem ? '#fff' : D_COLOR} />
+                    <Text style={[styles.menuItemText, { color: !yetkiler.banko_cikti_islem ? '#fff' : D_COLOR }]}>Çıktı İşlemleri</Text>
+                  </View>
+                  {!yetkiler.banko_cikti_islem ? (
+                    <Ionicons name="key" size={18} color="#FF3B30" />
+                  ) : (
+                    <Ionicons name={isCiktiSubMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={D_COLOR} />
+                  )}
+                </TouchableOpacity>
 
-
-
-
-
-                {isCiktiSubMenuOpen && (
+                {yetkiler.banko_cikti_islem && isCiktiSubMenuOpen && (
                   <View style={[styles.subMenuBlock, isDarkMode && styles.darkSubMenuBlock]}>
-                    
-                    {/* 🚨 1. PDF BUTONU (Normal Şifre) */}
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
                         setIsMenuOpen(false); 
                         router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'pdf' } }); 
@@ -494,7 +485,6 @@ export default function DashboardScreen() {
                     
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
                     
-                    {/* 🚨 2. WORD BUTONU (Gizli Şifre: format='word') */}
                     <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
                         setIsMenuOpen(false); 
                         router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'word' } }); 
@@ -504,45 +494,21 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
 
                     <View style={[styles.subMenuDivider, isDarkMode && styles.darkBorder]} />
-                    
 
-
-
-                      {/* 🚨 3. MAİL BUTONU (Şifre: format='mail') */}
-                        <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
-                            setIsMenuOpen(false); 
-                            router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'mail' } }); 
-                        }}>
-                          <Ionicons name="mail" size={20} color="#34C759" style={{ marginRight: 15 }} />
-                          <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Mail Olarak Gönder</Text>
-                        </TouchableOpacity>
-
-
-                   
-
-
-
-
-
+                    <TouchableOpacity style={styles.subMenuItem} onPress={() => { 
+                        setIsMenuOpen(false); 
+                        router.push({ pathname: '/FaturaListesi', params: { theme: isDarkMode ? 'dark' : 'light', format: 'mail' } }); 
+                    }}>
+                      <Ionicons name="mail" size={20} color="#34C759" style={{ marginRight: 15 }} />
+                      <Text style={[styles.subMenuItemText, { color: D_COLOR }]}>Mail Olarak Gönder</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
-
-
-
-
 
               </ScrollView>
             </View>
           </View>
         )}
-
-
-
-
-
-
-
-
 
         <YeniMusteriFormu visible={musteriVisible} onClose={() => setMusteriVisible(false)} isDarkMode={isDarkMode} />
         <YeniFirmaFormu visible={firmaVisible} onClose={() => setFirmaVisible(false)} isDarkMode={isDarkMode} />

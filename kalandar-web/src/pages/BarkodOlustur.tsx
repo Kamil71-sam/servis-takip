@@ -66,9 +66,13 @@ export default function BarkodOlustur() {
   const totalPages = Math.ceil(filtrelenmisStoklar.length / itemsPerPage);
   const currentItems = filtrelenmisStoklar.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  // 🚨 HUSO RADARI (Elle girilen barkodun ismini otomatik bulur)
+  const arananBarkod = manuelBarkodNo.trim();
+  const bulunanManuelUrun = stokListesi.find(item => item.barkodNo === arananBarkod);
+
   const aktifBarkodNo = mod === 'otomatik' ? (seciliUrun?.barkodNo || '') : manuelBarkodNo;
-  const aktifUrunAdi = mod === 'otomatik' ? (seciliUrun?.isim || '') : '';
-  const aktifFiyat = mod === 'otomatik' ? (seciliUrun?.gecerliFiyat || 0) : 0;
+  const aktifUrunAdi = mod === 'otomatik' ? (seciliUrun?.isim || '') : (bulunanManuelUrun?.isim || '');
+  const aktifFiyat = mod === 'otomatik' ? (seciliUrun?.gecerliFiyat || 0) : (bulunanManuelUrun?.gecerliFiyat || 0);
 
   const handlePdfIndir = () => {
     if (!aktifBarkodNo) return;
@@ -122,8 +126,20 @@ export default function BarkodOlustur() {
     }, 500);
   };
 
+  // 🚨 YAZICI KÖRLÜĞÜ DÜZELTMESİ (Kesik çizgiler)
   const EtiketKutusu = ({ keyIdx }: { keyIdx: number }) => (
-    <div key={keyIdx} className="flex flex-col items-center justify-center border-2 border-gray-800 border-dashed rounded-lg" style={{ width: '85mm', height: '45mm', padding: '4mm', boxSizing: 'border-box' }}>
+    <div key={keyIdx} style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        border: '2px dashed #333', 
+        borderRadius: '8px', 
+        width: '85mm', 
+        height: '45mm', 
+        padding: '4mm', 
+        boxSizing: 'border-box' 
+    }}>
       {aktifUrunAdi && (
         <h3 style={{ fontSize: '13px', fontWeight: '900', margin: '0 0 6px 0', textAlign: 'center', textTransform: 'uppercase', color: '#000', fontFamily: 'Arial, sans-serif' }}>
           {aktifUrunAdi}
@@ -151,7 +167,8 @@ export default function BarkodOlustur() {
     <>
       <style>{scrollbarStyle}</style>
 
-      <div className="flex flex-col h-full p-1 gap-3 text-white">
+      {/* 🚨 "overflow-hidden" Koruması */}
+      <div className="flex flex-col h-full p-1 gap-3 text-white overflow-hidden">
         
         {/* ÜST TAB MENÜ */}
         <div className="flex justify-between items-center bg-black/20 p-1.5 rounded-xl border border-white/5 relative z-10 w-fit gap-2">
@@ -242,7 +259,7 @@ export default function BarkodOlustur() {
                     onChange={(e) => setManuelBarkodNo(e.target.value)} 
                     className="w-full bg-[#0F0F12] border border-white/10 rounded-lg px-3 py-4 text-sm font-mono text-white outline-none focus:border-[#8E052C]" 
                   />
-                  <p className="text-[9px] text-gray-500 mt-2 italic">Not: Bu alan sadece serbest barkod çıktısı almak içindir. Ürün adı ve fiyat eklenmez.</p>
+                  <p className="text-[9px] text-gray-500 mt-2 italic">Not: Sistem barkodu tanırsa ismini otomatik yazar.</p>
                 </div>
               </div>
             )}
@@ -279,24 +296,25 @@ export default function BarkodOlustur() {
               </div>
             </div>
 
-            {/* 🚨 DÜZELTİLEN YER: Ekran scroll'u yok, A4 büyüdü, sadece bu gri alan kendi içinde kayar */}
-            <div className="flex-1 bg-gray-600 rounded-2xl overflow-y-auto nuke-scrollbar relative shadow-inner flex flex-col items-center p-6">
+            {/* 🚨 HAYALET HAPİSHANESİ: A4 kesin bir kutuya kilitlendi, sayfa uzaması BİTTİ! */}
+            <div className="flex-1 bg-gray-600 rounded-2xl overflow-hidden relative shadow-inner flex justify-center items-center p-6">
               
               {aktifBarkodNo ? (
-                <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center', transition: 'all 0.3s' }}>
-                  <div 
-                    id="barcode-print-area" 
-                    className="bg-white shadow-2xl" 
-                    style={{ width: '210mm', height: '296mm', padding: '15mm', boxSizing: 'border-box', overflow: 'hidden' }}
-                  >
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10mm', alignContent: 'start' }}>
-                        {Array.from({ length: baskiAdedi }).map((_, i) => (
-                            <EtiketKutusu keyIdx={i} key={i} />
-                        ))}
-                    </div>
-                    
-                    <div style={{ marginTop: '20mm', textAlign: 'center', color: '#999', fontFamily: 'Arial', fontSize: '10px' }}>
-                      Makasla kesim kolaylığı için etiketler çerçeveli basılır. Toplam {baskiAdedi} adet.
+                <div style={{ width: 'calc(210mm * 0.65)', height: 'calc(296mm * 0.65)', position: 'relative', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, transform: 'scale(0.65)', transformOrigin: 'top left' }}>
+                    <div 
+                      id="barcode-print-area" 
+                      style={{ backgroundColor: '#ffffff', width: '210mm', height: '296mm', padding: '15mm', boxSizing: 'border-box', overflow: 'hidden' }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10mm', alignContent: 'start' }}>
+                          {Array.from({ length: baskiAdedi }).map((_, i) => (
+                              <EtiketKutusu keyIdx={i} key={i} />
+                          ))}
+                      </div>
+                      
+                      <div style={{ marginTop: '20mm', textAlign: 'center', color: '#999', fontFamily: 'Arial', fontSize: '10px' }}>
+                        Makasla kesim kolaylığı için etiketler çerçeveli basılır. Toplam {baskiAdedi} adet.
+                      </div>
                     </div>
                   </div>
                 </div>
