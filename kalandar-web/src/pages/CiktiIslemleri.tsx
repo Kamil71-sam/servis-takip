@@ -440,10 +440,18 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                           <td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td>
                           <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(seciliKayit.tarih)}-{seciliKayit.servis_no}</td>
                         </tr>
+
+
                         <tr>
-                          <td style={{ textAlign: 'left' }}>TARİH:</td>
-                          <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{seciliKayit.tarih ? new Date(seciliKayit.tarih).toLocaleDateString('tr-TR') : '-'}</td>
-                        </tr>
+                        <td style={{ textAlign: 'left', fontWeight: 'bold', paddingRight: '15px', whiteSpace: 'nowrap' }}>TARİH:</td>
+                        <td style={{ textAlign: 'right', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{new Date().toLocaleDateString('tr-TR')}</td>
+                      </tr>
+                       
+
+
+
+
+                        
                       </tbody>
                     </table>
                   </td>
@@ -479,15 +487,14 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
 
 
 
-
-                        <td style={{ width: '33.33%', verticalAlign: 'top' }}>
-                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
-                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                            Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : ((aktifKayit.aciklama || '').match(/(?:CİHAZ|ÜRÜN):\s*([^\n]+)/i)?.[1]?.trim() || aktifKayit.tip)}<br />
-                            Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-'}
-                          </div>
-                    </td>
-                 
+                      <td style={{ width: '33.33%', verticalAlign: 'top' }}>
+                        <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
+                        <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                          Ürün: {aktifKayit.tip === 'Stok Satışı' ? (aktifKayit.raw?.aciklama?.match(/Stok Satışı:\s*([^|]+)/i)?.[1]?.trim() || 'Stok Satışı') : (aktifKayit.cihaz_bilgisi || aktifKayit.tip)}<br />
+                          Seri / Barkod: {aktifKayit.tip === 'Stok Satışı' ? (aktifKayit.raw?.aciklama?.match(/Barkod:\s*([^|]+)/i)?.[1]?.trim() || aktifKayit.raw?.barkod || '-') : (getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-')}
+                        </div>
+                      </td>
+                                            
                  
                  
                  
@@ -720,10 +727,18 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                                 <td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td>
                                 <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(aktifKayit.tarih)}-{aktifKayit.servis_no}</td>
                               </tr>
+                              
+
+
                               <tr>
-                                <td style={{ textAlign: 'left' }}>TARİH:</td>
-                                <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{aktifKayit.tarih ? new Date(aktifKayit.tarih).toLocaleDateString('tr-TR') : '-'}</td>
+                                <td style={{ textAlign: 'left', fontWeight: 'bold', paddingRight: '15px', whiteSpace: 'nowrap' }}>TARİH:</td>
+                                <td style={{ textAlign: 'right', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{new Date().toLocaleDateString('tr-TR')}</td>
                               </tr>
+
+
+
+
+
                             </tbody>
                           </table>
                         </td>
@@ -754,19 +769,19 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                           GSM: {aktifKayit.raw?.customer_phone || aktifKayit.raw?.telefon || aktifKayit.raw?.phone || '-'}
                         </div>
                       </td>
-                                              
 
 
 
 
-                        <td style={{ width: '33.33%', verticalAlign: 'top' }}>
-                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
-                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                            Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : ((aktifKayit.aciklama || '').match(/(?:CİHAZ|ÜRÜN):\s*([^\n]+)/i)?.[1]?.trim() || aktifKayit.tip)}<br />
-                            Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-'}
-                          </div>
-                        </td>
+                      <td style={{ width: '33.33%', verticalAlign: 'top' }}>
+                        <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
+                        <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                          Ürün: {aktifKayit.tip === 'Stok Satışı' ? (aktifKayit.raw?.aciklama?.match(/Stok Satışı:\s*([^|]+)/i)?.[1]?.trim() || 'Stok Satışı') : (aktifKayit.cihaz_bilgisi || aktifKayit.tip)}<br />
+                          Seri / Barkod: {aktifKayit.tip === 'Stok Satışı' ? (aktifKayit.raw?.aciklama?.match(/Barkod:\s*([^|]+)/i)?.[1]?.trim() || aktifKayit.raw?.barkod || '-') : (getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-')}
+                        </div>
+                      </td>
 
+                        
 
  
 

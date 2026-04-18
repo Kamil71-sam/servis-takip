@@ -150,12 +150,32 @@ const handleIslemAra = async () => {
       if (islemTuru === 'Stok Alımı') {
         if (!arananMalzeme) { alert("Lütfen önce barkod okutarak malzeme bulunuz!"); setIsSubmitting(false); return; }
         
-        const payload = {
+
+
+const payload = {
           barkod: arananMalzeme.barkod, malzeme_adi: arananMalzeme.malzeme_adi,
           marka: arananMalzeme.marka, uyumlu_cihaz: arananMalzeme.uyumlu_cihaz,
-          miktar: alimAdedi, alis_fiyati: parseFloat(guncelAlisFiyati || '0'), fiyat_guncelle: true, 
+          miktar: alimAdedi, alis_fiyati: parseFloat(guncelAlisFiyati || '0'), fiyat_guncelle: true,
+          // 🚨 BARKOD MÜHRÜ: Kasaya giden verinin içine barkodu zorla çakıyoruz!
+          aciklama: `Barkod: ${arananMalzeme.barkod} | Stok Alımı: ${arananMalzeme.malzeme_adi} | Adet: ${alimAdedi} | Birim: ${guncelAlisFiyati} ₺`,
+          servis_no: arananMalzeme.barkod 
         };
-        const res = await api.post('/api/stok/add', payload);
+        
+        const res = await api.post('/api/stok/add-alim', payload);
+        
+        
+        
+        //const res = await api.post('/api/stok/add', payload);
+
+
+
+        
+
+
+
+
+
+
         if (res.data.success) {
           alert(`✅ ${alimAdedi} adet malzeme stoğa eklendi ve tutar kasadan düşüldü.`);
           handleIslemTuruDegistir({ target: { value: 'Seçiniz...' } }); 

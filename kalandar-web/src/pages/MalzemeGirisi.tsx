@@ -92,13 +92,18 @@ export default function MalzemeGirisi() {
           barkod: form.barkod
         });
 
+        
         // 2. ADIM: Kasaya Özel Etiketle Çıkış Yap
         const toplamTutar = Number(form.miktar) * Number(form.alis_fiyati);
         await api.post('/api/kasa/add', {
           islem_yonu: 'ÇIKIŞ',
           kategori: form.islem_turu, 
           tutar: toplamTutar,
-          aciklama: `${form.islem_turu}: ${form.malzeme_adi} | Adet: ${form.miktar} | İade Alış: ${form.alis_fiyati} ₺`,
+
+          // 🚨 BARKOD MÜHRÜ:
+          aciklama: `Barkod: ${form.barkod} | ${form.islem_turu}: ${form.malzeme_adi} | Adet: ${form.miktar} | İade Alış: ${form.alis_fiyati} ₺`,
+          servis_no: form.barkod,
+
           islem_yapan: 'Banko Stok İade'
         });
 
@@ -107,7 +112,10 @@ export default function MalzemeGirisi() {
       } 
       // EĞER İADE DEĞİLSE NORMAL STOK ALIMINA DEVAM ET
       else {
-        const res = await api.post('/api/stok/add', {
+
+        const res = await api.post('/api/stok/add-alim', {
+
+       // const res = await api.post('/api/stok/add', {
           islem_turu: form.islem_turu,
           barkod: form.barkod,
           malzeme_adi: form.malzeme_adi,
@@ -115,7 +123,14 @@ export default function MalzemeGirisi() {
           uyumlu_cihaz: form.uyumlu_cihaz,
           miktar: Number(form.miktar),
           alis_fiyati: Number(form.alis_fiyati),
-          fiyat_guncelle: true 
+          fiyat_guncelle: true ,
+
+          // 🚨 BARKOD MÜHRÜ:
+          aciklama: `Barkod: ${form.barkod} | ${form.islem_turu}: ${form.malzeme_adi} | Adet: ${form.miktar} | Birim: ${form.alis_fiyati} ₺`,
+          servis_no: form.barkod
+
+
+
         });
 
         if (res.data.success) {

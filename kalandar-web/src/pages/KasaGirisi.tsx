@@ -1,674 +1,517 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import html2pdf from 'html2pdf.js'; 
 
 const scrollbarStyle = `
-  .nuke-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
-  .nuke-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-  .nuke-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+  .nuke-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+  .nuke-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+  .nuke-scrollbar::-webkit-scrollbar-thumb { background: rgba(142,5,44,0.5); border-radius: 10px; }
+  .nuke-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(142,5,44,0.8); }
 `;
 
-const getVal = (obj: any, keys: string[]) => {
-  if (!obj) return null;
-  const lowerObj: any = {};
-  Object.keys(obj).forEach(k => { lowerObj[k.toLowerCase()] = obj[k]; });
-  for (let k of keys) {
-    if (lowerObj[k] !== undefined && lowerObj[k] !== null && lowerObj[k] !== '') {
-      return String(lowerObj[k]);
+export default function KasaGirisi() {
+  const [loading, setLoading] = useState(true);
+  const [bekleyenIsler, setBekleyenIsler] = useState<any[]>([]);
+  const [seciliIslem, setSeciliIslem] = useState<any>(null);
+
+  const [islemTuru, setIslemTuru] = useState('Seçiniz...');
+  const [iskonto, setIskonto] = useState<number>(0);
+  const [aciklama, setAciklama] = useState('');
+  const [manuelTutar, setManuelTutar] = useState<string>(''); 
+  const [barkodNo, setBarkodNo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [arananMalzeme, setArananMalzeme] = useState<any>(null);
+  const [malzemeLoading, setMalzemeLoading] = useState(false);
+  const [satisAdedi, setSatisAdedi] = useState<number>(1); 
+
+  const [gecmisAcik, setGecmisAcik] = useState(false);
+  const [gecmisVeri, setGecmisVeri] = useState<any[]>([]);
+  const [gecmisLoading, setGecmisLoading] = useState(false);
+
+  const randevuDatasiniDagit = (islem: any) => {
+    const islemMusteriAdi = islem.customer_name || islem.name || islem.musteri_adi || islem.firma_adi || islem.musteri;
+    let musteriAdi = 'Bilinmiyor';
+    if (islemMusteriAdi) {
+        musteriAdi = islemMusteriAdi.trim().split(' ').map((name: string) => name.charAt(0).toUpperCase() + name.slice(1)).join(' ');
     }
-  }
-  return null;
-};
 
-const generateDateStamp = (rawDate?: string) => {
-  const d = rawDate ? new Date(rawDate) : new Date();
-  if (isNaN(d.getTime())) return new Date().toISOString().slice(2, 10).replace(/-/g, ''); 
-  const year = d.getFullYear().toString().slice(2);
-  const month = (d.getMonth() + 1).toString().padStart(2, '0');
-  const day = d.getDate().toString().padStart(2, '0');
-  return `${year}${month}${day}`; 
-};
+    const issueText = islem.issue_text || '';
+    let cihazMarkaModel = 'Cihaz Belirtilmemiş';
 
-export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?: 'fatura' | 'servis' | 'tamamlanan' }) {
-  const [activeTab, setActiveTab] = useState<'fatura' | 'servis' | 'tamamlanan'>(defaultTab);
-  
-  const [hamListe, setHamListe] = useState<any[]>([]);
-  const [seciliKayit, setSeciliKayit] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [yazdirilanlar, setYazdirilanlar] = useState<string[]>([]);
-
-  const [filtreTip, setFiltreTip] = useState('Tümü'); 
-  const [aramaMetni, setAramaMetni] = useState('');
-  const [aramaTarih, setAramaTarih] = useState('');
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 5;
-
-  // 🚨 DİNAMİK FİRMA AYARLARI HAFIZASI
-  const [firmaAyarlari, setFirmaAyarlari] = useState<any>({
-    firma_adi: 'KALANDAR YAZILIM',
-    firma_adres: 'Gölcük / Kocaeli',
-    firma_vergi: 'Kurtdereli VD / 1234567890',
-    firma_telefon: '0555 123 45 67',
-    fatura_alt_bilgi: 'Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.'
-  });
-
-  useEffect(() => {
-    const kayitlilar = JSON.parse(localStorage.getItem('kalandar_ciktilar') || '[]');
-    setYazdirilanlar(kayitlilar);
-    fetchData();
-
-    // 🚨 VERİTABANINDAN FİRMA BİLGİLERİNİ ÇEK
-    api.get('/api/settings?t=' + new Date().getTime()).then(res => {
-    
-        
-    //api.get('/api/settings').then(res => {
-      if(res.data?.success && res.data?.data) {
-        setFirmaAyarlari((prev: any) => ({...prev, ...res.data.data}));
+    if (issueText) {
+      if (issueText.includes('🔧 CİHAZ:')) {
+        let parca = issueText.split('🔧 CİHAZ:')[1];
+        if (parca.includes('📝 NOT:')) parca = parca.split('📝 NOT:')[0];
+        cihazMarkaModel = parca.trim();
+      } else {
+        cihazMarkaModel = issueText.split(' ').slice(0, 4).join(' ');
       }
-    }).catch(console.error);
-  }, []);
+    }
 
-  useEffect(() => {
-    setFiltreTip('Tümü');
-    setAramaMetni('');
-    setAramaTarih('');
-    setCurrentPage(1);
-    setSeciliKayit(null);
-  }, [activeTab]);
+    const ustaTeklifi = parseFloat(islem.offer_price || islem.price || islem.tahsil_edilen_tutar || 0);
+    return { musteriAdi, cihazMarkaModel, ustaTeklifi };
+  };
 
-  useEffect(() => {
-    setSeciliKayit((prevSecili) => {
-      if (!prevSecili) return null;
-      const tipUygun = filtreTip === 'Tümü' || prevSecili.tip === filtreTip;
-      const aramaKucuk = aramaMetni.toLowerCase();
-      const aramaUygun = !aramaMetni || 
-        (prevSecili.servis_no && prevSecili.servis_no.toLowerCase().includes(aramaKucuk)) ||
-        (prevSecili.musteri_adi && prevSecili.musteri_adi.toLowerCase().includes(aramaKucuk));
-      
-      let tarihUygun = true;
-      if (aramaTarih && prevSecili.tarih) {
-        const d = new Date(prevSecili.tarih);
-        if (!isNaN(d.getTime())) {
-          const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          tarihUygun = `${y}-${m}-${day}` === aramaTarih;
-        } else { tarihUygun = false; }
-      } else if (aramaTarih && !prevSecili.tarih) { tarihUygun = false; }
+  const servisDatasiniAl = (islem: any) => {
+    const musteriAdi = islem.musteri_adi || islem.musteri || islem.customer_name || 'Bilinmiyor';
+    const cihazAdi = `${islem.cihaz_tipi || ''} ${islem.marka_model || ''}`.trim();
+    return { musteriAdi, cihazMarkaModel: cihazAdi.length > 0 ? cihazAdi : 'Cihaz Belirtilmemiş', ustaTeklifi: parseFloat(islem.offer_price || islem.price || 0) };
+  };
 
-      if (!tipUygun || !aramaUygun || !tarihUygun) return null; 
-      return prevSecili;
-    });
-  }, [filtreTip, aramaMetni, aramaTarih]);
-
-
-  const fetchData = async () => {
+  const fetchBekleyenIsler = async () => {
     setLoading(true);
     try {
-      let combinedData: any[] = [];
+      const resServis = await api.get('/services/all').catch(() => null);
+      let servisListesi = resServis?.data?.data || resServis?.data || [];
+      servisListesi = servisListesi.filter((i: any) => (i.status || i.durum || '').toLowerCase() === 'hazır').map((i: any) => ({ ...i, islemTipi: 'SERVİS', servis_no: i.servis_no || i.plaka }));
 
-      const resKasa = await api.get('/api/kasa/all').catch(() => null);
-      if (resKasa?.data?.data) {
-        const stoklar = resKasa.data.data
-          .filter((i: any) => i.kategori === 'Stok Satışı')
-          .map((i: any) => ({
-            id: `stok_${i.id}`, tip: 'Stok Satışı', 
-            servis_no: i.servis_no || i.plaka || '-',
-            musteri_adi: i.musteri_adi || 'Genel Müşteri', tarih: i.islem_tarihi,
-            tutar: i.tutar, durum: 'Teslim Edildi', aciklama: i.aciklama, raw: i 
-          }));
-        combinedData = [...combinedData, ...stoklar];
-      }
+      const resRandevu = await api.get('/api/appointments/liste/aktif').catch(() => null);
+      let randevuListesi = resRandevu?.data?.data || resRandevu?.data || [];
+      randevuListesi = randevuListesi.filter((i: any) => (i.status || i.durum || '').toLowerCase() === 'mali onay bekliyor').map((i: any) => ({ ...i, islemTipi: 'RANDEVU' }));
 
-      const resTamamlanan = await api.get('/services/tamamlanan').catch(() => null);
-      const servisTamamlananListe = Array.isArray(resTamamlanan?.data?.data) ? resTamamlanan.data.data : (Array.isArray(resTamamlanan?.data) ? resTamamlanan.data : []);
-      if (servisTamamlananListe.length > 0) {
-        const servislerT = servisTamamlananListe.map((i: any) => ({
-            id: `srv_t_${i.id}`, tip: 'Servis', 
-            servis_no: i.servis_no || i.plaka,
-            musteri_adi: getVal(i, ['musteri_adi', 'customer_name', 'name', 'firma_adi', 'musteri']) || 'Bilinmiyor', 
-            tarih: i.updated_at || i.created_at || i.tarih, 
-            tutar: i.offer_price || i.fiyat || 0, 
-            durum: i.status || i.durum,
-            cihaz_bilgisi: i.cihaz_tipi || i.marka_model || `${i.brand || ''} ${i.model || ''}`, 
-            aciklama: i.issue_text || i.ariza || 'Tamir & Servis İşlemi', raw: i
-          }));
-        combinedData = [...combinedData, ...servislerT];
-      }
-
-      const resAktif = await api.get('/services/all').catch(() => null);
-      const servisAktifListe = Array.isArray(resAktif?.data?.data) ? resAktif.data.data : (Array.isArray(resAktif?.data) ? resAktif.data : []);
-      if (servisAktifListe.length > 0) {
-        const servislerA = servisAktifListe.map((i: any) => ({
-            id: `srv_a_${i.id}`, tip: 'Servis', 
-            servis_no: i.servis_no || i.plaka,
-            musteri_adi: getVal(i, ['musteri_adi', 'customer_name', 'name', 'firma_adi', 'musteri']) || 'Bilinmiyor', 
-            tarih: i.created_at || i.tarih, 
-            tutar: i.offer_price || i.fiyat || 0, 
-            durum: i.status || i.durum, 
-            cihaz_bilgisi: i.cihaz_tipi || i.marka_model || `${i.brand || ''} ${i.model || ''}`, 
-            aciklama: i.issue_text || i.ariza || 'Tamir & Servis İşlemi', raw: i
-          }));
-        combinedData = [...combinedData, ...servislerA];
-      }
-
-      const fetchRandevular = async (endpoint: string) => {
-          const res = await api.get(endpoint).catch(() => null);
-          const liste = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
-          return liste.map((i: any) => ({
-              id: `rnd_${i.id}`, tip: 'Randevu', 
-              servis_no: i.servis_no || i.plaka,
-              musteri_adi: getVal(i, ['müşteri adı', 'musteri adi', 'customer_name', 'name', 'firma_adi', 'musteri']) || 'Bilinmiyor',
-              tarih: i.appointment_date || i.created_at || i.tarih, 
-              tutar: i.tahsil_edilen_tutar || i.offer_price || i.price || 0,
-              durum: i.status || i.durum, 
-              aciklama: i.issue_text || i.ariza || 'Randevu / Danışmanlık', raw: i
-          }));
-      };
-
-      const randevularAktif = await fetchRandevular('/api/appointments/liste/aktif');
-      const randevularGecmis = await fetchRandevular('/api/appointments/liste/gecmis'); 
-      
-      combinedData = [...combinedData, ...randevularAktif, ...randevularGecmis];
-      const uniqueData = Array.from(new Map(combinedData.map(item => [item.id, item])).values());
-      uniqueData.sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime());
-      setHamListe(uniqueData);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+      setBekleyenIsler([...servisListesi, ...randevuListesi]);
+    } catch (error) { console.error("Bekleyen işler çekilemedi:", error); } finally { setLoading(false); }
   };
 
-  const filtrelenmisListe = hamListe.filter(item => {
-    let sekmeUygun = false;
-    const yazdirilmisMi = yazdirilanlar.includes(item.id);
+  useEffect(() => { fetchBekleyenIsler(); }, []);
 
-    if (activeTab === 'fatura') {
-      sekmeUygun = item.durum === 'Teslim Edildi' && !yazdirilmisMi;
-    } else if (activeTab === 'servis') {
-      sekmeUygun = ((item.tip === 'Servis' && item.durum === 'Hazır') || 
-                    (item.tip === 'Randevu' && item.durum === 'Beklemede')) && !yazdirilmisMi;
-    } else if (activeTab === 'tamamlanan') {
-      sekmeUygun = yazdirilmisMi;
+  const handleBarkodAra = async () => {
+    if(!barkodNo) return;
+    setMalzemeLoading(true);
+    setSatisAdedi(1); 
+    try {
+      const res = await api.get(`/api/stok/search?barkod=${barkodNo}`);
+      if(res.data && res.data.success && res.data.data) {
+        setArananMalzeme(res.data.data);
+      } else {
+        alert("Malzeme bulunamadı!");
+        setArananMalzeme(null);
+      }
+    } catch (e) { 
+      console.error(e);
+      alert("Sorgulama sırasında bir hata oluştu!"); 
+    } finally { 
+      setMalzemeLoading(false); 
     }
+  };
 
-    if (!sekmeUygun) return false;
-
-    const tipUygun = filtreTip === 'Tümü' || item.tip === filtreTip;
-    const aramaKucuk = aramaMetni.toLowerCase();
-    const aramaUygun = !aramaMetni || 
-      (item.servis_no && item.servis_no.toLowerCase().includes(aramaKucuk)) ||
-      (item.musteri_adi && item.musteri_adi.toLowerCase().includes(aramaKucuk));
-    
-    let tarihUygun = true;
-    if (aramaTarih && item.tarih) {
-      const d = new Date(item.tarih);
-      if (!isNaN(d.getTime())) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        tarihUygun = `${y}-${m}-${day}` === aramaTarih;
-      } else { tarihUygun = false; }
-    } else if (aramaTarih && !item.tarih) { tarihUygun = false; }
-
-    return tipUygun && aramaUygun && tarihUygun;
-  });
-
-  const totalPages = Math.ceil(filtrelenmisListe.length / recordsPerPage) || 1;
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const currentRecords = filtrelenmisListe.slice((safeCurrentPage - 1) * recordsPerPage, safeCurrentPage * recordsPerPage);
-
-  const getPageNumbers = () => {
-    const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      if (safeCurrentPage <= 3) { pages.push(1, 2, 3, 4, '...', totalPages); } 
-      else if (safeCurrentPage >= totalPages - 2) { pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages); } 
-      else { pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages); }
+  const handleGecmisAc = async () => {
+    if(!arananMalzeme) return;
+    setGecmisAcik(true);
+    setGecmisLoading(true);
+    try {
+      const res = await api.get(`/api/stok/history/${arananMalzeme.id}`);
+      if(res.data && res.data.success) {
+        setGecmisVeri(res.data.data);
+      }
+    } catch (error) {
+      console.error("Geçmiş çekilemedi", error);
+    } finally {
+      setGecmisLoading(false);
     }
-    return pages;
   };
 
-  const handlePdfIndir = () => {
-    if (!seciliKayit) return;
-    const element = document.getElementById('ghost-print-area');
-    
-    const opt: any = {
-      margin:       0, 
-      filename:     `Fatura_${seciliKayit.servis_no}.pdf`,
-      image:        { type: 'jpeg', quality: 1 }, 
-      html2canvas:  { scale: 2, useCORS: true }, 
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-    };
-
-    html2pdf().set(opt).from(element).save().then(() => {
-        if (!yazdirilanlar.includes(seciliKayit.id) && activeTab !== 'tamamlanan') {
-            const onay = window.confirm("PDF başarıyla indirildi!\n\nEvet derseniz bu evrak 'Geçmiş Çıktılar' arşivine taşınacaktır.");
-            if (onay) {
-              const yeniYazdirilanlar = [...yazdirilanlar, seciliKayit.id];
-              setYazdirilanlar(yeniYazdirilanlar);
-              localStorage.setItem('kalandar_ciktilar', JSON.stringify(yeniYazdirilanlar));
-              setSeciliKayit(null);
-            }
-          }
-    });
+  const calculateStokBirimFiyati = () => {
+    if(!arananMalzeme) return 0;
+    const alis = parseFloat(arananMalzeme.alis_fiyati || 0);
+    const hamKar = alis * 0.25; 
+    const indirim = hamKar * (iskonto / 100); 
+    const netKar = hamKar - indirim;
+    const araToplam = alis + netKar;
+    return araToplam * 1.20; 
   };
 
-  const handlePrint = () => {
-    if (!seciliKayit) return;
-    
-    const printElement = document.getElementById('ghost-print-area');
-    if (!printElement) return;
-    const printContent = printElement.innerHTML;
+  const calculateStokToplamFiyati = () => {
+    return calculateStokBirimFiyati() * satisAdedi;
+  };
 
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+  const handleIslemSec = (islem: any) => {
+    setSeciliIslem(islem); setIskonto(0); setManuelTutar(''); setBarkodNo(''); setArananMalzeme(null); setSatisAdedi(1);
+    const kayitNo = islem.servis_no || 'Numarasız';
+    setAciklama(`${kayitNo} nolu işlem tahsilatı.`);
+    if (islem.islemTipi === 'SERVİS') setIslemTuru('Tamir Ücreti Tahsili');
+    else if (islem.islemTipi === 'RANDEVU') setIslemTuru('Randevu Geliri Tahsili');
+  };
 
-    const iframeDoc = iframe.contentWindow?.document;
-    if (!iframeDoc) return;
+  const handleIslemTuruDegistir = (e: any) => {
+    setIslemTuru(e.target.value); setSeciliIslem(null); setIskonto(0); setAciklama(''); setManuelTutar(''); setBarkodNo(''); setArananMalzeme(null); setSatisAdedi(1);
+  };
 
-    iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Fatura - ${seciliKayit.servis_no}</title>
-          <style>
-            @page { size: A4 portrait; margin: 0; }
-            body { margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: white; }
-            table { border-collapse: collapse; page-break-inside: avoid; width: 100%; }
-            tr { page-break-inside: avoid; }
-            td, th { box-sizing: border-box; }
-            .fatura-kapsayici { width: 100%; min-height: 297mm; position: relative; padding: 4cm 40px 40px 40px; box-sizing: border-box; }
-          </style>
-        </head>
-        <body>
-          <div class="fatura-kapsayici">
-            ${printContent}
-          </div>
-        </body>
-      </html>
-    `);
-    iframeDoc.close();
+  const { ustaTeklifi } = seciliIslem && (islemTuru === 'Tamir Ücreti Tahsili' || islemTuru === 'Randevu Geliri Tahsili') ? 
+                          (seciliIslem.islemTipi === 'RANDEVU' ? randevuDatasiniDagit(seciliIslem) : servisDatasiniAl(seciliIslem)) : 
+                          { ustaTeklifi: 0 };
+  
+  const hamTahsilat = ustaTeklifi * 1.5; 
+  const indirimMiktari = hamTahsilat * (iskonto / 100);
+  const netTahsilatTutari = hamTahsilat - indirimMiktari;
 
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-        if (!yazdirilanlar.includes(seciliKayit.id) && activeTab !== 'tamamlanan') {
-          const onay = window.confirm("Yazdırma işlemi sorunsuz tamamlandı mı?\\n\\nEvet derseniz bu evrak 'Geçmiş Çıktılar' arşivine taşınacaktır.");
-          if (onay) {
-            const yeniYazdirilanlar = [...yazdirilanlar, seciliKayit.id];
-            setYazdirilanlar(yeniYazdirilanlar);
-            localStorage.setItem('kalandar_ciktilar', JSON.stringify(yeniYazdirilanlar));
-            setSeciliKayit(null);
-          }
+
+
+
+
+
+
+
+const handleKaydet = async () => {
+    setIsSubmitting(true);
+    try {
+      if (islemTuru === 'Tamir Ücreti Tahsili' || islemTuru === 'Randevu Geliri Tahsili') {
+        if (!seciliIslem) { alert("Lütfen sol taraftan tahsilatı yapılacak bir iş seçin!"); setIsSubmitting(false); return; }
+        
+        // 🚨 MÜDÜRÜN KASA.JS'SİNE UYGUN ZIRHLI VERİ PAKETİ 🚨
+        const payload = { 
+          islem_yonu: 'GİRİŞ', // Kasa.js bunu bekliyor
+          kategori: islemTuru, 
+          tutar: netTahsilatTutari, 
+          aciklama: aciklama || `${seciliIslem.servis_no} nolu işlem tahsilatı.`, 
+          islem_yapan: 'Banko', 
+          baglanti_id: seciliIslem.id, // Kasa.js bunu bekliyor
+          servis_no: seciliIslem.servis_no // Kasa.js bunu görünce işi otomatik 'Teslim Edildi' yapacak!
+        };
+        
+        // Tüm tahsilatları tek bir güçlü kapıdan (/add) yolluyoruz
+        const res = await api.post('/api/kasa/add', payload);
+        
+        if (res.data.success) { 
+          alert(`✅ Tahsilat başarıyla yapıldı. Kayıt 'Teslim Edildi' yapıldı.`); 
+          setSeciliIslem(null); 
+          setIslemTuru('Seçiniz...'); 
+          fetchBekleyenIsler(); 
         }
-      }, 1000); 
-    }, 500); 
+      } 
+      else if (islemTuru === 'Kasaya Nakit Girişi') {
+        if (!manuelTutar || parseFloat(manuelTutar) <= 0) { alert("Geçerli bir tutar girmelisiniz!"); setIsSubmitting(false); return; }
+        
+        const payload = { 
+          islem_yonu: 'GİRİŞ', 
+          kategori: 'Kasaya Nakit Girişi', 
+          tutar: parseFloat(manuelTutar), 
+          aciklama: aciklama || 'Dışarıdan Kasaya Nakit Eklendi', 
+          islem_yapan: 'Banko' 
+        };
+        
+        const res = await api.post('/api/kasa/add', payload);
+        if (res.data.success) { 
+          alert("✅ Kasaya başarıyla manuel para girişi yapıldı."); 
+          setManuelTutar(''); 
+          setAciklama(''); 
+          setIslemTuru('Seçiniz...'); 
+        }
+      }
+      else if (islemTuru === 'Stoktan Ürün Satışı') {
+        if (!arananMalzeme) { alert("Lütfen önce barkod okutarak bir malzeme bulunuz!"); setIsSubmitting(false); return; }
+        const payload = {
+          islem_yonu: 'GİRİŞ',
+          kategori: 'Stoktan Ürün Satışı',
+          tutar: calculateStokToplamFiyati(), 
+          aciklama: aciklama || `${arananMalzeme.malzeme_adi} satışı yapıldı. (${satisAdedi} Adet)`,
+          islem_yapan: 'Banko',
+          id: arananMalzeme.id, 
+          barkod: barkodNo,
+          cikan_adet: satisAdedi, 
+          manual_discount: iskonto,
+          satis_fiyati: calculateStokBirimFiyati() 
+        };
+        const res = await api.post('/api/stok/sell', payload);
+        if (res.data.success) {
+          alert(`✅ ${satisAdedi} adet stok satışı başarıyla kasaya işlendi ve stoktan düşüldü.`);
+          setBarkodNo(''); setArananMalzeme(null); setAciklama(''); setIskonto(0); setSatisAdedi(1); setIslemTuru('Seçiniz...');
+        }
+      }
+    } catch (error: any) {
+      // 🚨 EĞER KASA.JS 'ZARARINA İŞLEM KALKANI'NI ÇALIŞTIRIRSA BURAYA DÜŞER:
+      if (error.response && error.response.data && error.response.data.error) { 
+        alert(error.response.data.error); 
+      } 
+      else { alert("İşlem sırasında bir hata oluştu."); }
+    } finally { setIsSubmitting(false); }
   };
 
-  const aktifKayit = seciliKayit || {
-    servis_no: '------',
-    tarih: new Date().toISOString(),
-    musteri_adi: 'MÜŞTERİ BİLGİSİ YOK',
-    tip: 'HİZMET',
-    aciklama: 'Kayıt seçilmesi bekleniyor...',
-    tutar: '0',
-    raw: {}
-  };
 
-  const genelToplam = parseFloat(aktifKayit.tutar || 0);
-  const araToplam = genelToplam / 1.20; 
-  const kdvTutari = genelToplam - araToplam;
+
+
+
+
+
+
+
+  const isCihazliIslem = islemTuru === 'Tamir Ücreti Tahsili' || islemTuru === 'Randevu Geliri Tahsili';
+  const isStokIslem = islemTuru === 'Stoktan Ürün Satışı';
+  const isNakitIslem = islemTuru === 'Kasaya Nakit Girişi';
 
   return (
     <>
       <style>{scrollbarStyle}</style>
-
-      {/* ================= 🚨 HAYALET A4 MATBAASI 🚨 ================= */}
-      <div className="absolute z-[-50] opacity-0 pointer-events-none left-0 top-0">
-        {seciliKayit && (
-          <div id="ghost-print-area" style={{ 
-            width: '794px', height: '1122px', overflow: 'hidden', padding: '4cm 40px 40px 40px', 
-            backgroundColor: 'white', color: 'black', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box' 
-          }}>
-            
-            <table style={{ width: '100%', borderBottom: '4px solid #a61c24', marginBottom: '25px', paddingBottom: '15px' }}>
-              <tbody>
-                <tr>
-                  <td style={{ verticalAlign: 'top' }}>
-                    <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, letterSpacing: '-1px', textTransform: 'uppercase' }}>
-                      <span style={{ color: '#a61c24' }}>{firmaAyarlari.firma_adi?.split(' ')[0] || 'FİRMA'}</span> <span style={{ color: '#666' }}>{firmaAyarlari.firma_adi?.split(' ').slice(1).join(' ') || 'ADI'}</span>
-                    </h1>
-                  </td>
-                  <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
-                    <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#a61c24', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                      {activeTab === 'servis' ? 'SERVİS FİŞİ' : 'TEKNİK SERVİS VE SATIŞ BELGESİ'}
-                    </h2>
-                    <table style={{ width: '240px', marginLeft: 'auto', fontSize: '14px', fontWeight: 'bold' }}>
-                      <tbody>
-                        <tr>
-                          <td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td>
-                          <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(seciliKayit.tarih)}-{seciliKayit.servis_no}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ textAlign: 'left' }}>TARİH:</td>
-                          <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{seciliKayit.tarih ? new Date(seciliKayit.tarih).toLocaleDateString('tr-TR') : '-'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table style={{ width: '100%', marginBottom: '40px', fontSize: '14px' }}>
-              <tbody>
-                <tr>
-                  <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
-                    <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>FİRMA BİLGİLERİ</p>
-                    <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                      Adres: {firmaAyarlari.firma_adres}<br />
-                      Vergi: {firmaAyarlari.firma_vergi}<br />
-                      Tel: {firmaAyarlari.firma_telefon}
-                    </div>
-                  </td>
-                  <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
-                    <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
-                    <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                      SAYIN: <span style={{ textTransform: 'uppercase' }}>{seciliKayit.musteri_adi}</span><br />
-                      Adres: {seciliKayit.raw?.adres || '-'}<br />
-                      GSM: {seciliKayit.raw?.telefon || '-'}
-                    </div>
-                  </td>
-                  <td style={{ width: '33.33%', verticalAlign: 'top' }}>
-                    <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
-                    <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                      Ürün: {seciliKayit.tip === 'Servis' ? (seciliKayit.cihaz_bilgisi || `${seciliKayit.raw?.brand || ''} ${seciliKayit.raw?.model || ''}`) : seciliKayit.tip}<br />
-                      Seri / Barkod: {getVal(seciliKayit.raw, ['serial_number', 'serial']) || seciliKayit.raw?.barkod || '-'}
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px', minHeight: '220px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#444', color: 'white', textAlign: 'left', fontSize: '14px' }}>
-                  <th style={{ padding: '12px', border: '1px solid #444', width: '50px', textAlign: 'center' }}>NO</th>
-                  <th style={{ padding: '12px', border: '1px solid #444' }}>HİZMET / ÜRÜN ADI</th>
-                  <th style={{ padding: '12px', border: '1px solid #444', width: '90px', textAlign: 'center' }}>MİKTAR</th>
-                  <th style={{ padding: '12px', border: '1px solid #444', width: '130px', textAlign: 'right' }}>BİRİM FİYAT</th>
-                  <th style={{ padding: '12px', border: '1px solid #444', width: '70px', textAlign: 'center' }}>KDV</th>
-                  <th style={{ padding: '12px', border: '1px solid #444', width: '140px', textAlign: 'right' }}>TOPLAM</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#888', fontSize: '14px' }}>1</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
-                    <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{seciliKayit.aciklama}</div>
-                    <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-                      (Kayıt No: {seciliKayit.servis_no}{seciliKayit.raw?.barkod ? `, Barkod: ${seciliKayit.raw.barkod}` : ''})
-                    </div>
-                  </td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table style={{ width: '100%', marginTop: 'auto' }}>
-              <tbody>
-                <tr>
-                  <td style={{ verticalAlign: 'bottom', paddingRight: '20px' }}>
-                    <div style={{ fontSize: '13px', borderLeft: '4px solid #888', paddingLeft: '12px', lineHeight: '1.8' }}>
-                      <p style={{ fontWeight: '900', color: '#888', margin: '0 0 6px 0' }}>BANKA HESAP BİLGİLERİMİZ</p>
-                      <table style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                        <tbody>
-                          <tr><td style={{ width: '100px', paddingBottom: '4px' }}>Ziraat Bankası:</td><td style={{ fontFamily: 'monospace', paddingBottom: '4px' }}>TR00 0000 0000 0000 0000 00</td></tr>
-                          <tr><td>Garanti BBVA:</td><td style={{ fontFamily: 'monospace' }}>TR99 9999 9999 9999 9999 99</td></tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                  <td style={{ width: '360px', verticalAlign: 'bottom' }}>
-                    <table style={{ width: '100%', fontSize: '16px', borderCollapse: 'collapse' }}>
-                      <tbody>
-                        <tr>
-                          <td style={{ padding: '8px 0', color: '#666', fontWeight: 'bold' }}>ARA TOPLAM:</td>
-                          <td style={{ textAlign: 'right', fontWeight: 'bold', fontFamily: 'monospace' }}>{araToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '8px 0', color: '#666', fontWeight: 'bold', borderBottom: '2px solid #eee' }}>İSKONTO / KDV:</td>
-                          <td style={{ textAlign: 'right', fontWeight: 'bold', borderBottom: '2px solid #eee', fontFamily: 'monospace' }}>{kdvTutari.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '16px 0', fontWeight: '900', color: '#a61c24', fontSize: '18px' }}>ÖDENECEK TUTAR:</td>
-                          <td style={{ textAlign: 'right', fontWeight: '900', color: '#a61c24', fontSize: '26px', fontFamily: 'monospace', letterSpacing: '-1px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div style={{ textAlign: 'center', fontSize: '12px', color: '#888', borderTop: '2px solid #eee', paddingTop: '20px', marginTop: '50px', whiteSpace: 'pre-line' }}>
-              {firmaAyarlari.fatura_alt_bilgi}
-            </div>
-
-            {activeTab === 'tamamlanan' && (
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-45deg)', fontSize: '130px', fontWeight: '900', color: 'rgba(255,0,0,0.05)', border: '20px solid rgba(255,0,0,0.05)', padding: '30px', pointerEvents: 'none', textTransform: 'uppercase' }}>
-                YAZDIRILDI
+      
+      {/* 📊 GEÇMİŞ VE SARFİYAT MODALI */}
+      {gecmisAcik && (
+        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
+          <div className="bg-[#1A1A1E] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-black/20 rounded-t-2xl">
+              <div>
+                <h2 className="text-white font-black uppercase text-lg flex items-center gap-2">
+                  <span className="text-[#8E052C]">📊</span> {arananMalzeme?.malzeme_adi}
+                </h2>
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Fiyat Değişim ve Kullanım Geçmişi</p>
               </div>
+              <button onClick={() => setGecmisAcik(false)} className="w-8 h-8 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg font-bold flex items-center justify-center transition-all">✕</button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto nuke-scrollbar flex flex-col gap-4">
+              {gecmisLoading ? (
+                <div className="text-center py-8 font-black text-gray-500 uppercase tracking-widest text-xs animate-pulse">Kayıtlar Çekiliyor...</div>
+              ) : gecmisVeri.length > 0 ? (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[9px] text-gray-500 uppercase tracking-widest">
+                      <th className="pb-2">Tarih</th>
+                      <th className="pb-2">Eski Alış</th>
+                      <th className="pb-2 text-white">Yeni Alış</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gecmisVeri.map((row, i) => (
+                      <tr key={i} className="border-b border-white/5 text-xs text-gray-300 font-medium hover:bg-white/5">
+                        <td className="py-2">{new Date(row.degisim_tarihi).toLocaleDateString('tr-TR')}</td>
+                        <td className="py-2 text-red-400 font-mono">{parseFloat(row.eski_alis).toFixed(2)} ₺</td>
+                        <td className="py-2 text-green-400 font-mono font-black">{parseFloat(row.yeni_alis).toFixed(2)} ₺</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-8 text-gray-500 text-xs font-black uppercase tracking-widest">
+                  Bu malzemeye ait fiyat değişim kaydı bulunamadı.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🚨 DİYET YAPMIŞ ANA KAPSAYICI (gap-4, p-2) */}
+      <div className="flex-1 flex flex-wrap gap-4 h-full overflow-y-auto nuke-scrollbar p-2 relative">
+        
+        {/* ================= SOL BÖLÜM ================= */}
+        <div className="flex-1 min-w-[400px] flex flex-col bg-black/40 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden shrink-0">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#8E052C]/10 blur-3xl rounded-full pointer-events-none"></div>
+          
+          <div className="p-4 border-b border-white/5 z-10 flex justify-between items-center bg-[#1A1A1E]">
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                <span className="text-[#8E052C]">↙</span> {isStokIslem ? 'MALZEME BİLGİLERİ' : 'TAHSİLAT BEKLEYENLER'}
+              </h3>
+              <p className="text-[9px] text-gray-500 uppercase font-black mt-0.5">
+                {isStokIslem ? 'Barkod ile bulunan güncel depo verileri' : 'Hazır Servisler & Onay Bekleyen Randevular'}
+              </p>
+            </div>
+            {!isStokIslem && (
+              <button onClick={fetchBekleyenIsler} className="text-[9px] bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 font-bold uppercase transition-all">Tazele</button>
             )}
           </div>
-        )}
-      </div>
 
+          {isStokIslem ? (
+             arananMalzeme ? (
+               <div className="flex-1 overflow-y-auto nuke-scrollbar p-4 flex flex-col gap-4">
+                 <div className="bg-[#1A1A1E] border border-white/5 rounded-2xl p-5 relative shadow-lg">
+                   
+                   <div className="flex justify-between items-start border-b border-white/5 pb-3 mb-3">
+                     <div>
+                       <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">MALZEME ADI</p>
+                       <h4 className="text-base font-black text-white">{arananMalzeme.malzeme_adi}</h4>
+                     </div>
+                     <div className="text-right">
+                       <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">STOK</p>
+                       <span className={`px-2 py-1 rounded-md text-[10px] font-black border ${arananMalzeme.miktar > 0 ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-red-500/10 text-red-500 border-red-500/30'}`}>
+                         {arananMalzeme.miktar} ADET
+                       </span>
+                     </div>
+                   </div>
 
-      <div className="flex flex-col h-full p-1 gap-3">
-        <div className="flex gap-2 p-1 bg-black/20 rounded-xl w-fit border border-white/5 relative z-10">
-          <button onClick={() => setActiveTab('fatura')} className={`px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'fatura' ? 'bg-[#8E052C] text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>📄 FATURA BEKLEYENLER</button>
-          <button onClick={() => setActiveTab('tamamlanan')} className={`px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'tamamlanan' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>🗄️ GEÇMİŞ ÇIKTILAR</button>
+                   <div className="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5">
+                     <div>
+                       <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">BİRİM ALIŞ FİYATI</p>
+                       <p className="text-xs font-mono font-bold text-gray-300">{parseFloat(arananMalzeme.alis_fiyati || 0).toFixed(2)} ₺</p>
+                     </div>
+                     
+                     <div className="text-right flex flex-col items-end">
+                       <p className="text-[9px] text-[#8E052C] font-black uppercase tracking-widest mb-1">TAVSİYE SATIŞ (İSKONTOSUZ)</p>
+                       <div className="flex items-center gap-2">
+                         <p className="text-base font-mono font-black text-[#8E052C]">
+                           {((parseFloat(arananMalzeme.alis_fiyati || 0) + (parseFloat(arananMalzeme.alis_fiyati || 0) * 0.25)) * 1.20).toFixed(2)} ₺
+                         </p>
+                         <button onClick={handleGecmisAc} className="w-7 h-7 bg-[#8E052C]/20 hover:bg-[#8E052C] border border-[#8E052C]/50 rounded flex items-center justify-center text-white transition-all shadow-md" title="Geçmiş Fiyat ve Sarfiyat Raporu">📊</button>
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="mt-3">
+                     <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-0.5">UYUMLU CİHAZLAR</p>
+                     <p className="text-[10px] text-gray-400 font-medium italic">{arananMalzeme.uyumlu_cihaz || 'Tüm cihazlar veya belirtilmemiş'}</p>
+                   </div>
+                 </div>
+               </div>
+             ) : (
+               <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-black/60 backdrop-blur-sm z-20">
+                 <div className="text-4xl mb-3 opacity-50">📦</div>
+                 <div className="text-xs font-black text-white uppercase tracking-widest mb-1">MALZEME BEKLENİYOR</div>
+                 <div className="text-[9px] text-gray-400 font-bold uppercase">Lütfen sağ taraftaki formdan barkod okutun.</div>
+               </div>
+             )
+          ) : isNakitIslem ? (
+             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-black/60 backdrop-blur-sm z-20">
+               <div className="text-3xl mb-3">🚫</div>
+               <div className="text-xs font-black text-white uppercase tracking-widest mb-1">LİSTE KİLİTLİ</div>
+               <div className="text-[9px] text-gray-400 font-bold uppercase">"{islemTuru}" işlemi için listeden cihaz seçimi yapılmasına gerek yoktur.</div>
+             </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto nuke-scrollbar p-2 flex flex-col gap-2">
+              {loading ? (
+                <div className="text-center py-8 font-bold text-gray-500 uppercase tracking-widest text-xs animate-pulse">Kayıtlar Taranıyor...</div>
+              ) : bekleyenIsler.length > 0 ? (
+                bekleyenIsler.map((islem, idx) => {
+                    const { musteriAdi, cihazMarkaModel } = islem.islemTipi === 'RANDEVU' ? randevuDatasiniDagit(islem) : servisDatasiniAl(islem);
+                    return (
+                        <div key={idx} onClick={() => handleIslemSec(islem)} className={`p-3 rounded-xl cursor-pointer transition-all border ${seciliIslem?.id === islem.id ? 'bg-[#8E052C]/10 border-[#8E052C]/50 shadow-[0_0_15px_rgba(142,5,44,0.1)]' : 'bg-[#1A1A1E] border-white/5 hover:border-white/20 hover:bg-white/5'}`}>
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="text-xs font-black text-white uppercase truncate pr-3">{musteriAdi}</div>
+                            {islem.islemTipi === 'RANDEVU' ? (
+                              <div className="text-[8px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded font-black tracking-widest uppercase">RANDEVU</div>
+                            ) : (
+                              <div className="text-[8px] bg-[#8E052C]/10 text-[#8E052C] border border-[#8E052C]/30 px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-md">SERVİS</div>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-end mt-2">
+                            <div><div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">SERVİS NO</div><div className="text-[10px] text-[#8E052C]/70 font-mono font-bold">{islem.servis_no ? `#${islem.servis_no}` : 'Yok'}</div></div>
+                            <div className="text-right"><div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">CİHAZ</div><div className="text-[10px] text-gray-300 font-bold truncate max-w-[130px]">{cihazMarkaModel}</div></div>
+                          </div>
+                        </div>
+                    )
+                })
+              ) : (
+                <div className="text-center py-8 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Tahsilat bekleyen cihaz yok.</div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 flex gap-4 overflow-hidden">
-          <div className="w-[400px] flex flex-col bg-[#1A1A1E] border border-white/5 rounded-2xl overflow-hidden shadow-2xl shrink-0 relative z-10">
-            <div className="p-3.5 border-b border-white/5 bg-black/40 flex flex-col gap-2.5">
-              <select value={filtreTip} onChange={(e) => { setFiltreTip(e.target.value); setCurrentPage(1); }} className="w-full bg-[#0F0F12] border border-white/10 rounded-lg px-2.5 py-2 text-[11px] font-black text-white uppercase outline-none focus:border-[#8E052C]">
-                <option value="Tümü">TÜM İŞLEMLER</option>
-                <option value="Servis">SADECE SERVİS</option>
-                <option value="Randevu">SADECE RANDEVU</option>
-                <option value="Stok Satışı">STOK SATIŞI</option>
+        {/* ================= SAĞ BÖLÜM (DİYETLİ FORM) ================= */}
+        <div className="flex-1 min-w-[400px] bg-[#1A1A1E] border border-white/5 flex flex-col rounded-2xl shadow-2xl overflow-hidden relative shrink-0">
+          <div className="bg-black/20 p-4 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-black text-white uppercase tracking-tighter flex items-center gap-2"><span className="text-[#8E052C] text-xl leading-none">←</span> KASA İŞLEMLERİ V2</h2></div>
+
+          <div className="flex-1 overflow-y-auto nuke-scrollbar p-5 flex flex-col gap-4">
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">İŞLEM TÜRÜ</label>
+              <select value={islemTuru} onChange={handleIslemTuruDegistir} className="bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none font-bold focus:border-[#8E052C] transition-all appearance-none">
+                <option value="Seçiniz...">-- Seçiniz --</option>
+                <option value="Kasaya Nakit Girişi">Kasaya Nakit Girişi</option>
+                <option value="Tamir Ücreti Tahsili">Tamir Ücreti Tahsili</option>
+                <option value="Randevu Geliri Tahsili">Randevu Geliri Tahsili</option>
+                <option value="Stoktan Ürün Satışı">Stoktan Ürün Satışı</option>
               </select>
-              <div className="flex gap-2.5">
-                <input type="text" placeholder="İsim veya No..." value={aramaMetni} onChange={(e) => { setAramaMetni(e.target.value); setCurrentPage(1); }} className="flex-1 bg-[#0F0F12] border border-white/10 rounded-lg px-2.5 py-2 text-[11px] text-white outline-none focus:border-[#8E052C]" />
-                <input type="date" value={aramaTarih} onChange={(e) => { setAramaTarih(e.target.value); setCurrentPage(1); }} className="w-[115px] bg-[#0F0F12] border border-white/10 rounded-lg px-2 py-2 text-[11px] text-white outline-none focus:border-[#8E052C] cursor-pointer" />
-              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto nuke-scrollbar p-2.5 flex flex-col gap-2">
-              {loading ? <div className="text-center py-10 text-gray-600 text-[11px] font-black uppercase animate-pulse">Yükleniyor...</div> : 
-               currentRecords.length === 0 ? <div className="text-center py-10 text-gray-600 text-[11px] font-black uppercase">Kayıt Yok</div> :
-               currentRecords.map((item) => {
-                let cardColorClass = '';
-                if (item.tip === 'Servis') {
-                  cardColorClass = seciliKayit?.id === item.id ? 'bg-orange-500/30 border-orange-500' : 'bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20';
-                } else if (item.tip === 'Randevu') {
-                  cardColorClass = seciliKayit?.id === item.id ? 'bg-blue-500/30 border-blue-500' : 'bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20';
-                } else if (item.tip === 'Stok Satışı') {
-                  cardColorClass = seciliKayit?.id === item.id ? 'bg-green-500/30 border-green-500' : 'bg-green-500/10 border-green-500/20 hover:bg-green-500/20';
-                } else {
-                  cardColorClass = seciliKayit?.id === item.id ? 'bg-[#8E052C]/30 border-[#8E052C]' : 'bg-white/5 border-white/5 hover:bg-white/10';
-                }
-
-                return (
-                  <div key={item.id} onClick={() => setSeciliKayit(item)} className={`p-3 rounded-xl border cursor-pointer transition-all ${cardColorClass}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[12px] font-black text-white bg-black/40 px-2.5 py-0.5 rounded-md border border-white/10 shadow-sm">#{item.servis_no}</span>
-                      <span className="text-[9px] text-gray-400 font-mono font-bold mt-1">{item.tarih ? new Date(item.tarih).toLocaleDateString('tr-TR') : ''}</span>
-                    </div>
-                    <h4 className="text-[11px] font-black text-white uppercase truncate">{item.musteri_adi}</h4>
-                    <div className="mt-1.5 flex justify-between items-end">
-                      <span className="text-[9px] text-gray-400 uppercase font-bold">{item.tip} • {item.durum}</span>
-                      <span className="text-[11px] font-black text-green-400">{parseFloat(item.tutar).toLocaleString('tr-TR')} ₺</span>
-                    </div>
+            {isCihazliIslem && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-black text-[#8E052C] uppercase tracking-widest">HAZIR CİHAZ NUMARASI GİRİN (*)</label>
+                  <div className="flex gap-2">
+                    <input type="text" readOnly value={seciliIslem?.servis_no || ''} placeholder="Soldan bir iş seçin..." className="flex-1 bg-black/50 border border-[#8E052C]/50 rounded-xl px-3 py-2 text-xs text-white outline-none font-bold" />
+                    <button className="bg-[#8E052C] hover:bg-[#8E052C]/80 w-10 rounded-xl flex items-center justify-center text-white text-sm transition-all shadow-md">🔍</button>
                   </div>
-                );
-               })}
-            </div>
-
-            <div className="p-3 border-t border-white/5 bg-black/40 flex justify-center items-center gap-1.5">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="w-6 h-6 rounded border border-white/10 flex items-center justify-center text-[10px] text-white disabled:opacity-30 hover:bg-white/10 transition-colors">◀</button>
-              {getPageNumbers().map((p, i) => (
-                p === '...' ? (
-                  <span key={`dots-${i}`} className="text-gray-500 text-[10px] px-1 font-black">...</span>
-                ) : (
-                  <button key={`page-${p}`} onClick={() => setCurrentPage(p as number)} className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black transition-all ${safeCurrentPage === p ? 'bg-[#8E052C] text-white' : 'text-gray-500 hover:text-white border border-white/5 hover:bg-white/10'}`}>{p}</button>
-                )
-              ))}
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="w-6 h-6 rounded border border-white/10 flex items-center justify-center text-[10px] text-white disabled:opacity-30 hover:bg-white/10 transition-colors">▶</button>
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col gap-3 relative">
-            <div className="bg-[#1A1A1E] border border-white/5 rounded-2xl p-4 shadow-2xl flex items-center justify-between shrink-0 relative z-10">
-              <div>
-                <h2 className="text-sm font-black text-white uppercase tracking-tighter">FATURA / FİŞ KONTROL PANELİ</h2>
-                <p className="text-[10px] text-gray-500 uppercase font-black mt-1">Önizlemeyi kontrol edip kurumsal çıktı alın.</p>
-              </div>
-              <div className="flex gap-2.5">
-                <button disabled={!seciliKayit} onClick={handlePdfIndir} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 shadow-lg shadow-red-900/20 disabled:opacity-30">
-                  <span>📄</span> PDF İNDİR
-                </button>
-                <button disabled={!seciliKayit} onClick={handlePrint} className="bg-white text-black hover:bg-gray-200 px-5 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 shadow-lg disabled:opacity-30">
-                  <span>🖨️</span> HIZLI YAZDIR
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 bg-gray-300 rounded-2xl overflow-y-auto nuke-scrollbar relative shadow-inner flex justify-center items-start p-4">
-              <div style={{ width: '437px', height: '617px', position: 'relative' }} className="shrink-0 bg-white shadow-2xl rounded-sm overflow-hidden">
-                <div style={{ width: '794px', height: '1122px', transform: 'scale(0.55)', transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, padding: '4cm 40px 40px 40px', backgroundColor: 'white', color: 'black', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box' }}>
-                  
-                  <table style={{ width: '100%', borderBottom: '4px solid #a61c24', marginBottom: '25px', paddingBottom: '15px' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ verticalAlign: 'top' }}>
-                          <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, letterSpacing: '-1px', textTransform: 'uppercase' }}>
-                            <span style={{ color: '#a61c24' }}>{firmaAyarlari.firma_adi?.split(' ')[0] || 'FİRMA'}</span> <span style={{ color: '#666' }}>{firmaAyarlari.firma_adi?.split(' ').slice(1).join(' ') || 'ADI'}</span>
-                          </h1>
-                        </td>
-                        <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
-                          <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#a61c24', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                            {activeTab === 'servis' ? 'SERVİS FİŞİ' : 'TEKNİK SERVİS VE SATIŞ BELGESİ'}
-                          </h2>
-                          <table style={{ width: '240px', marginLeft: 'auto', fontSize: '14px', fontWeight: 'bold' }}>
-                            <tbody>
-                              <tr><td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td><td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(aktifKayit.tarih)}-{aktifKayit.servis_no}</td></tr>
-                              <tr><td style={{ textAlign: 'left' }}>TARİH:</td><td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{aktifKayit.tarih ? new Date(aktifKayit.tarih).toLocaleDateString('tr-TR') : '-'}</td></tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <table style={{ width: '100%', marginBottom: '40px', fontSize: '14px' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
-                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>FİRMA BİLGİLERİ</p>
-                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>Adres: {firmaAyarlari.firma_adres}<br />Vergi: {firmaAyarlari.firma_vergi}<br />Tel: {firmaAyarlari.firma_telefon}</div>
-                        </td>
-                        <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
-                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
-                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>SAYIN: <span style={{ textTransform: 'uppercase' }}>{aktifKayit.musteri_adi}</span><br />Adres: {aktifKayit.raw?.adres || '-'}<br />GSM: {aktifKayit.raw?.telefon || '-'}</div>
-                        </td>
-                        <td style={{ width: '33.33%', verticalAlign: 'top' }}>
-                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
-                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : aktifKayit.tip}<br />Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial']) || aktifKayit.raw?.barkod || '-'}</div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px', minHeight: '220px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#444', color: 'white', textAlign: 'left', fontSize: '14px' }}>
-                        <th style={{ padding: '12px', border: '1px solid #444', width: '50px', textAlign: 'center' }}>NO</th><th style={{ padding: '12px', border: '1px solid #444' }}>HİZMET / ÜRÜN ADI</th><th style={{ padding: '12px', border: '1px solid #444', width: '90px', textAlign: 'center' }}>MİKTAR</th><th style={{ padding: '12px', border: '1px solid #444', width: '130px', textAlign: 'right' }}>BİRİM FİYAT</th><th style={{ padding: '12px', border: '1px solid #444', width: '70px', textAlign: 'center' }}>KDV</th><th style={{ padding: '12px', border: '1px solid #444', width: '140px', textAlign: 'right' }}>TOPLAM</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#888', fontSize: '14px' }}>1</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
-                          <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
-                          <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>(Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})</div>
-                        </td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <table style={{ width: '100%', marginTop: 'auto' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ verticalAlign: 'bottom', paddingRight: '20px' }}>
-                          <div style={{ fontSize: '13px', borderLeft: '4px solid #888', paddingLeft: '12px', lineHeight: '1.8' }}>
-                            <p style={{ fontWeight: '900', color: '#888', margin: '0 0 6px 0' }}>BANKA HESAP BİLGİLERİMİZ</p>
-                            <table style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                              <tbody>
-                                <tr><td style={{ width: '100px', paddingBottom: '4px' }}>Ziraat Bankası:</td><td style={{ fontFamily: 'monospace', paddingBottom: '4px' }}>TR00 0000 0000 0000 0000 00</td></tr>
-                                <tr><td>Garanti BBVA:</td><td style={{ fontFamily: 'monospace' }}>TR99 9999 9999 9999 9999 99</td></tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        </td>
-                        <td style={{ width: '360px', verticalAlign: 'bottom' }}>
-                          <table style={{ width: '100%', fontSize: '16px', borderCollapse: 'collapse' }}>
-                            <tbody>
-                              <tr><td style={{ padding: '8px 0', color: '#666', fontWeight: 'bold' }}>ARA TOPLAM:</td><td style={{ textAlign: 'right', fontWeight: 'bold', fontFamily: 'monospace' }}>{araToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td></tr>
-                              <tr><td style={{ padding: '8px 0', color: '#666', fontWeight: 'bold', borderBottom: '2px solid #eee' }}>İSKONTO / KDV:</td><td style={{ textAlign: 'right', fontWeight: 'bold', borderBottom: '2px solid #eee', fontFamily: 'monospace' }}>{kdvTutari.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td></tr>
-                              <tr><td style={{ padding: '16px 0', fontWeight: '900', color: '#a61c24', fontSize: '18px' }}>ÖDENECEK TUTAR:</td><td style={{ textAlign: 'right', fontWeight: '900', color: '#a61c24', fontSize: '26px', fontFamily: 'monospace', letterSpacing: '-1px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td></tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#888', borderTop: '2px solid #eee', paddingTop: '20px', marginTop: '50px', whiteSpace: 'pre-line' }}>
-                    {firmaAyarlari.fatura_alt_bilgi}
-                  </div>
-
-                  {activeTab === 'tamamlanan' && seciliKayit && (
-                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-45deg)', fontSize: '130px', fontWeight: '900', color: 'rgba(255,0,0,0.05)', border: '20px solid rgba(255,0,0,0.05)', padding: '30px', pointerEvents: 'none', textTransform: 'uppercase' }}>YAZDIRILDI</div>
-                  )}
                 </div>
 
-                {!seciliKayit && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white z-20">
-                     <span className="text-5xl mb-3">📄</span>
-                     <p className="text-[12px] font-black uppercase tracking-[0.2em]">BİLGİLERİ DOLDURMAK İÇİN KAYIT SEÇİN</p>
+                <div className="border border-white/10 bg-black/20 rounded-xl p-4 relative mt-1">
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#1A1A1E] border border-white/10 px-2 py-0.5 rounded-full text-[8px] font-black text-gray-500 uppercase tracking-widest shadow-sm">{seciliIslem?.islemTipi === 'RANDEVU' ? 'RANDEVU VE MÜŞTERİ' : 'CİHAZ VE MÜŞTERİ'}</div>
+                  <div className="flex justify-between items-center mb-2 mt-1"><span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Müşteri:</span><span className="text-xs font-black text-white">{seciliIslem ? (seciliIslem.islemTipi === 'RANDEVU' ? randevuDatasiniDagit(seciliIslem).musteriAdi : servisDatasiniAl(seciliIslem).musteriAdi) : '-'}</span></div>
+                  <div className="flex justify-between items-center mb-2"><span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Cihaz:</span><span className="text-xs font-black text-gray-300">{seciliIslem ? (seciliIslem.islemTipi === 'RANDEVU' ? randevuDatasiniDagit(seciliIslem).cihazMarkaModel : servisDatasiniAl(seciliIslem).cihazMarkaModel) : '-'}</span></div>
+                  <div className="flex justify-between items-center mb-4"><span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Usta Teklifi:</span><span className="text-xs font-black text-[#8E052C]">{ustaTeklifi.toFixed(2)} ₺</span></div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black text-yellow-600 uppercase tracking-widest">KÂR İSKONTOSU (%)</label>
+                    <input type="text" value={iskonto === 0 ? '' : iskonto} onChange={(e) => { let val = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); setIskonto(val > 100 ? 100 : (isNaN(val) ? 0 : val)); }} disabled={!seciliIslem} placeholder="0" className="w-full bg-black/50 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg px-3 py-2 text-center text-xs text-yellow-500 outline-none font-black focus:ring-1 focus:ring-yellow-500/20 transition-all disabled:opacity-50" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5 mt-1">
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">TAHSİLAT TUTARI (KÂR+KDV DAHİL)</label>
+                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 text-center"><span className="text-2xl font-black text-[#8E052C] font-mono tracking-tighter">{netTahsilatTutari.toFixed(2)} ₺</span></div>
+                </div>
+              </>
+            )}
+
+            {isStokIslem && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-black text-[#8E052C] uppercase tracking-widest">BARKOD OKUT VEYA YAZ (*)</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={barkodNo} onChange={(e) => setBarkodNo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleBarkodAra(); }} placeholder="Barkod..." className="flex-1 bg-black/50 border border-[#8E052C]/50 rounded-xl px-3 py-2.5 text-xs text-white outline-none font-bold focus:border-[#8E052C]" />
+                    <button onClick={handleBarkodAra} className="bg-[#8E052C] hover:bg-[#8E052C]/80 w-10 rounded-xl flex items-center justify-center text-white text-sm transition-all shadow-md">{malzemeLoading ? '⌛' : '🔍'}</button>
+                  </div>
+                </div>
+
+                {arananMalzeme && (
+                  <div className="border border-white/10 bg-black/20 rounded-xl p-4 relative mt-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#1A1A1E] border border-white/10 px-2 py-0.5 rounded-full text-[8px] font-black text-gray-500 uppercase tracking-widest shadow-sm">SATIŞ HESABI</div>
+                    
+                    <div className="flex gap-3 mt-3">
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <label className="text-[9px] font-black text-yellow-600 uppercase tracking-widest">KÂR İSKONTOSU (%)</label>
+                        <input type="text" value={iskonto === 0 ? '' : iskonto} onChange={(e) => { let val = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); setIskonto(val > 100 ? 100 : (isNaN(val) ? 0 : val)); }} placeholder="0" className="w-full bg-black/50 border border-yellow-500/30 rounded-lg px-3 py-2 text-center text-sm text-yellow-500 outline-none font-black transition-all" />
+                      </div>
+
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <label className="text-[9px] font-black text-sky-500 uppercase tracking-widest text-center">SATIŞ ADEDİ</label>
+                        <div className="flex items-center justify-between bg-black/50 border border-sky-500/30 rounded-lg px-1.5 py-0.5">
+                          <button onClick={() => setSatisAdedi(Math.max(1, satisAdedi - 1))} className="w-8 h-8 bg-white/5 hover:bg-white/10 rounded flex items-center justify-center text-white font-black text-base transition-all">-</button>
+                          <input type="text" value={satisAdedi} onChange={(e) => { let val = parseInt(e.target.value.replace(/[^0-9]/g, '') || '1', 10); setSatisAdedi(Math.min(arananMalzeme.miktar, Math.max(1, val))); }} className="w-10 bg-transparent text-center text-sm text-sky-400 font-black outline-none" />
+                          <button onClick={() => setSatisAdedi(Math.min(arananMalzeme.miktar, satisAdedi + 1))} className="w-8 h-8 bg-white/5 hover:bg-white/10 rounded flex items-center justify-center text-white font-black text-base transition-all">+</button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <p className="text-[8px] text-gray-500 italic mt-2 text-center border-b border-white/5 pb-2">İskonto %25'lik kâr marjından düşülür. Zarar edilemez.</p>
+
+                    <div className="flex flex-col gap-1.5 mt-3">
+                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest text-center flex justify-center items-center gap-2">
+                        SATIŞ TUTARI <span className="text-[7px] bg-white/5 px-1.5 py-0.5 rounded">Birim: {calculateStokBirimFiyati().toFixed(2)} ₺ x {satisAdedi}</span>
+                      </label>
+                      <div className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-3 text-center text-3xl text-[#8E052C] font-mono font-black shadow-inner">
+                        {calculateStokToplamFiyati().toFixed(2)} <span className="text-lg">₺</span>
+                      </div>
+                    </div>
                   </div>
                 )}
-                
+              </>
+            )}
+
+            {isNakitIslem && (
+              <div className="flex flex-col gap-4 mt-2">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest text-center">GİRİLECEK TUTAR (₺)</label>
+                  <input type="text" value={manuelTutar} onChange={(e) => setManuelTutar(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.00" className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-4 text-center text-3xl text-[#8E052C] font-mono outline-none font-black focus:border-[#8E052C] transition-all shadow-inner" />
+                </div>
               </div>
-            </div>
+            )}
+
+            {islemTuru !== 'Seçiniz...' && (
+              <div className="flex flex-col gap-1.5 mt-1">
+                <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">İŞLEM AÇIKLAMASI (*)</label>
+                <textarea value={aciklama} onChange={(e) => setAciklama(e.target.value)} disabled={isCihazliIslem && !seciliIslem} rows={2} placeholder={isNakitIslem ? "Örn: Bozuk para tümleme, vb." : "Detay yazınız..."} className="bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-300 outline-none font-medium focus:border-[#8E052C]/50 transition-all resize-none disabled:opacity-50" />
+              </div>
+            )}
+
           </div>
+
+          <div className="p-4 bg-black/20 border-t border-white/5">
+            <button onClick={handleKaydet} disabled={islemTuru === 'Seçiniz...' || (isCihazliIslem && !seciliIslem) || (isStokIslem && !arananMalzeme) || isSubmitting} className="w-full bg-[#1A1A1E] hover:bg-[#8E052C] border border-[#8E052C]/50 text-[#8E052C] hover:text-white py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+              {isSubmitting ? 'İşleniyor...' : 'İŞLEMİ ONAYLA VE KAYDET'}
+            </button>
+          </div>
+
         </div>
+
       </div>
     </>
   );

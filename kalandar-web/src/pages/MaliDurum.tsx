@@ -154,12 +154,31 @@ export default function MaliDurum({ onSeeAll }: any) {
                   <div className="w-28 text-right">TUTAR (₺)</div>
                 </div>
 
+
+
                 {sonIslemler.length > 0 ? sonIslemler.map((islem, idx) => {
                   const isGiris = islem.islem_yonu === 'GİRİŞ';
                   // MÜDÜR: Senin backend tarihi "islem_tarihi" olarak atıyor
                   const d = new Date(islem.islem_tarihi || new Date());
                   const tarih = d.toLocaleDateString('tr-TR');
                   const saat = d.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+
+                  // 🚨 ZIMPARA RADARI: Barkod veya Servis Numarasını Bulma Motoru (MaliDurum İkizi)
+                  let gosterilecekNo = islem.servis_no;
+                  if (!gosterilecekNo && islem.aciklama && islem.aciklama.includes('Barkod:')) {
+                      gosterilecekNo = islem.aciklama.match(/Barkod:\s*([^ |]+)/i)?.[1];
+                  }
+                  if (!gosterilecekNo && islem.barkod) {
+                      gosterilecekNo = islem.barkod;
+                  }
+
+                
+
+
+                
+
+
+
 
                   return (
                     <div key={idx} className="flex items-center px-4 py-3 bg-black/30 border border-white/5 hover:bg-white/5 transition-colors rounded-lg group">
