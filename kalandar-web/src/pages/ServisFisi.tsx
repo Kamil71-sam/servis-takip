@@ -344,14 +344,30 @@ export default function ServisFisi() {
                 Adres: {firmaAyarlari.firma_adres}<br />Vergi: {firmaAyarlari.firma_vergi}<br />Tel: {firmaAyarlari.firma_telefon}
               </div>
             </td>
+
+
+
             <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '15px' }}>
-              <p style={{ fontWeight: '900', color: '#888', borderBottom: '1px solid #ddd', paddingBottom: '4px', margin: '0 0 6px 0' }}>MÜŞTERİ BİLGİLERİ</p>
-              <div style={{ fontWeight: 'bold', lineHeight: '1.6', minHeight: '40px' }}>
-                SAYIN: <span style={{ textTransform: 'uppercase' }}>{gosterilecekData.musteri_adi}</span><br />
-                Adres: {gosterilecekData.raw?.adres || ''}<br />
-                GSM: {gosterilecekData.raw?.telefon || ''}
-              </div>
-            </td>
+                 <p style={{ fontWeight: '900', color: '#888', borderBottom: '1px solid #ddd', paddingBottom: '4px', marginBottom: '8px' }}>MÜŞTERİ BİLGİLERİ</p>
+                 <div style={{ fontWeight: 'bold', lineHeight: '1.6', minHeight: '40px' }}>
+                     SAYIN: <span style={{ textTransform: 'uppercase' }}>{gosterilecekData.musteri_adi}</span><br />
+                     Adres: {gosterilecekData.raw?.customer_address || gosterilecekData.raw?.adres || gosterilecekData.raw?.address || '-'}<br />
+                      GSM: {gosterilecekData.raw?.customer_phone || gosterilecekData.raw?.telefon || gosterilecekData.raw?.phone || '-'}
+                  </div>
+             </td>
+
+
+
+
+
+
+            
+
+
+
+
+
+
             <td style={{ width: '33.33%', verticalAlign: 'top' }}>
               <p style={{ fontWeight: '900', color: '#888', borderBottom: '1px solid #ddd', paddingBottom: '4px', margin: '0 0 6px 0' }}>CİHAZ BİLGİSİ</p>
               <div style={{ fontWeight: 'bold', lineHeight: '1.6', minHeight: '40px' }}>

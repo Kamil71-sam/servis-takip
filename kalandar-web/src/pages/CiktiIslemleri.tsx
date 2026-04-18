@@ -111,18 +111,56 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
     try {
       let combinedData: any[] = [];
 
-      const resKasa = await api.get('/api/kasa/all').catch(() => null);
+
+
+
+
+
+const resKasa = await api.get('/api/kasa/all').catch(() => null);
       if (resKasa?.data?.data) {
         const stoklar = resKasa.data.data
           .filter((i: any) => i.kategori === 'Stok Satışı')
-          .map((i: any) => ({
-            id: `stok_${i.id}`, tip: 'Stok Satışı', 
-            servis_no: i.servis_no || i.plaka || '-',
-            musteri_adi: i.musteri_adi || 'Genel Müşteri', tarih: i.islem_tarihi,
-            tutar: i.tutar, durum: 'Teslim Edildi', aciklama: i.aciklama, raw: i 
-          }));
+          .map((i: any) => {
+            // 🚨 STOK SATIŞI TEMİZLEYİCİ MOTOR V3 🚨
+            let temizAciklama = i.aciklama || '';
+            let urunAdi = '';
+            let barkodNo = '';
+
+            if (temizAciklama.includes('Stok Satışı:')) {
+                urunAdi = temizAciklama.match(/Stok Satışı:\s*([^|]+)/i)?.[1]?.trim() || '';
+                barkodNo = temizAciklama.match(/Barkod:\s*([^|]+)/i)?.[1]?.trim() || '';
+                
+                if (urunAdi && barkodNo) {
+                    temizAciklama = `${urunAdi.toUpperCase()} (${barkodNo})`;
+                } else if (urunAdi) {
+                    temizAciklama = urunAdi.toUpperCase();
+                }
+            }
+
+            return {
+              id: `stok_${i.id}`, tip: 'Stok Satışı', 
+             
+              
+
+              // 🚨 ZIMPARACI MOTORU: Her zaman önce Ürün Adını yaz, bulamazsa Barkodu yaz!
+              servis_no: (urunAdi || barkodNo || i.servis_no || i.plaka || '-').toUpperCase(),
+              
+              
+              
+              
+              musteri_adi: i.musteri_adi || 'Genel Müşteri', tarih: i.islem_tarihi,
+              tutar: i.tutar, durum: 'Teslim Edildi', aciklama: temizAciklama, raw: i 
+            };
+          });
         combinedData = [...combinedData, ...stoklar];
       }
+
+
+
+  
+       
+
+
 
       const resTamamlanan = await api.get('/services/tamamlanan').catch(() => null);
       const servisTamamlananListe = Array.isArray(resTamamlanan?.data?.data) ? resTamamlanan.data.data : (Array.isArray(resTamamlanan?.data) ? resTamamlanan.data : []);
@@ -425,21 +463,46 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                       Tel: {firmaAyarlari.firma_telefon}
                     </div>
                   </td>
-                  <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
-                    <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
-                    <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                      SAYIN: <span style={{ textTransform: 'uppercase' }}>{seciliKayit.musteri_adi}</span><br />
-                      Adres: {seciliKayit.raw?.adres || '-'}<br />
-                      GSM: {seciliKayit.raw?.telefon || '-'}
-                    </div>
-                  </td>
-                  <td style={{ width: '33.33%', verticalAlign: 'top' }}>
-                    <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
-                    <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                      Ürün: {seciliKayit.tip === 'Servis' ? (seciliKayit.cihaz_bilgisi || `${seciliKayit.raw?.brand || ''} ${seciliKayit.raw?.model || ''}`) : seciliKayit.tip}<br />
-                      Seri / Barkod: {getVal(seciliKayit.raw, ['serial_number', 'serial']) || seciliKayit.raw?.barkod || '-'}
-                    </div>
-                  </td>
+
+
+                 
+                    <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
+                      <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
+                      <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                        SAYIN: <span style={{ textTransform: 'uppercase' }}>{aktifKayit.musteri_adi}</span><br />
+                        Adres: {aktifKayit.raw?.customer_address || aktifKayit.raw?.adres || aktifKayit.raw?.address || '-'}<br />
+                        GSM: {aktifKayit.raw?.customer_phone || aktifKayit.raw?.telefon || aktifKayit.raw?.phone || '-'}
+                      </div>
+                    </td>
+
+
+
+
+
+
+                        <td style={{ width: '33.33%', verticalAlign: 'top' }}>
+                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
+                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                            Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : ((aktifKayit.aciklama || '').match(/(?:CİHAZ|ÜRÜN):\s*([^\n]+)/i)?.[1]?.trim() || aktifKayit.tip)}<br />
+                            Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-'}
+                          </div>
+                    </td>
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                 
+                  
+
+
+
+
                 </tr>
               </tbody>
             </table>
@@ -458,13 +521,27 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
               </thead>
               <tbody>
                 <tr>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#888', fontSize: '14px' }}>1</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
-                    <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{seciliKayit.aciklama}</div>
-                    <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-                      (Kayıt No: {seciliKayit.servis_no}{seciliKayit.raw?.barkod ? `, Barkod: ${seciliKayit.raw.barkod}` : ''})
-                    </div>
-                  </td>
+
+
+                <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '20px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '14px' }}>
+                        1
+                      </td>
+                      <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
+                        <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
+                        {aktifKayit.tip !== 'Stok Satışı' && (
+                            <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+                              (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
+                            </div>
+                        )}
+                      </td>
+
+
+
+                
+
+
+
+
                   <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
                   <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
                   <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
@@ -658,6 +735,7 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                   <table style={{ width: '100%', marginBottom: '40px', fontSize: '14px' }}>
                     <tbody>
                       <tr>
+                        
                         <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
                           <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>FİRMA BİLGİLERİ</p>
                           <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
@@ -665,22 +743,35 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                             Vergi: {firmaAyarlari.firma_vergi}<br />
                             Tel: {firmaAyarlari.firma_telefon}
                           </div>
-                        </td>
-                        <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
-                          <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
-                          <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                            SAYIN: <span style={{ textTransform: 'uppercase' }}>{aktifKayit.musteri_adi}</span><br />
-                            Adres: {aktifKayit.raw?.adres || '-'}<br />
-                            GSM: {aktifKayit.raw?.telefon || '-'}
-                          </div>
-                        </td>
+                        </td>                     
+                      
+
+                       <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
+                        <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
+                        <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
+                          SAYIN: <span style={{ textTransform: 'uppercase' }}>{aktifKayit.musteri_adi}</span><br />
+                          Adres: {aktifKayit.raw?.customer_address || aktifKayit.raw?.adres || aktifKayit.raw?.address || '-'}<br />
+                          GSM: {aktifKayit.raw?.customer_phone || aktifKayit.raw?.telefon || aktifKayit.raw?.phone || '-'}
+                        </div>
+                      </td>
+                                              
+
+
+
+
                         <td style={{ width: '33.33%', verticalAlign: 'top' }}>
                           <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
                           <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
-                            Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : aktifKayit.tip}<br />
-                            Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial']) || aktifKayit.raw?.barkod || '-'}
+                            Ürün: {aktifKayit.tip === 'Servis' ? (aktifKayit.cihaz_bilgisi || `${aktifKayit.raw?.brand || ''} ${aktifKayit.raw?.model || ''}`) : ((aktifKayit.aciklama || '').match(/(?:CİHAZ|ÜRÜN):\s*([^\n]+)/i)?.[1]?.trim() || aktifKayit.tip)}<br />
+                            Seri / Barkod: {getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-'}
                           </div>
                         </td>
+
+
+ 
+
+
+
                       </tr>
                     </tbody>
                   </table>
@@ -699,13 +790,33 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                     </thead>
                     <tbody>
                       <tr>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#888', fontSize: '14px' }}>1</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
-                          <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
-                          <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-                            (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
-                          </div>
-                        </td>
+
+
+
+
+                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '20px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '14px' }}>
+                              1
+                            </td>
+                            <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
+                              <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
+                              {aktifKayit.tip !== 'Stok Satışı' && (
+                                  <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+                                    (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
+                                  </div>
+                              )}
+                            </td>
+
+
+
+
+
+
+
+
+
+                       
+
+ 
                         <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
                         <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
                         <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
