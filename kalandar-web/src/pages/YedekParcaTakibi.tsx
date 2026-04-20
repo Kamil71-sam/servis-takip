@@ -36,6 +36,10 @@ export default function YedekParcaTakibi() {
   const [duzenleNot, setDuzenleNot] = useState('');
   const [islemYapiliyor, setIslemYapiliyor] = useState(false);
 
+  const [ambarMevcudu, setAmbarMevcudu] = useState<number | null>(null);
+
+
+
   const fetchTalepler = async () => {
     setLoading(true);
     try {
@@ -193,6 +197,38 @@ export default function YedekParcaTakibi() {
     }
   };
 
+
+  const openDuzenleModal = async (parca: any) => {
+    setAktifParca(parca);
+    setDuzenleAdet(parca.quantity || 1);
+    setDuzenleFiyat(parca.price || 0);
+    setDuzenleNot(parca.description || '');
+    setAmbarMevcudu(null); // Önceki limiti temizle
+    setShowDuzenleModal(true);
+
+    // 🚨 MÜDÜRÜN AMBAR RADARI: Düzenle modülü açılır açılmaz depoya malı sorar!
+    try {
+      // Malzeme adıyla depoda arama yapıyoruz
+      const res = await api.get(`/api/stok/search?malzeme_adi=${parca.part_name}`);
+      if (res.data && res.data.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        // Gelen malın stok miktarını hafızaya al
+        const gercekStok = parseInt(res.data.data[0].miktar || 0);
+        setAmbarMevcudu(gercekStok);
+      }
+    } catch (error) {
+      console.error("Ambar mevcudu çekilemedi:", error);
+    }
+  };
+
+
+
+
+
+
+
+
+
+/*
   const openDuzenleModal = (parca: any) => {
     setAktifParca(parca);
     setDuzenleAdet(parca.quantity || 1);
@@ -200,6 +236,15 @@ export default function YedekParcaTakibi() {
     setDuzenleNot(parca.description || '');
     setShowDuzenleModal(true);
   };
+
+*/
+
+
+
+
+
+
+
 
   const filtrelenmis = talepler.filter(t => 
     String(t.gosterim_no).includes(arama) || 
@@ -232,12 +277,47 @@ export default function YedekParcaTakibi() {
           {loading ? (
             <div className="text-center py-20 font-black uppercase text-gray-500 animate-pulse">Kayıtlar Çekiliyor...</div>
           ) : filtrelenmis.map((servis, i) => {
+            
+            // 🚨 MÜDÜRÜN AKILLI RADARI: İçeride "Geldi" veya "İptal" OLMAYAN (Yani hala bekleyen) parça var mı?
+            const islemDevamEdiyor = servis.parcalar.some((p: any) => p.status !== 'Geldi' && p.status !== 'İptal');
+
+            return (
+              // İşlem devam ediyorsa AÇIK GRİ ve gölgeli, bittiyse KARANLIK ve soluk!
+              
+              // İşlem devam ediyorsa DAHA AÇIK GRİ ve parlak çerçeve, bittiyse KARANLIK ve soluk!
+            <div key={i} className={`rounded-3xl border transition-all overflow-hidden ${islemDevamEdiyor ? 'bg-[#3A3F4C] border-gray-400 shadow-[0_0_20px_rgba(255,255,255,0.1)]' : 'bg-[#151518] border-white/5 opacity-50'}`}>
+              
+                
+                <div className="bg-white/5 px-6 py-5 border-b border-white/5 flex flex-wrap justify-between items-center gap-4">
+
+
+
+
+
+
+        {/*
+
+        <div className="flex-1 overflow-y-auto space-y-6 pr-2 nuke-scrollbar pb-20">
+          {loading ? (
+            <div className="text-center py-20 font-black uppercase text-gray-500 animate-pulse">Kayıtlar Çekiliyor...</div>
+          ) : filtrelenmis.map((servis, i) => {
             const isFinished = (servis.durum || '').toLowerCase() === 'geldi';
 
             return (
               <div key={i} className={`rounded-3xl border transition-all overflow-hidden ${isFinished ? 'bg-black/20 border-white/5 opacity-80' : 'bg-[#1A1A1E] border-white/10 shadow-xl'}`}>
                 
                 <div className="bg-white/5 px-6 py-5 border-b border-white/5 flex flex-wrap justify-between items-center gap-4">
+                  
+                  */}
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
                   <div className="flex items-center gap-6">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-500 font-black tracking-widest">KAYITLI SERVİS NO</span>
@@ -468,18 +548,66 @@ export default function YedekParcaTakibi() {
                   {aktifParca.barkod && <div className="text-[10px] text-gray-500 font-mono mt-1">{aktifParca.barkod}</div>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+
+                  <div className="grid grid-cols-2 gap-4">
+                  {/* 1. ADET KUTUSU (AMBAR KONTROLLÜ VE TERTEMİZ ELLE GİRİŞ) */}
                   <div>
-                    <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1 mb-1 block">Adet</label>
-                    <input type="number" min="1" value={duzenleAdet} onChange={(e) => setDuzenleAdet(Number(e.target.value))} className="w-full bg-[#0F0F12] border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white outline-none font-black text-center focus:border-[#8E052C]/50" />
+                    <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1 mb-1 flex justify-between">
+                      <span>Adet</span>
+                      {ambarMevcudu !== null && (
+                        <span className="text-sky-400">Ambarda: {ambarMevcudu}</span>
+                      )}
+                    </label>
+                    <input 
+                      type="text" 
+                      inputMode="numeric"
+                      value={duzenleAdet} 
+                      onChange={(e) => {
+                        let textVal = e.target.value.replace(/[^0-9]/g, '');
+                        // 🚨 Zabıtayı susturmak için "any" taktık
+                        let val: any = textVal === '' ? '' : Number(textVal);
+
+                        if (val !== '' && ambarMevcudu !== null && Number(val) > ambarMevcudu) {
+                          val = ambarMevcudu;
+                          alert(`🚨 STOK YETERSİZ!\nAmbarda bu üründen sadece ${ambarMevcudu} adet kaldı. Daha fazla yazamazsınız!`);
+                        }
+                        setDuzenleAdet(val);
+                      }} 
+                      onBlur={() => { if (!duzenleAdet) setDuzenleAdet(1); }} 
+                      className="w-full bg-[#0F0F12] border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white outline-none font-black text-center focus:border-[#8E052C]/50" 
+                    />
                   </div>
+
+                  {/* 2. BİRİM FİYAT KUTUSU (BAŞTAKİ SIFIRI ATAR, YUKARI/AŞAĞI OKLARI YOK) */}
                   <div>
                     <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1 mb-1 flex justify-between">
                       <span>Birim Fiyat (₺)</span>
                     </label>
-                    <input type="number" step="0.01" value={duzenleFiyat} onChange={(e) => setDuzenleFiyat(Number(e.target.value))} className="w-full bg-[#0F0F12] border border-[#8E052C]/30 rounded-xl py-2.5 px-3 text-sm text-white outline-none font-black text-center focus:border-[#8E052C]" />
+                    <input 
+                      type="text" 
+                      inputMode="decimal"
+                      value={duzenleFiyat} 
+                      onChange={(e) => {
+                        // 🚨 Zabıtayı susturmak için "any" taktık
+                        let textVal: any = e.target.value.replace(/[^0-9.]/g, '');
+                        
+                        if (textVal.length > 1 && textVal.startsWith('0') && !textVal.startsWith('0.')) {
+                          textVal = textVal.replace(/^0+/, '');
+                        }
+                        
+                        setDuzenleFiyat(textVal);
+                      }} 
+                      onBlur={() => {
+                        let val = parseFloat(String(duzenleFiyat));
+                        setDuzenleFiyat((isNaN(val) ? 0 : val) as any);
+                      }}
+                      className="w-full bg-[#0F0F12] border border-[#8E052C]/30 rounded-xl py-2.5 px-3 text-sm text-white outline-none font-black text-center focus:border-[#8E052C]" 
+                    />
                   </div>
                 </div>
+
+
+                
 
                 <div>
                   <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1 mb-1 block">Not / Açıklama</label>

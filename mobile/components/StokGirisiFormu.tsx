@@ -88,9 +88,29 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
       
       // MÜDÜR: Samsung Galaxy saçmalığını bitiren hamle! 
       // Sadece barkod ile arama yapıyoruz, malzeme_adi ile arama yapıp Samsung Galaxy falan getirmesini engelliyoruz.
+     
+     
+
+
+      // MÜDÜR: Samsung Galaxy saçmalığını bitiren hamle revize edildi! 
+      // Eğer isimle arıyorsak, backend'deki "tam_eslesme" ajanına yolluyoruz ki birebir aynısını ve TEK BİR kayıt getirsin.
       const url = searchType === 'barkod' ? 
         `${API_URL}/api/stok/search?barkod=${encodeURIComponent(value)}` : 
+        `${API_URL}/api/stok/search?tam_eslesme=${encodeURIComponent(value)}`;
+
+
+
+
+      /*const url = searchType === 'barkod' ? 
+        `${API_URL}/api/stok/search?barkod=${encodeURIComponent(value)}` : 
         `${API_URL}/api/stok/search?barkod=XXXXX`; // Malzeme adı araması yapma!
+        */
+
+
+
+
+
+
 
       const response = await fetch(url);
       const res = await response.json();

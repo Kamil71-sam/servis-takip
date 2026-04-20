@@ -137,6 +137,26 @@ export default function KasaGirisi() {
     setIslemTuru(e.target.value); setSeciliIslem(null); setIskonto(0); setAciklama(''); setManuelTutar(''); setBarkodNo(''); setArananMalzeme(null); setSatisAdedi(1);
   };
 
+
+  const { ustaTeklifi } = seciliIslem && (islemTuru === 'Tamir Ücreti Tahsili' || islemTuru === 'Randevu Geliri Tahsili') ? 
+                          (seciliIslem.islemTipi === 'RANDEVU' ? randevuDatasiniDagit(seciliIslem) : servisDatasiniAl(seciliIslem)) : 
+                          { ustaTeklifi: 0 };
+  
+  // --- 🚨 ZIRHLI ESNAF MOTORU (CİHAZ VE RANDEVU İÇİN) 🚨 ---
+  // ustaTeklifi = ustanın girdiği KDV'siz Ham Fiyat (Maliyet)
+  const cihazHamKar = ustaTeklifi * 0.25; 
+  const cihazIndirimliKar = cihazHamKar * (1 - (iskonto / 100)); 
+  const cihazAraToplam = ustaTeklifi + cihazIndirimliKar;
+  const netTahsilatTutari = Math.round(cihazAraToplam * 1.20); // %20 KDV eklendi ve kuruşlar yuvarlandı
+  // ---------------------------------------------------------
+
+
+
+
+
+
+
+  /*
   const { ustaTeklifi } = seciliIslem && (islemTuru === 'Tamir Ücreti Tahsili' || islemTuru === 'Randevu Geliri Tahsili') ? 
                           (seciliIslem.islemTipi === 'RANDEVU' ? randevuDatasiniDagit(seciliIslem) : servisDatasiniAl(seciliIslem)) : 
                           { ustaTeklifi: 0 };
@@ -144,6 +164,7 @@ export default function KasaGirisi() {
   const hamTahsilat = ustaTeklifi * 1.5; 
   const indirimMiktari = hamTahsilat * (iskonto / 100);
   const netTahsilatTutari = hamTahsilat - indirimMiktari;
+  */
 
 
 
@@ -151,6 +172,89 @@ export default function KasaGirisi() {
 
 
 
+const handleKaydet = async () => {
+    setIsSubmitting(true);
+    try {
+      // 1. CİHAZ VEYA RANDEVU TAHSİLATI
+      if (islemTuru === 'Tamir Ücreti Tahsili' || islemTuru === 'Randevu Geliri Tahsili') {
+        if (!seciliIslem) { alert("Lütfen sol taraftan tahsilatı yapılacak bir iş seçin!"); setIsSubmitting(false); return; }
+        
+        const url = islemTuru === 'Randevu Geliri Tahsili' 
+                    ? '/api/tahsilat/banko-tahsilat' 
+                    : '/api/tahsilat/process';
+
+        const payload = { 
+          id: seciliIslem.id,
+          servis_no: seciliIslem.servis_no,
+          kategori: islemTuru, 
+          tutar: netTahsilatTutari, 
+          aciklama: aciklama || `${seciliIslem.servis_no} nolu işlem tahsilatı.`, 
+          islem_yapan: 'Banko', 
+          new_status: 'Teslim Edildi' 
+        };
+        
+        const res = await api.post(url, payload);
+        
+        if (res.data && res.data.success) { 
+          alert(`✅ Tahsilat başarıyla yapıldı. Kayıt 'Teslim Edildi' yapıldı.`); 
+          setSeciliIslem(null); setIslemTuru('Seçiniz...'); fetchBekleyenIsler(); 
+        } else {
+          // 🚨 GÖRGÜSÜZLÜK GİDERİLDİ: Sadece gelen mesajı basıyoruz!
+          alert(res.data?.error || "🚨 SİSTEM REDDETTİ!\n\nİşlem reddedildi.");
+        }
+      } 
+      // 2. NORMAL NAKİT GİRİŞİ
+      else if (islemTuru === 'Kasaya Nakit Girişi') {
+        if (!manuelTutar || parseFloat(manuelTutar) <= 0) { alert("Geçerli bir tutar girmelisiniz!"); setIsSubmitting(false); return; }
+        
+        const payload = { 
+          islem_yonu: 'GİRİŞ', kategori: 'Kasaya Nakit Girişi', tutar: parseFloat(manuelTutar), 
+          aciklama: aciklama || 'Dışarıdan Kasaya Nakit Eklendi', islem_yapan: 'Banko' 
+        };
+        
+        const res = await api.post('/api/kasa/add', payload);
+        if (res.data && res.data.success) { 
+          alert("✅ Kasaya başarıyla manuel para girişi yapıldı."); 
+          setManuelTutar(''); setAciklama(''); setIslemTuru('Seçiniz...'); 
+        } else {
+          alert(res.data?.error || "🚨 SİSTEM REDDETTİ!\n\nKayıt yapılamadı.");
+        }
+      }
+      // 3. STOKTAN SATIŞ
+      else if (islemTuru === 'Stoktan Ürün Satışı') {
+        if (!arananMalzeme) { alert("Lütfen önce barkod okutarak bir malzeme bulunuz!"); setIsSubmitting(false); return; }
+        const payload = {
+          islem_yonu: 'GİRİŞ', kategori: 'Stoktan Ürün Satışı', tutar: calculateStokToplamFiyati(), 
+          aciklama: aciklama || `${arananMalzeme.malzeme_adi} satışı yapıldı. (${satisAdedi} Adet)`,
+          islem_yapan: 'Banko', id: arananMalzeme.id, barkod: barkodNo,
+          cikan_adet: satisAdedi, manual_discount: iskonto, satis_fiyati: calculateStokBirimFiyati() 
+        };
+        const res = await api.post('/api/stok/sell', payload);
+        if (res.data && res.data.success) {
+          alert(`✅ ${satisAdedi} adet stok satışı başarıyla kasaya işlendi ve stoktan düşüldü.`);
+          setBarkodNo(''); setArananMalzeme(null); setAciklama(''); setIskonto(0); setSatisAdedi(1); setIslemTuru('Seçiniz...');
+        } else {
+          alert(res.data?.error || "🚨 SİSTEM REDDETTİ!\n\nStok satışı yapılamadı.");
+        }
+      }
+    } catch (error: any) {
+      // 🚨 GÖRGÜSÜZLÜK GİDERİLDİ: Mesajın başında zaten siren var, direkt ekrana yansıtıyoruz.
+      const detayliMesaj = error.response?.data?.error 
+                        || error.response?.data?.message 
+                        || "🚨 SİSTEM REDDETTİ!\n\nSunucuya ulaşılamadı veya işlem reddedildi.";
+      alert(detayliMesaj);
+    } finally { 
+      setIsSubmitting(false); 
+    }
+  };
+  
+
+
+
+
+
+
+/*
 
 const handleKaydet = async () => {
     setIsSubmitting(true);
@@ -218,6 +322,21 @@ const handleKaydet = async () => {
           setBarkodNo(''); setArananMalzeme(null); setAciklama(''); setIskonto(0); setSatisAdedi(1); setIslemTuru('Seçiniz...');
         }
       }
+
+
+      } catch (error: any) {
+      // Web tarafı backend'den gelen detaylı mesajı tam okusun diye tarama ağını genişlettik:
+      const detayliMesaj = error.response?.data?.error 
+                        || error.response?.data?.message 
+                        || error.response?.data 
+                        || "Bilinmeyen bir sunucu hatası oluştu.";
+                        
+      alert("🚨 SİSTEM REDDETTİ!\n\n" + detayliMesaj);
+      
+    } finally { setIsSubmitting(false); }
+
+
+   
     } catch (error: any) {
       // 🚨 EĞER KASA.JS 'ZARARINA İŞLEM KALKANI'NI ÇALIŞTIRIRSA BURAYA DÜŞER:
       if (error.response && error.response.data && error.response.data.error) { 
@@ -225,8 +344,13 @@ const handleKaydet = async () => {
       } 
       else { alert("İşlem sırasında bir hata oluştu."); }
     } finally { setIsSubmitting(false); }
-  };
 
+      
+
+
+
+  };
+*/
 
 
 

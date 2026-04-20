@@ -14,7 +14,9 @@ export default function MalzemeGirisi() {
     marka: '',
     uyumlu_cihaz: '',
     miktar: 1,
-    alis_fiyati: ''
+    alis_fiyati: '',
+    // 🚨 MÜDÜR: Usta siparişi bağlantısı için yeni eklendi
+    servis_no_referans: '' 
   });
 
   const handleBarkodUret = () => {
@@ -69,6 +71,12 @@ export default function MalzemeGirisi() {
       alert("Lütfen Barkod, Malzeme Adı ve Alış Fiyatı alanlarını doldurun!");
       return;
     }
+
+    // 🚨 MÜDÜR: Usta siparişi seçildiyse referans numarasını zorunlu kılıyoruz
+    if (form.islem_turu === 'Usta Siparişi Geldi' && !form.servis_no_referans) {
+        alert("Lütfen bu siparişin ait olduğu 'Cihaz Kayıt / Servis No' bilgisini girin!");
+        return;
+    }
     
     setLoading(true);
     
@@ -114,8 +122,6 @@ export default function MalzemeGirisi() {
       else {
 
         const res = await api.post('/api/stok/add-alim', {
-
-       // const res = await api.post('/api/stok/add', {
           islem_turu: form.islem_turu,
           barkod: form.barkod,
           malzeme_adi: form.malzeme_adi,
@@ -127,10 +133,8 @@ export default function MalzemeGirisi() {
 
           // 🚨 BARKOD MÜHRÜ:
           aciklama: `Barkod: ${form.barkod} | ${form.islem_turu}: ${form.malzeme_adi} | Adet: ${form.miktar} | Birim: ${form.alis_fiyati} ₺`,
-          servis_no: form.barkod
-
-
-
+          // 🚨 İŞTE CİNAYETİ ÇÖZDÜĞÜMÜZ YER: Eğer usta siparişiyse girilen Cihaz No'yu yolla, değilse malın barkodunu yolla
+          servis_no: form.islem_turu === 'Usta Siparişi Geldi' ? form.servis_no_referans : form.barkod
         });
 
         if (res.data.success) {
@@ -147,7 +151,8 @@ export default function MalzemeGirisi() {
         marka: '',
         uyumlu_cihaz: '',
         miktar: 1,
-        alis_fiyati: ''
+        alis_fiyati: '',
+        servis_no_referans: ''
       });
 
     } catch (error: any) {
@@ -184,7 +189,6 @@ export default function MalzemeGirisi() {
                   className="bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-white outline-none focus:border-[#8E052C]/50 transition-all"
                   value={form.islem_turu} onChange={(e) => setForm({...form, islem_turu: e.target.value})}
                 >
-                  {/* 🚨 SADELEŞTİRİLMİŞ AÇILIR MENÜ */}
                   <option value="Stok Tamamlama">Stok Tamamlama</option>
                   <option value="Usta Siparişi Geldi">Usta Siparişi Geldi</option>
                   <option value="İade (Stok Satışı)">İade (Stok Satışı)</option>
@@ -221,6 +225,23 @@ export default function MalzemeGirisi() {
                 </div>
               </div>
             </div>
+
+            {/* 🚨 MÜDÜR: Usta siparişi seçildiyse açılan akıllı kutu! */}
+            {form.islem_turu === 'Usta Siparişi Geldi' && (
+              <div className="bg-[#8E052C]/10 border border-[#8E052C]/30 p-3 rounded-xl mb-2 animate-pulse">
+                 <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-white uppercase tracking-widest ml-1">
+                    <span className="text-[#8E052C]">*</span> Hangi Cihaz İçin Geldi? (Servis Kayıt No)
+                  </label>
+                  <input
+                    type="text" placeholder="Örn: 26041905"
+                    className="bg-[#0F0F12] border border-[#8E052C]/50 rounded-xl py-2.5 px-3 text-xs font-black text-white outline-none focus:border-[#8E052C] transition-all placeholder:text-gray-600"
+                    value={form.servis_no_referans} onChange={(e) => setForm({...form, servis_no_referans: e.target.value})}
+                  />
+                  <p className="text-[9px] text-gray-400 font-bold mt-1 ml-1">Siparişin askıda kalmaması için parçanın ait olduğu cihazın kayıt numarasını girin.</p>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">

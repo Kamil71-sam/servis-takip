@@ -9,10 +9,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const { width } = Dimensions.get('window');
 
-// MÜDÜR: externalDiscount artık dışarıdan (Ana Ekran'dan) geliyor
 export default function StokCikisiFormu({ visible, onClose, isDarkMode, externalDiscount = 0 }: any) {
   
-  // --- 🚨 MÜDÜR: TYPESCRIPT'İN KIZMAMASI İÇİN YENİ ODALARI BURAYA DA EKLEDİK ---
   const initialState = {
     barkod: '', 
     malzeme_adi: '', 
@@ -22,8 +20,8 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
     satis_fiyati: '', 
     mevcut_stok: 0, 
     id: null as any,
-    alis_fiyati: 0,  // 🚨 İŞTE TYPESCRIPT'İN ARADIĞI MALİYET ODASI
-    eski_satis: 0    // 🚨 İŞTE TYPESCRIPT'İN ARADIĞI B PLANI ODASI
+    alis_fiyati: 0,
+    eski_satis: 0
   };
   
   const [f, setF] = useState(initialState);
@@ -34,27 +32,56 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   
+  // --- ARAMA MODALI STATE'LERİ ---
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [permission, requestPermission] = useCameraPermissions();
-
-  // Canlı İskonto hafızası
   const [iskonto, setIskonto] = useState(externalDiscount ? externalDiscount.toString() : '0'); 
-
-
-
-
-
-
 
   useEffect(() => {
     if (visible) {
       setF(initialState);
       setFocus('');
       setRadarMsg({ type: '', text: '' });
-      setIskonto(externalDiscount ? externalDiscount.toString() : '0'); // Form açıldığında iskontoyu sıfırla/yenile
+      setIskonto(externalDiscount ? externalDiscount.toString() : '0');
+      setSearchQuery('');
+      setSearchResults([]);
     }
   }, [visible, externalDiscount]);
 
-  // --- 1. SADECE VERİYİ ÇEKİP HAFIZAYA ATAN KISIM ---
+  // --- 🚨 YENİ: GOOGLE TARZI CANLI ARAMA MOTORU ---
+  useEffect(() => {
+    // 2 harften azsa hiç backend'i yorma, listeyi boşalt
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    // Usta hızlı yazarken her harfte sunucuya gitmesin diye 400ms bekletiyoruz
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/stok/search?malzeme_adi=${encodeURIComponent(searchQuery)}`);
+        const res = await response.json();
+        if (res.success && res.found) {
+          setSearchResults(res.data);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (e) {
+        console.log("Arama hatası", e);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400); 
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+  // ------------------------------------------------
+
   const calculateFinalPrice = async (barkod: string) => {
     if (!barkod) return;
     try {
@@ -72,8 +99,8 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
           marka: item.marka || '',
           uyumlu_cihaz: item.uyumlu_cihaz || '',
           mevcut_stok: item.miktar,
-          alis_fiyati: parseFloat(item.alis_fiyati || "0"), // 🚨 Maliyeti hafızaya at
-          eski_satis: parseFloat(item.satis_fiyati || "0")  // 🚨 B planı için hafızaya at
+          alis_fiyati: parseFloat(item.alis_fiyati || "0"),
+          eski_satis: parseFloat(item.satis_fiyati || "0")
         }));
         setRadarMsg({ type: 'success', text: `✅ ÜRÜN BULUNDU: Stok okundu.` });
       } else {
@@ -84,32 +111,19 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
     }
   };
 
-  // --- 2. 🚨 MÜDÜR: CANLI HESAPLAMA MOTORU (Sihir Burada) ---
-  // Sen iskontoyu değiştirdikçe bu motor otomatik çalışıp fiyatı günceller!
- 
- 
-// --- 2. 🚨 MÜDÜR: CANLI HESAPLAMA MOTORU (Gerçek Esnaf Matematiği) ---
   useEffect(() => {
-    if (f.id) { // Sadece ürün barkodu okutulduysa çalışsın
+    if (f.id) {
       const dukkanKari = 25; 
       const dukkanKdv = 20;
       const girilenIskonto = parseFloat(iskonto || '0');
       let hesaplananSatis = 0;
 
       if (f.alis_fiyati > 0) {
-        // 1. Edeceğimiz brüt kâr miktarını buluyoruz
         const hamKarMiktari = f.alis_fiyati * (dukkanKari / 100); 
-        
-        // 2. İskontoyu sadece KÂR MİKTARINDAN düşüyoruz (Ana paraya dokunmak yok!)
         const netKarMiktari = hamKarMiktari * (1 - (girilenIskonto / 100)); 
-        
-        // 3. Maliyetin üzerine kalan net kârı ekliyoruz
         const matrah = f.alis_fiyati + netKarMiktari; 
-        
-        // 4. En son KDV'yi çakıp yuvarlıyoruz
         hesaplananSatis = Math.round(matrah * (1 + (dukkanKdv / 100)));
       } else {
-        // Alış fiyatı yoksa eski satış fiyatından düş (B planı)
         hesaplananSatis = Math.round(f.eski_satis * (1 - (girilenIskonto / 100)));
       }
 
@@ -117,15 +131,23 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
     }
   }, [iskonto, f.alis_fiyati, f.eski_satis, f.id]);
 
-
-
-
- 
-  
-
-
-
-
+  const selectItemFromSearch = (item: any) => {
+    setF(prev => ({
+      ...prev,
+      id: item.id,
+      barkod: item.barkod,
+      malzeme_adi: item.malzeme_adi,
+      marka: item.marka || '',
+      uyumlu_cihaz: item.uyumlu_cihaz || '',
+      mevcut_stok: item.miktar,
+      alis_fiyati: parseFloat(item.alis_fiyati || "0"),
+      eski_satis: parseFloat(item.satis_fiyati || "0")
+    }));
+    setShowSearchModal(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setRadarMsg({ type: 'success', text: `✅ ÜRÜN SEÇİLDİ: ${item.malzeme_adi}` });
+  };
 
   const handleBarCodeScanned = ({ data }: any) => {
     setF(prev => ({ ...prev, barkod: data }));
@@ -143,9 +165,7 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
           id: f.id,
           barkod: f.barkod,
           cikan_adet: parseInt(f.cikan_adet),
-          // MÜDÜR: Hesaplanan fiyatı olduğu gibi gönderiyoruz
           satis_fiyati: parseFloat(f.satis_fiyati),
-          // 🚨 MÜDÜR: Ekrana yazdığımız taze iskontoyu yolluyoruz!
           manual_discount: parseFloat(iskonto || '0') 
         })
       });
@@ -169,9 +189,7 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
     borderColor: isDarkMode ? '#333' : '#eee',
     textColor: isDarkMode ? '#fff' : '#000',
     labelColor: isDarkMode ? '#aaa' : '#555',
-    primary: isDarkMode ? '#FF3B30' : '#1A1A1A' // Gece Kırmızı, Gündüz Siyah!
-    
-   // primary: '#FF3B30'
+    primary: isDarkMode ? '#FF3B30' : '#1A1A1A'
   };
 
   return (
@@ -221,7 +239,7 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
                   </View>
                 ) : null}
 
-                <Text style={[styles.label, { color: theme.labelColor }]}>BARKOD OKUT (*)</Text>
+                <Text style={[styles.label, { color: theme.labelColor }]}>BARKOD OKUT VEYA ARA (*)</Text>
                 <View style={styles.row}>
                   <TextInput 
                     style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, color: theme.textColor, borderColor: focus === 'barkod' ? theme.primary : theme.borderColor }]} 
@@ -230,8 +248,13 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
                     onChangeText={v => setF({...f, barkod: v})} 
                     onEndEditing={() => calculateFinalPrice(f.barkod)}
                   />
+                  
                   <TouchableOpacity style={styles.iconBtn} onPress={async () => { if (!permission?.granted) await requestPermission(); setCameraVisible(true); }}>
                     <Ionicons name="camera" size={24} color="#fff" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={[styles.iconBtn, { backgroundColor: '#FF9500' }]} onPress={() => setShowSearchModal(true)}>
+                    <Ionicons name="search" size={24} color="#fff" />
                   </TouchableOpacity>
                 </View>
 
@@ -250,7 +273,6 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
                 </View>
 
                 <View style={styles.row}>
-                  {/* 1. KUTU: ÇIKAN ADET */}
                   <View style={{flex: 1, marginRight: 5}}>
                     <Text style={[styles.label, { color: theme.labelColor }]}>ÇIKAN ADET</Text>
                     <TextInput 
@@ -261,7 +283,6 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
                     />
                   </View>
 
-                  {/* 🚨 2. KUTU: YENİ İSKONTO ALANI 🚨 */}
                   <View style={{flex: 1, marginHorizontal: 5}}>
                     <Text style={[styles.label, { color: '#FF9500' }]}>İSKONTO (%)</Text>
                     <TextInput 
@@ -272,7 +293,6 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
                     />
                   </View>
 
-                  {/* 3. KUTU: CANLI SATIŞ FİYATI */}
                   <View style={{flex: 1.5, marginLeft: 5}}>
                     <Text style={[styles.label, { color: theme.labelColor }]}>SATIŞ (₺)</Text>
                     <View style={[styles.infoBox, { marginHorizontal: 0, backgroundColor: '#E8F5E9', borderColor: '#34C759', borderWidth: 2 }]}>
@@ -294,6 +314,55 @@ export default function StokCikisiFormu({ visible, onClose, isDarkMode, external
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>SATIŞI ONAYLA</Text>}
                 </TouchableOpacity>
               </ScrollView>
+
+              {/* 🚨 YENİ: İSİMDEN ARAMA MODALI 🚨 */}
+              <Modal visible={showSearchModal} transparent animationType="slide">
+                <View style={styles.overlay}>
+                  <View style={[styles.searchModalBox, { backgroundColor: theme.cardBg }]}>
+                    <View style={styles.searchModalHeader}>
+                       <Text style={{fontSize: 16, fontWeight: 'bold', color: theme.textColor}}>Depoda Malzeme Ara</Text>
+                       <TouchableOpacity onPress={() => setShowSearchModal(false)}>
+                         <Ionicons name="close" size={26} color={theme.textColor} />
+                       </TouchableOpacity>
+                    </View>
+
+                    <View style={{padding: 20}}>
+                      <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                        <TextInput 
+                          style={[styles.input, {flex: 1, marginHorizontal: 0, backgroundColor: theme.bg, color: theme.textColor, borderColor: theme.borderColor}]}
+                          placeholder="Örn: Ekran Kartı..."
+                          placeholderTextColor="#888"
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                        />
+                        <View style={[styles.iconBtn, {backgroundColor: theme.primary, marginTop: 0}]}>
+                          {isSearching ? <ActivityIndicator color="#fff" /> : <Ionicons name="search" size={24} color="#fff" />}
+                        </View>
+                      </View>
+                    </View>
+
+                    <ScrollView style={{paddingHorizontal: 20}}>
+                      {searchResults.map((s: any) => (
+                        <TouchableOpacity 
+                          key={s.id} 
+                          style={styles.searchResultItem} 
+                          onPress={() => selectItemFromSearch(s)}
+                        >
+                          <Text style={{fontWeight: '900', color: theme.textColor, fontSize: 15}}>{s.malzeme_adi}</Text>
+                          <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 5}}>
+                            <Text style={{fontSize: 12, color: '#888'}}>Barkod: {s.barkod}</Text>
+                            <Text style={{fontSize: 12, fontWeight: 'bold', color: s.miktar > 0 ? '#34C759' : '#FF3B30'}}>Stok: {s.miktar} Adet</Text>
+                          </View>
+                          {s.uyumlu_cihaz ? <Text style={{fontSize: 11, color: '#aaa', marginTop: 2}}>Uyumlu: {s.uyumlu_cihaz}</Text> : null}
+                        </TouchableOpacity>
+                      ))}
+                      {searchResults.length === 0 && !isSearching && searchQuery.length >= 2 && (
+                        <Text style={{textAlign: 'center', color: '#888', marginTop: 20}}>Bu isimde ürün bulunamadı.</Text>
+                      )}
+                    </ScrollView>
+                  </View>
+                </View>
+              </Modal>
 
               {/* ONAY MODALI */}
               <Modal visible={confirmModalVisible} transparent animationType="fade">
@@ -362,5 +431,8 @@ const styles = StyleSheet.create({
   bottomRight: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
   radarTextRow: { position: 'absolute', bottom: -40, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   radarText: { color: '#FF3B30', fontSize: 12, fontWeight: '900', marginLeft: 8 },
-  camCloseBottom: { alignItems: 'center' }
+  camCloseBottom: { alignItems: 'center' },
+  searchModalBox: { width: '90%', height: '70%', borderRadius: 25, paddingBottom: 20, overflow: 'hidden' },
+  searchModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.05)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.1)' },
+  searchResultItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.1)', marginBottom: 5 }
 });

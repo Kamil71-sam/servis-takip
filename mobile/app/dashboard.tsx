@@ -186,7 +186,7 @@ export default function DashboardScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
           <View style={styles.headerSection}>
             <Text style={[styles.bigTitleText, isDarkMode && styles.darkText]}>TEKNİK SERVİS TAKİP PROGRAMI</Text>
-            <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>Kullanıcı Paneli</Text>
+            <Text style={[styles.welcomeText, isDarkMode && styles.darkText]}>BANKO PERSNELİ</Text>
           </View>
 
           <View style={[styles.chartCard, isDarkMode && styles.darkCard]}>
@@ -229,7 +229,7 @@ export default function DashboardScreen() {
             onPress={() => router.push({ pathname: '/yeni_randevu', params: { theme: isDarkMode ? 'dark' : 'light' } })}
           >
             <Ionicons name="calendar-outline" size={22} color="#fff" />
-            <Text style={styles.actionText}>Servis Randevusu Oluştur</Text>
+            <Text style={styles.actionText}>SERVİS RANDEVUSU</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -243,7 +243,7 @@ export default function DashboardScreen() {
             <Ionicons name={onayBekleyenSayisi > 0 ? "warning" : "checkmark-circle"} size={22} color="#fff" />
             <View style={{ marginLeft: 12, flex: 1 }}>
               <Text style={styles.alertTitle}>
-                {onayBekleyenSayisi > 0 ? `${onayBekleyenSayisi} Cihaz Müşteri Onayı Bekliyor` : "SİSTEM TEMİZ"}
+                {onayBekleyenSayisi > 0 ? `${onayBekleyenSayisi} Cihaz Müşteri Onayı Bekliyor` : "FİYAT ONAYI"}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
@@ -277,7 +277,7 @@ export default function DashboardScreen() {
                 <Ionicons name="cube-outline" size={22} color="#fff" />
                 <View style={{ marginLeft: 12, flex: 1 }}>
                   <Text style={styles.alertTitle}>
-                    {parcaBekleyenSayisi > 0 ? `${parcaBekleyenSayisi} Adet Parça Siparişi Bekliyor` : "BEKLEYEN PARÇA SİPARİŞİ YOK"}
+                    {parcaBekleyenSayisi > 0 ? `${parcaBekleyenSayisi} ADET PARÇA SİPARİŞİ VAR` : "BEKLEYEN PARÇA SİPARİŞİ YOK"}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />
@@ -304,7 +304,7 @@ export default function DashboardScreen() {
             >
               <Ionicons name="call" size={24} color="#fff" />
               <View style={{ marginLeft: 12, flex: 1 }}>
-                <Text style={styles.alertTitle}> {teyitBekleyenSayisi} Randevu Teyit Bekliyor</Text>
+                <Text style={styles.alertTitle}> {teyitBekleyenSayisi} RANDEVU TEYİDİ</Text>
                 <Text style={{color: '#fff', fontSize: 11, fontWeight: '600'}}> Müşteri Aranacak.</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ opacity: 0.7 }} />

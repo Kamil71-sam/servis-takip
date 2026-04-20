@@ -42,6 +42,14 @@ export default function BarkodOlustur() {
       }).filter(item => item.barkodNo && item.barkodNo.trim() !== '' && item.barkodNo !== '-');
 
       const uniqueUrunler = Array.from(new Map(barkodluUrunler.map((item: any) => [item.barkodNo, item])).values());
+      
+      // 🚨 MÜDÜR: Alfabetik Sıralama Motoru Burada! (Türkçe karaktere tam uyumlu A'dan Z'ye)
+      uniqueUrunler.sort((a: any, b: any) => {
+        const isimA = a.isim ? String(a.isim).toUpperCase() : '';
+        const isimB = b.isim ? String(b.isim).toUpperCase() : '';
+        return isimA.localeCompare(isimB, 'tr'); 
+      });
+
       setStokListesi(uniqueUrunler);
     } catch (error) {
       console.error("Veriler çekilemedi", error);
