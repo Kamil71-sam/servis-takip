@@ -7,11 +7,33 @@ const scrollbarStyle = `
 `;
 
 export default function YedekParcaTakibi() {
+  
+  
+  
+  
   const [talepler, setTalepler] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [arama, setArama] = useState('');
 
+  // 🚨 SAYFALAMA MOTORU
+  const [sayfa, setSayfa] = useState(1);
+  const SERVIS_BASINA = 2; // Sayfada sadece 2 Ana Servis Kutusu göstersin (İstersen 3 yap)
+
+  // Arama yapılınca 1. sayfaya sıfırla
+  useEffect(() => {
+    setSayfa(1);
+  }, [arama]);
+
   const [showEkleModal, setShowEkleModal] = useState(false);
+
+
+  
+  
+  
+  
+  
+  
+  
   const [showDuzenleModal, setShowDuzenleModal] = useState(false);
   
   const [showTeklifModal, setShowTeklifModal] = useState(false);
@@ -239,19 +261,19 @@ export default function YedekParcaTakibi() {
 
 */
 
-
-
-
-
-
-
-
-  const filtrelenmis = talepler.filter(t => 
+    const filtrelenmis = talepler.filter(t => 
     String(t.gosterim_no).includes(arama) || 
     t.parcalar.some((p: any) => (p.description || '').toLowerCase().includes(arama.toLowerCase()) || (p.part_name || '').toLowerCase().includes(arama.toLowerCase()) || (p.barkod || '').toLowerCase().includes(arama.toLowerCase()))
   );
 
+  // 🚨 BÖLÜNMEYEN SAYFALAMA MATEMATİĞİ (Parçayı değil, Servis Kutusunu sayar)
+  const toplamSayfa = Math.ceil(filtrelenmis.length / SERVIS_BASINA) || 1;
+  const gosterilecekServisler = filtrelenmis.slice((sayfa - 1) * SERVIS_BASINA, sayfa * SERVIS_BASINA);
+
   return (
+
+
+
     <>
       <style>{scrollbarStyle}</style>
       <div className="flex-1 flex flex-col h-full overflow-hidden p-4 relative">
@@ -259,7 +281,7 @@ export default function YedekParcaTakibi() {
         <div className="bg-[#1A1A1E] border border-white/5 rounded-2xl p-5 mb-6 shadow-2xl shrink-0 z-10">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
-              <span className="text-[#8E052C]">📦</span> PATRON PARÇA YÖNETİMİ
+              <span className="text-[#8E052C]">📦</span> YEDEK PARÇA YÖNETİMİ
             </h2>
             <button onClick={fetchTalepler} className="bg-white/5 hover:bg-[#8E052C]/20 px-4 py-2 rounded-xl text-xs font-black transition-all border border-white/10">
               🔄 LİSTEYİ TAZELE
@@ -273,12 +295,22 @@ export default function YedekParcaTakibi() {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-6 pr-2 nuke-scrollbar pb-20">
+
+
+
+
+            {/* 🚨 pb-20 yerine pb-4 yaptık ki aşağıdaki oklar tam otursun */}
+        <div className="flex-1 overflow-y-auto space-y-6 pr-2 nuke-scrollbar pb-4">
           {loading ? (
             <div className="text-center py-20 font-black uppercase text-gray-500 animate-pulse">Kayıtlar Çekiliyor...</div>
-          ) : filtrelenmis.map((servis, i) => {
+          ) : gosterilecekServisler.map((servis, i) => { 
+            // 🚨 YUKARISI gosterilecekServisler OLARAK DEĞİŞTİ
             
             // 🚨 MÜDÜRÜN AKILLI RADARI: İçeride "Geldi" veya "İptal" OLMAYAN (Yani hala bekleyen) parça var mı?
+
+        
+            
+            
             const islemDevamEdiyor = servis.parcalar.some((p: any) => p.status !== 'Geldi' && p.status !== 'İptal');
 
             return (
@@ -412,12 +444,50 @@ export default function YedekParcaTakibi() {
                     })}
                   </div>
                 </div>
-              </div>
+
+
+
+            </div>
             );
           })}
         </div>
 
+        {/* 🚨 SAYFALAMA KUMANDASI (OKLAR) BURAYA GELDİ */}
+        {!loading && filtrelenmis.length > 0 && (
+          <div className="p-4 border border-white/5 bg-[#1A1A1E] rounded-2xl flex justify-between items-center shrink-0 shadow-2xl mb-4 z-10">
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+              Toplam {filtrelenmis.length} Servis Kaydı
+            </span>
+            
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setSayfa(prev => Math.max(prev - 1, 1))}
+                disabled={sayfa === 1}
+                className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+              >
+                <span>◀</span> ÖNCEKİ
+              </button>
+              
+              <span className="text-[#8E052C] font-black text-sm">
+                {sayfa} / {toplamSayfa}
+              </span>
+              
+              <button 
+                onClick={() => setSayfa(prev => Math.min(prev + 1, toplamSayfa))}
+                disabled={sayfa === toplamSayfa}
+                className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+              >
+                SONRAKİ <span>▶</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {showTeklifModal && aktifServisForTeklif && (
+
+            
+
+
           <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#1A1A1E] border-2 border-yellow-500/30 w-full max-w-sm rounded-2xl shadow-[0_0_50px_rgba(234,179,8,0.15)] overflow-hidden flex flex-col relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600"></div>
@@ -538,10 +608,17 @@ export default function YedekParcaTakibi() {
         {showDuzenleModal && aktifParca && (
           <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#1A1A1E] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+             
+
+
               <div className="p-4 border-b border-white/5 flex justify-between items-center">
                 <h3 className="font-black text-white uppercase text-sm tracking-widest flex items-center gap-2">⚙️ PARÇA YÖNETİMİ</h3>
-                <button onClick={() => setShowDuzenleModal(false)} className="text-gray-400 hover:text-white text-xl">×</button>
+                {/* 🚨 ÇARPI BÜYÜDÜ VE KIRMIZI OLDU */}
+                <button onClick={() => setShowDuzenleModal(false)} className="text-red-500 hover:text-red-400 text-3xl font-black transition-colors leading-none pb-1">×</button>
               </div>
+             
+                         
+             
               <div className="p-5 space-y-4">
                 <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
                   <div className="text-white font-black text-base uppercase">{aktifParca.part_name}</div>
@@ -606,24 +683,23 @@ export default function YedekParcaTakibi() {
                   </div>
                 </div>
 
-
-                
-
                 <div>
                   <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1 mb-1 block">Not / Açıklama</label>
                   <textarea value={duzenleNot} onChange={(e) => setDuzenleNot(e.target.value)} className="w-full bg-[#0F0F12] border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white outline-none resize-none h-16 focus:border-[#8E052C]/50"></textarea>
                 </div>
               </div>
-              
-              <div className="p-4 bg-black/40 flex justify-between items-center border-t border-white/5">
+            
+                <div className="p-4 bg-black/40 flex justify-between items-center border-t border-white/5">
                 <button onClick={handleParcaSil} disabled={islemYapiliyor} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/30 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
                   🗑️ İPTAL ET
                 </button>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowDuzenleModal(false)} className="text-gray-500 font-bold uppercase text-[10px] hover:text-white px-3">VAZGEÇ</button>
-                  <button onClick={handleParcaGuncelle} disabled={islemYapiliyor} className="bg-[#8E052C] hover:bg-[#A00632] text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">💾 KAYDET</button>
+                  {/* 🚨 VAZGEÇ TUŞU KÖKÜNDEN SİLİNDİ */}
+                  <button onClick={handleParcaGuncelle} disabled={islemYapiliyor} className="bg-[#8E052C] hover:bg-[#A00632] text-white px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all">💾 KAYDET</button>
                 </div>
-              </div>
+              </div>    
+
+              
             </div>
           </div>
         )}

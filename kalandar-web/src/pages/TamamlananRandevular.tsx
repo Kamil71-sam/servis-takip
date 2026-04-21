@@ -5,11 +5,45 @@ export default function TamamlananRandevular() {
   const [randevular, setRandevular] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+ 
+ 
+
+
+
+const [durumFiltresi, setDurumFiltresi] = useState('Tümü'); 
+  const [arama, setArama] = useState(''); 
+  const [tarihArama, setTarihArama] = useState(''); 
+
+  // 🚨 SAYFALAMA MOTORU HAFIZASI
+  const [sayfa, setSayfa] = useState(1);
+  const KAYIT_BASINA = 2; // Müdürün talebi: Sayfa başı 2 büyük kayıt
+
+  // 🚨 Filtreler değişince şak diye 1. sayfaya zıplasın!
+  useEffect(() => {
+    setSayfa(1);
+  }, [arama, tarihArama, durumFiltresi]);
+
+  const verileriGetir = async () => {
+
+
+
+
+
+
+ 
+ /*
   const [durumFiltresi, setDurumFiltresi] = useState('Tümü'); 
   const [arama, setArama] = useState(''); 
   const [tarihArama, setTarihArama] = useState(''); 
 
   const verileriGetir = async () => {
+
+
+*/
+
+
+
+
     try {
       const res = await api.get(`/appointments/liste/gecmis`).catch(() => api.get(`/api/appointments/liste/gecmis`));
       const data = res.data?.data ? res.data.data : res.data;
@@ -56,12 +90,38 @@ export default function TamamlananRandevular() {
 
     const musteri = String(r.customer_name || r.name || r.musteri_adi || '').toLocaleUpperCase('tr-TR');
     const kayitNo = String(r.servis_no || '').toLocaleUpperCase('tr-TR');
+   
+   
+   
+
+const aramaBuyuk = String(arama || '').toLocaleUpperCase('tr-TR');
+
+    return durumUyuyor && (kayitNo.includes(aramaBuyuk) || musteri.includes(aramaBuyuk)) && tarihUyuyor;
+  });
+
+  // 🚨 SAYFALAMA MATEMATİĞİ
+  const toplamSayfa = Math.ceil(filtrelenmisRandevular.length / KAYIT_BASINA) || 1;
+  const gosterilecekRandevular = filtrelenmisRandevular.slice((sayfa - 1) * KAYIT_BASINA, sayfa * KAYIT_BASINA);
+
+  return (
+
+
+
+
+
+
+   
+   /*
     const aramaBuyuk = String(arama || '').toLocaleUpperCase('tr-TR');
 
     return durumUyuyor && (kayitNo.includes(aramaBuyuk) || musteri.includes(aramaBuyuk)) && tarihUyuyor;
   });
 
   return (
+
+*/
+
+
     <div className="bg-[#0F0F12] border border-white/10 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative mt-4">
       
       <div className="p-5 border-b border-white/5 bg-white/5 flex flex-col gap-4">
@@ -107,8 +167,12 @@ export default function TamamlananRandevular() {
         {loading ? (
           <div className="flex items-center justify-center h-full text-gray-500 font-black uppercase tracking-widest text-sm">Veriler Getiriliyor...</div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {filtrelenmisRandevular.map((r) => {
+        
+        
+        
+      <div className="flex flex-col gap-3">
+            {/* 🚨 filtrelenmisRandevular YERİNE gosterilecekRandevular KULLANIYORUZ */}
+            {gosterilecekRandevular.map((r) => {
               
               const kayitNo = r.servis_no || 'Belirsiz';
               const musteri = r.customer_name || r.musteri_adi || 'İsimsiz';
@@ -199,21 +263,9 @@ export default function TamamlananRandevular() {
 
                     {/* 🚨 YENİ EKLENEN TAHSİLAT KISMI (İptal edilmemiş ve parası olan işler için) */}
                     {!iptalMi && parseFloat(fiyat) > 0 && (
-                     
-                     
-                     <div className="text-[11px] font-black text-green-500 mt-1">
+                      <div className="text-[11px] font-black text-green-500 mt-1">
                         Tahsil Edildi: {parseFloat(fiyat || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                       </div>
-                                          
-
-
-                     
-
-
-
-
-
-
                     )}
                   </div>
 
@@ -229,6 +281,41 @@ export default function TamamlananRandevular() {
           </div>
         )}
       </div>
+
+      {/* 🚨 SAYFALAMA KUMANDASI (OKLAR) EKLENDİ */}
+      {!loading && filtrelenmisRandevular.length > 0 && (
+        <div className="p-4 border-t border-white/5 bg-[#0F0F12] flex justify-between items-center shrink-0">
+          <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+            Toplam {filtrelenmisRandevular.length} Kayıt
+          </span>
+          
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setSayfa(prev => Math.max(prev - 1, 1))}
+              disabled={sayfa === 1}
+              className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+            >
+              <span>◀</span> ÖNCEKİ
+            </button>
+            
+            <span className="text-[#8E052C] font-black text-sm">
+              {sayfa} / {toplamSayfa}
+            </span>
+            
+            <button 
+              onClick={() => setSayfa(prev => Math.min(prev + 1, toplamSayfa))}
+              disabled={sayfa === toplamSayfa}
+              className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+            >
+              SONRAKİ <span>▶</span>
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
-}
+}  
+        
+        
+        

@@ -20,11 +20,37 @@ export default function TumMaliHareketler({ onBack }: any) {
   const [arama, setArama] = useState('');
   const [kategoriFiltresi, setKategoriFiltresi] = useState('TÜMÜ');
   
+
+
+const [baslangicTarihi, setBaslangicTarihi] = useState('');
+  const [bitisTarihi, setBitisTarihi] = useState('');
+
+  // 🚨 SAYFALAMA MOTORU HAFIZASI
+  const [sayfa, setSayfa] = useState(1);
+  const KAYIT_BASINA = 5; // Müdürün emri: Sayfa başı 6 kayıt
+
+  // 🚨 Arama veya filtre değişince şak diye 1. sayfaya zıplasın!
+  useEffect(() => {
+    setSayfa(1);
+  }, [arama, aktifSekme, kategoriFiltresi, baslangicTarihi, bitisTarihi]);
+
+  const gelirKategorileri = ["Tamir Ücreti Tahsili", "Stok Satışı", "Randevu Geliri Tahsili", "Kasaya Nakit Girişi", "Peşinat"];
+
+
+
+/*
   // 🚨 YENİ EKLENEN: TARİH FİLTRELERİ
   const [baslangicTarihi, setBaslangicTarihi] = useState('');
   const [bitisTarihi, setBitisTarihi] = useState('');
 
   const gelirKategorileri = ["Tamir Ücreti Tahsili", "Stok Satışı", "Randevu Geliri Tahsili", "Kasaya Nakit Girişi", "Peşinat"];
+  
+  */
+  
+  
+  
+  
+  
   const giderKategorileri = ["Genel Gider Çıkışı", "Stok Alımı", "Diğer Giderler"];
 
   const fetchGercekVeriler = async () => {
@@ -89,8 +115,18 @@ export default function TumMaliHareketler({ onBack }: any) {
     const metin = `${musteriStr} ${servisNoStr} ${islem.kategori} ${aciklamaStr} ${ustaStr}`.toLowerCase();
     if (arama && !metin.includes(aramaKucuk)) return false;
 
-    return true;
+
+
+
+
+
+
+return true;
   });
+
+  // 🚨 SAYFALAMA MATEMATİĞİ
+  const toplamSayfa = Math.ceil(filtrelenmisIslemler.length / KAYIT_BASINA) || 1;
+  const gosterilecekIslemler = filtrelenmisIslemler.slice((sayfa - 1) * KAYIT_BASINA, sayfa * KAYIT_BASINA);
 
   return (
     <>
@@ -98,12 +134,35 @@ export default function TumMaliHareketler({ onBack }: any) {
       <div className="flex-1 flex flex-col h-full overflow-hidden p-4 relative">
         
         {/* ÜST BİLGİ VE GERİ BUTONU */}
-        <div className="bg-[#1A1A1E] border border-white/5 rounded-2xl p-5 mb-4 shadow-xl shrink-0 z-10 flex justify-between items-center">
+        <div className="bg-[#1A1A1E] border border-white/5 rounded-2xl p-4 mb-3 shadow-xl shrink-0 z-10 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <button onClick={onBack} className="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white transition-all shadow-md">
-              ←
+            
+            {/* 🚨 YENİ, KALIN VE KIRMIZI GERİ OKU */}
+            <button 
+              onClick={onBack} 
+              className="w-12 h-12 bg-red-900/20 hover:bg-red-600 border border-red-500/30 hover:border-red-500 rounded-xl flex items-center justify-center text-red-500 hover:text-white transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+            >
+              <span className="text-2xl font-black mb-1">←</span>
             </button>
+
             <div>
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
               <h2 className="text-xl font-black text-white tracking-tighter uppercase flex items-center gap-2">
                 <span className="text-yellow-500">📋</span> TÜM MALİ HAREKETLER
               </h2>
@@ -203,11 +262,16 @@ export default function TumMaliHareketler({ onBack }: any) {
               <div className="w-32 text-right">TUTAR (₺)</div>
             </div>
 
-            {/* Tablo İçeriği */}
+
+
+
+
+{/* Tablo İçeriği */}
             {loading ? (
               <div className="text-center py-10 font-bold text-gray-500 uppercase tracking-widest text-xs animate-pulse">Veritabanından Kayıtlar Çekiliyor...</div>
-            ) : filtrelenmisIslemler.length > 0 ? (
-              filtrelenmisIslemler.map((islem, idx) => {
+            ) : gosterilecekIslemler.length > 0 ? (
+              // 🚨 filtrelenmisIslemler YERİNE gosterilecekIslemler KULLANIYORUZ
+              gosterilecekIslemler.map((islem, idx) => {
                 const isGiris = islem.islem_yonu === 'GİRİŞ';
                 
                 const d = new Date(islem.islem_tarihi || new Date());
@@ -260,6 +324,37 @@ export default function TumMaliHareketler({ onBack }: any) {
             )}
           </div>
         </div>
+
+        {/* 🚨 SAYFALAMA KUMANDASI (OKLAR) EKLENDİ */}
+        {!loading && filtrelenmisIslemler.length > 0 && (
+          <div className="p-4 bg-[#1A1A1E] border border-white/5 rounded-2xl flex justify-between items-center shrink-0 shadow-xl mt-2">
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+              Toplam {filtrelenmisIslemler.length} Kayıt
+            </span>
+            
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setSayfa(prev => Math.max(prev - 1, 1))}
+                disabled={sayfa === 1}
+                className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+              >
+                <span>◀</span> ÖNCEKİ
+              </button>
+              
+              <span className="text-[#8E052C] font-black text-sm">
+                {sayfa} / {toplamSayfa}
+              </span>
+              
+              <button 
+                onClick={() => setSayfa(prev => Math.min(prev + 1, toplamSayfa))}
+                disabled={sayfa === toplamSayfa}
+                className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+              >
+                SONRAKİ <span>▶</span>
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </>

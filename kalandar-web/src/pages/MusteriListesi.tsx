@@ -2,9 +2,45 @@ import { useEffect, useState } from 'react';
 import api from '../api'; 
 
 export default function MusteriListesi() {
+ 
+ 
+ 
+
+
+const [liste, setListe] = useState<any[]>([]);
+  const [arama, setArama] = useState('');
+  const [seciliMusteri, setSeciliMusteri] = useState<any>(null);
+
+  // 🚨 SAYFALAMA MOTORU HAFIZASI
+  const [sayfa, setSayfa] = useState(1);
+  const KISI_BASINA = 8;
+
+  // 🚨 Arama yapılınca şak diye 1. sayfaya zıplasın!
+  useEffect(() => {
+    setSayfa(1);
+  }, [arama]);
+
+  // 1. LİSTEYİ GETİRME MOTORU (Çift Motorlu ve Zırhlı)
+
+
+
+
+
+
+ 
+ /*
   const [liste, setListe] = useState<any[]>([]);
   const [arama, setArama] = useState('');
   const [seciliMusteri, setSeciliMusteri] = useState<any>(null);
+*/
+
+
+
+
+
+
+
+
 
   // 1. LİSTEYİ GETİRME MOTORU (Çift Motorlu ve Zırhlı)
   const verileriGetir = async () => {
@@ -72,22 +108,6 @@ export default function MusteriListesi() {
 
 
 
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-
-
   // 3. GÜNCELLEME MOTORU
   const kaydetIslemi = async () => {
     if (!seciliMusteri) return;
@@ -128,6 +148,36 @@ export default function MusteriListesi() {
     setSeciliMusteri({ ...seciliMusteri, [alan]: deger });
   };
 
+
+
+
+
+// 🚨 TÜRKÇE VE ÇÖKMEZ FİLTRELEME MOTORU 🚨
+  const filtrelenmis = liste.filter(m => {
+    const isim = String(m.isim || '').toLocaleLowerCase('tr-TR');
+    const tel = String(m.tel || '');
+    const aranan = String(arama || '').toLocaleLowerCase('tr-TR');
+    
+    return isim.includes(aranan) || tel.includes(aranan);
+  });
+
+  // 🚨 SAYFALAMA MATEMATİĞİ BURADA DÖNÜYOR
+  const toplamSayfa = Math.ceil(filtrelenmis.length / KISI_BASINA) || 1;
+  const gosterilecekler = filtrelenmis.slice((sayfa - 1) * KISI_BASINA, sayfa * KISI_BASINA);
+
+  return (
+
+
+
+
+
+
+
+
+
+
+/*
+
   // 🚨 TÜRKÇE VE ÇÖKMEZ FİLTRELEME MOTORU 🚨
   const filtrelenmis = liste.filter(m => {
     const isim = String(m.isim || '').toLocaleLowerCase('tr-TR');
@@ -138,6 +188,17 @@ export default function MusteriListesi() {
   });
 
   return (
+
+
+*/
+
+
+
+
+
+
+
+
     <div className="bg-black/40 backdrop-blur-xl border border-white/5 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative">
       
       {/* ÜST BAR */}
@@ -164,8 +225,16 @@ export default function MusteriListesi() {
               <th className="p-4 text-right">İŞLEMLER</th>
             </tr>
           </thead>
+
+
+
+
+
+
+
           <tbody className="divide-y divide-white/10">
-            {filtrelenmis.map((m, index) => (
+            {/* 🚨 filtrelenmis YERİNE gosterilecekler KULLANIYORUZ */}
+            {gosterilecekler.map((m, index) => (
               <tr key={index} className="hover:bg-white/[0.03] transition-all group text-[13px] font-semibold">
                 <td className="p-4 text-center">
                   <span className={`px-3 py-1 rounded-md text-[9px] font-black ${m.tip === 'B' ? 'bg-blue-600/20 text-blue-400' : 'bg-orange-600/20 text-orange-400'}`}>
@@ -189,9 +258,49 @@ export default function MusteriListesi() {
                 </td>
               </tr>
             ))}
+         
+         
+         
           </tbody>
         </table>
       </div>
+
+      {/* 🚨 SAYFALAMA KUMANDASI (OKLAR) */}
+      <div className="p-4 border-t border-white/5 bg-[#0F0F12] flex justify-between items-center shrink-0">
+        <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+          Toplam {filtrelenmis.length} Kayıt
+        </span>
+        
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setSayfa(prev => Math.max(prev - 1, 1))}
+            disabled={sayfa === 1}
+            className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+          >
+            <span>◀</span> ÖNCEKİ
+          </button>
+          
+          <span className="text-[#8E052C] font-black text-sm">
+            {sayfa} / {toplamSayfa}
+          </span>
+          
+          <button 
+            onClick={() => setSayfa(prev => Math.min(prev + 1, toplamSayfa))}
+            disabled={sayfa === toplamSayfa}
+            className="bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2"
+          >
+            SONRAKİ <span>▶</span>
+          </button>
+        </div>
+      </div>
+
+
+
+
+
+
+
+
 
       {/* DÜZENLEME MODALI */}
       {seciliMusteri && (

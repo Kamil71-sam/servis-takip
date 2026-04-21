@@ -1,8 +1,3 @@
-
-
-
-
-
 import { useState, useEffect } from 'react';
 import api from '../api';
 import html2pdf from 'html2pdf.js'; // 🚨 MÜDÜRÜN MATBAA MOTORU
@@ -59,6 +54,9 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
     fatura_alt_bilgi: 'Bizi tercih ettiğiniz için teşekkür ederiz. Değişen parçalar 6 ay garantilidir.'
   });
 
+  // 🚨 MÜDÜRÜN YEDEK PARÇA HAFIZASI 🚨
+  const [servisParcalari, setServisParcalari] = useState<any[]>([]);
+
   useEffect(() => {
     const kayitlilar = JSON.parse(localStorage.getItem('kalandar_ciktilar') || '[]');
     setYazdirilanlar(kayitlilar);
@@ -110,18 +108,26 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
     });
   }, [filtreTip, aramaMetni, aramaTarih]);
 
+  // 🚨 MÜDÜRÜN YEDEK PARÇA ÇEKİCİ MOTORU 🚨
+  useEffect(() => {
+    if (seciliKayit && seciliKayit.tip === 'Servis') {
+       api.get('/api/material-requests/takip-listesi').then(res => {
+           const data = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+           const filtered = data.filter((p:any) => p.service_id === seciliKayit.raw?.id || String(p.gercek_servis_no) === String(seciliKayit.servis_no));
+           setServisParcalari(filtered);
+       }).catch(() => setServisParcalari([]));
+    } else {
+       setServisParcalari([]);
+    }
+  }, [seciliKayit]);
+
 
   const fetchData = async () => {
     setLoading(true);
     try {
       let combinedData: any[] = [];
 
-
-
-
-
-
-const resKasa = await api.get('/api/kasa/all').catch(() => null);
+      const resKasa = await api.get('/api/kasa/all').catch(() => null);
       if (resKasa?.data?.data) {
         const stoklar = resKasa.data.data
           .filter((i: any) => i.kategori === 'Stok Satışı')
@@ -144,28 +150,14 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
 
             return {
               id: `stok_${i.id}`, tip: 'Stok Satışı', 
-             
-              
-
               // 🚨 ZIMPARACI MOTORU: Her zaman önce Ürün Adını yaz, bulamazsa Barkodu yaz!
               servis_no: (urunAdi || barkodNo || i.servis_no || i.plaka || '-').toUpperCase(),
-              
-              
-              
-              
               musteri_adi: i.musteri_adi || 'Genel Müşteri', tarih: i.islem_tarihi,
               tutar: i.tutar, durum: 'Teslim Edildi', aciklama: temizAciklama, raw: i 
             };
           });
         combinedData = [...combinedData, ...stoklar];
       }
-
-
-
-  
-       
-
-
 
       const resTamamlanan = await api.get('/services/tamamlanan').catch(() => null);
       const servisTamamlananListe = Array.isArray(resTamamlanan?.data?.data) ? resTamamlanan.data.data : (Array.isArray(resTamamlanan?.data) ? resTamamlanan.data : []);
@@ -284,8 +276,8 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
   };
 
 
-// 🚨 MÜDÜRÜN KUSURSUZ PDF MOTORU (Hatasız ve Tek Sayfa Garantili)
-  const handlePdfIndir = () => {
+
+const handlePdfIndir = () => {
     if (!seciliKayit) return;
     const element = document.getElementById('ghost-print-area');
     
@@ -293,13 +285,21 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
       margin:       0, 
       filename:     `Fatura_${seciliKayit.servis_no}.pdf`,
       image:        { type: 'jpeg', quality: 1 }, 
-      html2canvas:  { scale: 2, useCORS: true }, // Scale 2 yaparak taşma riskini sıfırladık
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+      html2canvas:  { scale: 2, useCORS: true }, 
+      jsPDF:        { unit: 'px', format: [794, 1122], orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'] } // 🚨 Sadece CSS kurallarına uy, koca tabloyu 2. sayfaya atma!
     };
+
+
+
+
+
+
+
 
     html2pdf().set(opt).from(element).save().then(() => {
         if (!yazdirilanlar.includes(seciliKayit.id) && activeTab !== 'tamamlanan') {
-            const onay = window.confirm("PDF başarıyla indirildi!\n\nEvet derseniz bu evrak 'Geçmiş Çıktılar' arşivine taşınacaktır.");
+            const onay = window.confirm("PDF başarıyla indirildi!\\n\\nEvet derseniz bu evrak 'Geçmiş Çıktılar' arşivine taşınacaktır.");
             if (onay) {
               const yeniYazdirilanlar = [...yazdirilanlar, seciliKayit.id];
               setYazdirilanlar(yeniYazdirilanlar);
@@ -310,17 +310,14 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
     });
   };
 
-
   // 🚨 İŞTE NÜKLEER SİLAH: SANAL ODADA (IFRAME) YAZDIRMA OPERASYONU 🚨
   const handlePrint = () => {
     if (!seciliKayit) return;
     
-    // 1. Hayalet faturanın sadece İÇİNDEKİ HTML'i al (Dış çerçeveyi değil)
     const printElement = document.getElementById('ghost-print-area');
     if (!printElement) return;
     const printContent = printElement.innerHTML;
 
-    // 2. Tertemiz, görünmez bir sanal pencere (Iframe) yarat
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
@@ -328,7 +325,6 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
     const iframeDoc = iframe.contentWindow?.document;
     if (!iframeDoc) return;
 
-    // 3. Iframe'in içine faturayı ve sadece ona özel koruyucu zırh CSS'lerini bas
     iframeDoc.open();
     iframeDoc.write(`
       <!DOCTYPE html>
@@ -336,29 +332,16 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
         <head>
           <title>Fatura - ${seciliKayit.servis_no}</title>
           <style>
-            /* Kâğıt ölçüsü ve kenar sıfırlama */
             @page { size: A4 portrait; margin: 0; }
             body { 
-              margin: 0; 
-              padding: 0;
-              font-family: Arial, sans-serif; 
+              margin: 0; padding: 0; font-family: Arial, sans-serif; 
               -webkit-print-color-adjust: exact !important; 
-              print-color-adjust: exact !important; 
-              background: white;
+              print-color-adjust: exact !important; background: white;
             }
-            /* Tabloların yarısının 2. sayfaya sarkmasını engelleyen kilit */
             table { border-collapse: collapse; page-break-inside: avoid; width: 100%; }
             tr { page-break-inside: avoid; }
             td, th { box-sizing: border-box; }
-            
-            /* İŞTE MÜDÜRÜN İSTEDİĞİ 4 CM AŞAĞI KAYDIRMA VE %100 YAYILMA! */
-            .fatura-kapsayici {
-              width: 100%;
-              min-height: 297mm;
-              position: relative;
-              padding: 4cm 40px 40px 40px; 
-              box-sizing: border-box;
-            }
+            .fatura-kapsayici { width: 100%; min-height: 297mm; position: relative; padding: 4cm 40px 40px 40px; box-sizing: border-box; }
           </style>
         </head>
         <body>
@@ -370,12 +353,10 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
     `);
     iframeDoc.close();
 
-    // 4. Tarayıcı sanal pencereyi derlesin diye saliselik bir mola ve BAM!
     setTimeout(() => {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
       
-      // Yazdırma diyaloğu kapandıktan sonra temizlik ve arşiv sorusu
       setTimeout(() => {
         document.body.removeChild(iframe);
         if (!yazdirilanlar.includes(seciliKayit.id) && activeTab !== 'tamamlanan') {
@@ -387,8 +368,8 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
             setSeciliKayit(null);
           }
         }
-      }, 1000); // Diyalog kapanana kadar bekle
-    }, 500); // HTML'in render olması için bekle
+      }, 1000); 
+    }, 500); 
   };
 
   // 🚨 EKRAN BOŞKEN BİLE ÇÖKMEYİ ENGELLEYEN YEDEK VERİ
@@ -406,7 +387,9 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
   const araToplam = genelToplam / 1.20; 
   const kdvTutari = genelToplam - araToplam;
 
-  return (
+// 🚨🚨🚨 BÖLÜM 1 BURADA BİTİYOR! 🚨🚨🚨
+
+return (
     <>
       <style>{scrollbarStyle}</style>
 
@@ -418,7 +401,7 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
           <div id="ghost-print-area" style={{ 
             width: '794px', /* PDF Motoru için 794px piksel kilidi */
             height: '1122px', /* 🚨 A4 BOYUTUNA TAM KİLİTLENDİ */
-            overflow: 'hidden', /* 🚨 2. SAYFAYA TAŞAN 1 PİKSEL BİLE OLSA KESİP ATAR! */
+            //overflow: 'hidden', /* 🚨 2. SAYFAYA TAŞAN 1 PİKSEL BİLE OLSA KESİP ATAR! */
             padding: '4cm 40px 40px 40px', /* PDF Motoru için 4cm boşluk */
             backgroundColor: 'white', 
             color: 'black', 
@@ -445,18 +428,10 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                           <td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td>
                           <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(seciliKayit.tarih)}-{seciliKayit.servis_no}</td>
                         </tr>
-
-
                         <tr>
                         <td style={{ textAlign: 'left', fontWeight: 'bold', paddingRight: '15px', whiteSpace: 'nowrap' }}>TARİH:</td>
                         <td style={{ textAlign: 'right', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{new Date().toLocaleDateString('tr-TR')}</td>
                       </tr>
-                       
-
-
-
-
-                        
                       </tbody>
                     </table>
                   </td>
@@ -476,9 +451,6 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                       Tel: {firmaAyarlari.firma_telefon}
                     </div>
                   </td>
-
-
-                 
                     <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '20px' }}>
                       <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>MÜŞTERİ BİLGİLERİ</p>
                       <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
@@ -487,11 +459,6 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                         GSM: {aktifKayit.raw?.customer_phone || aktifKayit.raw?.telefon || aktifKayit.raw?.phone || '-'}
                       </div>
                     </td>
-
-
-
-
-
                       <td style={{ width: '33.33%', verticalAlign: 'top' }}>
                         <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
                         <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
@@ -499,28 +466,12 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                           Seri / Barkod: {aktifKayit.tip === 'Stok Satışı' ? (aktifKayit.raw?.aciklama?.match(/Barkod:\s*([^|]+)/i)?.[1]?.trim() || aktifKayit.raw?.barkod || '-') : (getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-')}
                         </div>
                       </td>
-                                            
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                 
-                  
-
-
-
-
                 </tr>
               </tbody>
             </table>
 
             {/* ANA ÜRÜN TABLOSU (TABLE) */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px', minHeight: '220px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px'}}>
               <thead>
                 <tr style={{ backgroundColor: '#444', color: 'white', textAlign: 'left', fontSize: '14px' }}>
                   <th style={{ padding: '12px', border: '1px solid #444', width: '50px', textAlign: 'center' }}>NO</th>
@@ -531,39 +482,71 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                   <th style={{ padding: '12px', border: '1px solid #444', width: '140px', textAlign: 'right' }}>TOPLAM</th>
                 </tr>
               </thead>
+              
+              {/* 🚨 YENİ MOTOR GHOST PRINT ALANINDA ÇALIŞIYOR 🚨 */}
               <tbody>
+                {/* 1. YEDEK PARÇALAR (Eğer Servis ise ve parça varsa) */}
+                {aktifKayit.tip === 'Servis' && servisParcalari.map((parca, idx) => (
+                  <tr key={idx}>
+                    <td style={{ textAlign: 'center', verticalAlign: 'top', padding: '15px 10px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '13px' }}>
+                      {idx + 1}
+                    </td>
+                    <td style={{ padding: '15px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>
+                      {parca.part_name || parca.malzeme_adi || parca.ad || 'Yedek Parça'} <span style={{fontWeight: 'normal', color: '#555'}}>(Onarıma dahil edilmiştir)</span>
+                    </td>
+                    <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>
+                      {parca.quantity || parca.miktar || 1}
+                    </td>
+                    <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>
+                      0,00 ₺
+                    </td>
+                    <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '13px' }}>
+                      %20
+                    </td>
+                    <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>
+                      0,00 ₺
+                    </td>
+                  </tr>
+                ))}
+
+                {/* 2. ANA HİZMET / İŞÇİLİK BEDELİ (Kasaya Giren Para) */}
                 <tr>
-
-
-                <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '20px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '14px' }}>
-                        1
-                      </td>
-                      <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
-                        <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
-                        {aktifKayit.tip !== 'Stok Satışı' && (
-                            <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-                              (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
-                            </div>
-                        )}
-                      </td>
-
-
-
-                
-
-
-
-
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
-                  <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'top', padding: '15px 10px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '13px' }}>
+                    {aktifKayit.tip === 'Servis' ? servisParcalari.length + 1 : 1}
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>
+                    <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
+                      {aktifKayit.tip === 'Servis' ? 'İşçilik ve Genel Servis Bedeli' : aktifKayit.aciklama}
+                    </div>
+                    {aktifKayit.tip !== 'Stok Satışı' && (
+                        <div style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
+                          (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
+                        </div>
+                    )}
+                    {aktifKayit.tip === 'Servis' && aktifKayit.aciklama && (
+                        <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                          Arıza/Not: {aktifKayit.aciklama}
+                        </div>
+                    )}
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>1</td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '13px' }}>%20</td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
                 </tr>
               </tbody>
             </table>
 
+
+
+            
+
             {/* MATEMATİK VE BANKA BİLGİLERİ (TABLE) */}
-            <table style={{ width: '100%', marginTop: 'auto' }}>
+            <table style={{ width: '100%', marginTop: '40px', pageBreakInside: 'avoid' }}>
+
+
+
+
               <tbody>
                 <tr>
                   <td style={{ verticalAlign: 'bottom', paddingRight: '20px' }}>
@@ -605,12 +588,13 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
             </div>
 
             {/* YAZDIRILDI DAMGASI */}
-            {activeTab === 'tamamlanan' && (
+            {activeTab === 'tamamlanan' && seciliKayit && (
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-45deg)', fontSize: '130px', fontWeight: '900', color: 'rgba(255,0,0,0.05)', border: '20px solid rgba(255,0,0,0.05)', padding: '30px', pointerEvents: 'none', textTransform: 'uppercase' }}>
                 YAZDIRILDI
               </div>
             )}
           </div>
+
         )}
       </div>
       {/* ================= HAYALET A4 BİTİŞ ================= */}
@@ -733,16 +717,10 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                                 <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(aktifKayit.tarih)}-{aktifKayit.servis_no}</td>
                               </tr>
                               
-
-
                               <tr>
                                 <td style={{ textAlign: 'left', fontWeight: 'bold', paddingRight: '15px', whiteSpace: 'nowrap' }}>TARİH:</td>
                                 <td style={{ textAlign: 'right', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{new Date().toLocaleDateString('tr-TR')}</td>
                               </tr>
-
-
-
-
 
                             </tbody>
                           </table>
@@ -776,8 +754,6 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                       </td>
 
 
-
-
                       <td style={{ width: '33.33%', verticalAlign: 'top' }}>
                         <p style={{ fontWeight: '900', color: '#888', borderBottom: '2px solid #ddd', paddingBottom: '8px', margin: '0 0 12px 0' }}>CİHAZ BİLGİSİ</p>
                         <div style={{ fontWeight: 'bold', lineHeight: '1.8' }}>
@@ -785,12 +761,6 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                           Seri / Barkod: {aktifKayit.tip === 'Stok Satışı' ? (aktifKayit.raw?.aciklama?.match(/Barkod:\s*([^|]+)/i)?.[1]?.trim() || aktifKayit.raw?.barkod || '-') : (getVal(aktifKayit.raw, ['serial_number', 'serial', 'seri_no', 'barkod', 'barcode', 'cihaz_seri', 'imei', 'plaka']) || '-')}
                         </div>
                       </td>
-
-                        
-
- 
-
-
 
                       </tr>
                     </tbody>
@@ -808,45 +778,76 @@ const resKasa = await api.get('/api/kasa/all').catch(() => null);
                         <th style={{ padding: '12px', border: '1px solid #444', width: '140px', textAlign: 'right' }}>TOPLAM</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr>
+                    
+                    {/* 🚨 YENİ MOTOR VİTRİNDE DE ÇALIŞIYOR 🚨 */}
+                   
+                   
+                   <tbody>
+              {/* 1. YEDEK PARÇALAR */}
+              {aktifKayit.tip === 'Servis' && servisParcalari.map((parca, idx) => (
+                <tr key={idx} style={{ pageBreakInside: 'avoid' }}>
+                  <td style={{ textAlign: 'center', verticalAlign: 'top', padding: '15px 10px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '13px' }}>
+                    {idx + 1}
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>
+                    {parca.part_name || parca.malzeme_adi || parca.ad || 'Yedek Parça'} <span style={{fontWeight: 'normal', color: '#555'}}>(Onarıma dahil edilmiştir)</span>
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>
+                    {parca.quantity || parca.miktar || 1}
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>
+                    0,00 ₺
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '13px' }}>
+                    %20
+                  </td>
+                  <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>
+                    0,00 ₺
+                  </td>
+                </tr>
+              ))}
+
+              {/* 2. ANA HİZMET / İŞÇİLİK BEDELİ */}
+              <tr style={{ pageBreakInside: 'avoid' }}>
+                <td style={{ textAlign: 'center', verticalAlign: 'top', padding: '15px 10px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '13px' }}>
+                  {aktifKayit.tip === 'Servis' ? servisParcalari.length + 1 : 1}
+                </td>
+                <td style={{ padding: '15px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>
+                  <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
+                    {aktifKayit.tip === 'Servis' ? 'İşçilik ve Genel Servis Bedeli' : aktifKayit.aciklama}
+                  </div>
+                  {aktifKayit.tip !== 'Stok Satışı' && (
+                      <div style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
+                        (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
+                      </div>
+                  )}
+                  {aktifKayit.tip === 'Servis' && aktifKayit.aciklama && (
+                      <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                        Arıza/Not: {aktifKayit.aciklama}
+                      </div>
+                  )}
+                </td>
+                <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '13px' }}>1</td>
+                <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '13px' }}>%20</td>
+                <td style={{ padding: '15px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '14px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+              </tr>
+            </tbody>
+                   
 
 
 
 
-                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '20px', border: '1px solid #eee', color: '#666', fontWeight: 'bold', fontSize: '14px' }}>
-                              1
-                            </td>
-                            <td style={{ padding: '20px 10px', border: '1px solid #eee', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>
-                              <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>{aktifKayit.aciklama}</div>
-                              {aktifKayit.tip !== 'Stok Satışı' && (
-                                  <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-                                    (Kayıt No: {aktifKayit.servis_no}{aktifKayit.raw?.barkod ? `, Barkod: ${aktifKayit.raw.barkod}` : ''})
-                                  </div>
-                              )}
-                            </td>
 
-
-
-
-
-
-
-
-
-                       
-
- 
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', fontSize: '14px' }}>1</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold', color: '#666', fontSize: '14px' }}>%20</td>
-                        <td style={{ padding: '20px 10px', border: '1px solid #eee', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '15px' }}>{genelToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-                      </tr>
-                    </tbody>
                   </table>
 
                   {/* MATEMATİK VE BANKA BİLGİLERİ (TABLE) */}
-                  <table style={{ width: '100%', marginTop: 'auto' }}>
+                    <table style={{ width: '100%', marginTop: '40px', pageBreakInside: 'avoid' }}>
+
+
+
+
+
                     <tbody>
                       <tr>
                         <td style={{ verticalAlign: 'bottom', paddingRight: '20px' }}>

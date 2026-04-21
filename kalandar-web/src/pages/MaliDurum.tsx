@@ -28,10 +28,16 @@ export default function MaliDurum({ onSeeAll }: any) {
         // Gelen gerçek özet bilgisi
         setOzet(res.data.ozet);
         
-        // Backend listeyi 'data' içinde yolluyor, biz son 10 tanesini kesip alıyoruz
+        
+        
+        // Backend listeyi 'data' içinde yolluyor, biz son 3 tanesini kesip alıyoruz
         if (res.data.data && Array.isArray(res.data.data)) {
-          setSonIslemler(res.data.data.slice(0, 10));
+          setSonIslemler(res.data.data.slice(0, 3));
         } else {
+
+
+
+
           setSonIslemler([]);
         }
       } else {
@@ -130,12 +136,17 @@ export default function MaliDurum({ onSeeAll }: any) {
 
               </div>
 
+
+
               {/* ================= SARI BUTONLU LİSTE BAŞLIĞI ================= */}
               <div className="flex justify-between items-center bg-black/20 p-3 rounded-xl border border-white/5 mt-2">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <span className="text-[#8E052C]">⚡</span> SON 10 KASA HAREKETİ
+                  <span className="text-[#8E052C]">⚡</span> SON 3 KASA HAREKETİ
                 </h3>
-                
+
+           
+
+
                 <button 
                   onClick={onSeeAll}
                   className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-2.5 rounded-lg font-black uppercase text-[11px] tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.4)] transition-all transform hover:scale-105 active:scale-95"
