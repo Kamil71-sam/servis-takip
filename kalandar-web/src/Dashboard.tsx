@@ -112,9 +112,9 @@ export default function Dashboard({ onLogout }: any) {
         api.get('/api/kasa/all').catch(() => null),
         api.get('/api/appointments/liste/aktif').catch(() => null),
         api.get('/api/appointments/liste/gecmis').catch(() => null),
-        api.get('/api/appointments/tamamlanan').catch(() => null),
-        api.get('/api/appointments/liste/tamamlanan').catch(() => null),
-        api.get('/api/appointments/all').catch(() => null)
+        //api.get('/api/appointments/tamamlanan').catch(() => null),
+        //api.get('/api/appointments/liste/tamamlanan').catch(() => null),
+        //api.get('/api/appointments/all').catch(() => null)
       ];
 
       const [resActive, resArchive, resKasa, ...randevuResults] = await Promise.all(reqs);

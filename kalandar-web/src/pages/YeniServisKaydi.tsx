@@ -12,9 +12,17 @@ export default function YeniServisKaydi() {
   const [selectedMusteri, setSelectedMusteri] = useState<any>(null);
   const [selectedCihaz, setSelectedCihaz] = useState<any>(null);
   const [cihazlar, setCihazlar] = useState<any[]>([]);
+ 
+ 
   const [arizaNotu, setArizaNotu] = useState('');
-  const [atananUsta] = useState('Usta 1 (Kemal)'); 
+  const [atananUsta, setAtananUsta] = useState('Usta 1'); 
   const [isSaving, setIsSaving] = useState(false);
+ 
+  
+ 
+ 
+ 
+ 
   const [showMusteriRehberi, setShowMusteriRehberi] = useState(false); 
   const [rehberArama, setRehberArama] = useState(''); 
 
@@ -154,6 +162,70 @@ export default function YeniServisKaydi() {
   };
 
 
+
+  const handleSaveService = async () => {
+    if (!selectedMusteri) return alert("Müşteri seçmeden iş emri açılamaz!");
+    if (!selectedCihaz) return alert("Lütfen arızalı cihazı seçin!");
+    if (!arizaNotu.trim()) return alert("Müşterinin şikayetini/arızayı yazmalısın müdür!");
+
+    setIsSaving(true);
+    try {
+      // 1. ADIM: SADECE SERVİSİ KAYDET VE İÇERİDEN ID NUMARASINI AL
+      const isEmriVerisi = {
+        device_id: selectedCihaz.id,
+        issue_text: arizaNotu,
+        atanan_usta: atananUsta,
+        musteri_notu: selectedCihaz.muster_notu || '',
+        customer_id: selectedMusteri.tip === 'B' ? selectedMusteri.id : null,
+        firm_id: selectedMusteri.tip === 'F' ? selectedMusteri.id : null
+      };
+      
+      const res = await api.post(`/services`, isEmriVerisi);
+      
+      // Backend'den dönen yeni servisin ID'sini yakalıyoruz (Hayati önem taşıyor)
+      const yeniServisId = res.data?.id || res.data?.data?.id; 
+
+     
+     
+      // 2. ADIM: EĞER SEPETTE PARÇA VARSA, YENİ SERVİS ID'Sİ İLE ONLARI DEPOCUYA GÖNDER!
+      if (secilenParcalar.length > 0 && yeniServisId) {
+        // Bütün seçili parçaları material_requests (Yedek Parça) tablosuna seri ateşliyoruz
+        await Promise.all(secilenParcalar.map(p => 
+           api.post('/api/material-requests/add', {   // 🚨 ADRES DÜZELTİLDİ (/add eklendi)
+              service_id: yeniServisId,
+              usta_email: 'Servis Girişi (Patron)', // 🚨 Fotoğraftaki formata uyduruldu
+              part_name: p.malzeme_adi,
+              quantity: p.quantity,
+              description: 'Cihaz kaydı açılırken sepete eklendi' // 🚨 Zorunluysa patlamasın diye not
+           })
+        ));
+      }
+
+
+
+
+      alert(`✅ Kapat Baretleri! İş Emri Açıldı.\nServis No: ${res.data.servis_no || 'Atandı'}`);
+      
+      // EKRANI SIFIRLAMA
+      setSelectedMusteri(null);
+      setMusteriArama('');
+      setSelectedCihaz(null);
+      setCihazlar([]);
+      setArizaNotu('');
+      setSecilenParcalar([]); // Parça sepetini boşalt
+      setParcaArama('');
+
+    } catch (err: any) {
+      console.error("Servis Kayıt Hatası:", err);
+      alert("Hata: " + (err.response?.data?.error || err.error || err.message || "Servis kaydedilemedi."));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
+
+/*
   const handleSaveService = async () => {
     if (!selectedMusteri) return alert("Müşteri seçmeden iş emri açılamaz!");
     if (!selectedCihaz) return alert("Lütfen arızalı cihazı seçin!");
@@ -192,6 +264,16 @@ export default function YeniServisKaydi() {
       setIsSaving(false);
     }
   };
+
+*/
+
+
+
+
+
+
+
+
 
   return (
     <>
@@ -270,14 +352,44 @@ export default function YeniServisKaydi() {
                   )}
                 </div>
 
-                {/* ATANAN USTA */}
+
+
+
+                  {/* ATANAN USTA */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1">Atanan Usta</label>
-                  <div className="w-full bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-gray-400 flex items-center justify-between cursor-not-allowed">
-                    <span>{atananUsta}</span>
-                    <span>🛠️</span>
+                  <div className="relative">
+                    <select 
+                      value={atananUsta}
+                      onChange={(e) => setAtananUsta(e.target.value)}
+                      className="w-full bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-white outline-none appearance-none cursor-pointer focus:border-[#8E052C]/50 transition-all"
+                    >
+                      {/* Sadece bu seçilebilir */}
+                      <option value="Usta 1 " className="bg-[#0F0F12] text-white">Usta 1 </option>
+                      
+                      {/* Bunlar soluk ve tıklanamaz */}
+                      <option value="Usta 2" disabled className="bg-[#0F0F12] text-[#444] italic">Usta 2</option>
+                      <option value="Usta 3" disabled className="bg-[#0F0F12] text-[#444] italic">Usta 3</option>
+                    </select>
+                    
+                    {/* Sağdaki aşağı ok ikonu */}
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
+
+
+                
+
+
+
+
+
+
+
 
               </div>
 
@@ -321,7 +433,7 @@ export default function YeniServisKaydi() {
 
               {/* 🚨 YENİ 3. SATIR: YEDEK PARÇA (ENVANTER) TALEBİ 🚨 */}
               <div className="border-t border-white/5 pt-4 mt-2">
-                <label className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1 mb-2 block text-[#8E052C]">🔧 Kullanılacak Parçalar (Envanterden)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block text-[#8E052C]">🔧 Kullanılacak Parçalar (Envanterden)</label>
                 
                 {/* Arama Kutusu */}
                 <div className="relative mb-3">

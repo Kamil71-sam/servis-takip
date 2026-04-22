@@ -182,19 +182,41 @@ export default function YeniRandevu() {
                   </div>
                 </div>
 
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Atanan Usta</label>
-                  <select
-                    name="usta"
-                    className="bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-white outline-none focus:border-[#8E052C]/50 transition-all"
-                    value={form.usta} onChange={handleChange}
-                  >
-                    <option value="Usta 1">Usta 1 (Kemal)</option>
-                    <option value="Usta 2">Usta 2</option>
-                    <option value="Usta 3">Usta 3</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      name="usta"
+                      className="w-full bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-white outline-none appearance-none cursor-pointer focus:border-[#8E052C]/50 transition-all"
+                      value={form.usta} onChange={handleChange}
+                    >
+                      {/* Sadece bu seçilebilir ve Kemal yazısı uçuruldu */}
+                      <option value="Usta 1" className="bg-[#0F0F12] text-white">Usta 1</option>
+                      
+                      {/* Bunlar soluk ve tıklanamaz */}
+                      <option value="Usta 2" disabled className="bg-[#0F0F12] text-[#444] italic">Usta 2</option>
+                      <option value="Usta 3" disabled className="bg-[#0F0F12] text-[#444] italic">Usta 3</option>
+                    </select>
+                    
+                    {/* Sağdaki aşağı ok ikonu (Tasarımsal bütünlük için eklendi) */}
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
+
+
+
+
               </div>
+
+
+
+
+
 
               {/* 2. SATIR: Cihaz Bilgileri */}
               <div className="flex flex-col gap-1.5">

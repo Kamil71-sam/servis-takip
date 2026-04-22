@@ -568,7 +568,7 @@ const handleKaydet = async () => {
             {isStokIslem && (
               <>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-black text-[#8E052C] uppercase tracking-widest">BARKOD OKUT VEYA YAZ (*)</label>
+                  <label className="text-[9px] font-black text-[#8E052C] uppercase tracking-widest">BARKOD  YAZ (*)</label>
                   <div className="flex gap-2">
                     <input type="text" value={barkodNo} onChange={(e) => setBarkodNo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleBarkodAra(); }} placeholder="Barkod..." className="flex-1 bg-black/50 border border-[#8E052C]/50 rounded-xl px-3 py-2.5 text-xs text-white outline-none font-bold focus:border-[#8E052C]" />
                     <button onClick={handleBarkodAra} className="bg-[#8E052C] hover:bg-[#8E052C]/80 w-10 rounded-xl flex items-center justify-center text-white text-sm transition-all shadow-md">{malzemeLoading ? '⌛' : '🔍'}</button>
