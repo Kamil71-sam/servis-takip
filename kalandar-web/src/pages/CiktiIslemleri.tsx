@@ -625,6 +625,10 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
 
         <div className="flex-1 flex gap-4 overflow-hidden">
           
+
+
+
+
           {/* ================= SOL: HAFİYE ================= */}
           <div className="w-[400px] flex flex-col bg-[#1A1A1E] border border-white/5 rounded-2xl overflow-hidden shadow-2xl shrink-0 relative z-10">
             <div className="p-3.5 border-b border-white/5 bg-black/40 flex flex-col gap-2.5">
@@ -634,10 +638,26 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                 <option value="Randevu">SADECE RANDEVU</option>
                 <option value="Stok Satışı">STOK SATIŞI</option>
               </select>
+
+
+
               <div className="flex gap-2.5">
+                {/* 🚨 ŞIKIR ŞIKIR YENİLE BUTONU (Kompakt Tasarım) 🚨 */}
+                <button 
+                  onClick={() => {
+                    // ⚠️ DİKKAT: Fonksiyonun adı farklıysa burayı değiştir!
+                     fetchData();
+                  }}
+                  className="bg-black/50 hover:bg-white/10 border border-white/10 text-white px-3 py-2 rounded-lg text-[12px] font-black flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0"
+                  title="Listeyi Güncelle"
+                >
+                  🔄
+                </button>
                 <input type="text" placeholder="İsim veya No..." value={aramaMetni} onChange={(e) => { setAramaMetni(e.target.value); setCurrentPage(1); }} className="flex-1 bg-[#0F0F12] border border-white/10 rounded-lg px-2.5 py-2 text-[11px] text-white outline-none focus:border-[#8E052C]" />
                 <input type="date" value={aramaTarih} onChange={(e) => { setAramaTarih(e.target.value); setCurrentPage(1); }} className="w-[115px] bg-[#0F0F12] border border-white/10 rounded-lg px-2 py-2 text-[11px] text-white outline-none focus:border-[#8E052C] cursor-pointer" />
               </div>
+
+
             </div>
 
             <div className="flex-1 overflow-y-auto nuke-scrollbar p-2.5 flex flex-col gap-2">
@@ -696,16 +716,11 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
             </div>
 
 
-
-
             
                 {/* 🚨 SARI ÇİZGİ SCROLL'U: Sadece bu kutunun içi aşağı kayacak 🚨 */}
             <div className="flex-1 bg-gray-300 rounded-2xl relative shadow-inner overflow-y-auto nuke-scrollbar flex flex-col">
               
               {/* Kayıt yoksa Perde En Üstte Tam Ekran Çıkar */}
-
-
-
 
 
 
@@ -716,14 +731,11 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                 </div>
               )}
 
-            
               
               <div style={{ width: '437px', position: 'relative' }} className="shrink-0">
                 
                 <div style={{ width: '794px', transform: 'scale(0.55)', transformOrigin: 'top center', padding: '40px', backgroundColor: 'white', color: 'black', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
                   
-
-
 
                   {/* BAŞLIK TABLOSU */}
             <table style={{ width: '100%', borderBottom: '4px solid #a61c24', marginBottom: '25px', paddingBottom: '15px' }}>
@@ -756,48 +768,6 @@ export default function CiktiIslemleri({ defaultTab = 'fatura' }: { defaultTab?:
                 </tr>
               </tbody>
             </table>
-
-
-
-
-
-
-
-
-                  
-                  {/* BAŞLIK TABLOSU 
-                  <table style={{ width: '100%', borderBottom: '4px solid #a61c24', marginBottom: '25px', paddingBottom: '15px' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ verticalAlign: 'top' }}>
-                          <h1 style={{ fontSize: '36px', fontWeight: '900', margin: 0, letterSpacing: '-1px', textTransform: 'uppercase' }}>
-                            <span style={{ color: '#a61c24' }}>{firmaAyarlari.firma_adi?.split(' ')[0] || 'FİRMA'}</span> <span style={{ color: '#666' }}>{firmaAyarlari.firma_adi?.split(' ').slice(1).join(' ') || 'ADI'}</span>
-                          </h1>
-                        </td>
-                        <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
-                          <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#a61c24', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                            {activeTab === 'servis' ? 'SERVİS FİŞİ' : 'TEKNİK SERVİS VE SATIŞ BELGESİ'}
-                          </h2>
-                          <table style={{ width: '240px', marginLeft: 'auto', fontSize: '14px', fontWeight: 'bold' }}>
-                            <tbody>
-                              <tr>
-                                <td style={{ textAlign: 'left', paddingBottom: '5px' }}>BELGE NO:</td>
-                                <td style={{ textAlign: 'right', fontFamily: 'monospace', paddingBottom: '5px' }}>{generateDateStamp(aktifKayit.tarih)}-{aktifKayit.servis_no}</td>
-                              </tr>
-                              <tr>
-                                <td style={{ textAlign: 'left', fontWeight: 'bold', paddingRight: '15px', whiteSpace: 'nowrap' }}>TARİH:</td>
-                                <td style={{ textAlign: 'right', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{new Date().toLocaleDateString('tr-TR')}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                    */}
-
-
 
 
                   {/* 3'LÜ BİLGİ KOLONLARI */}

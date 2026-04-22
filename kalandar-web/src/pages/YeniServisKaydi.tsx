@@ -26,11 +26,7 @@ export default function YeniServisKaydi() {
   const [showMusteriRehberi, setShowMusteriRehberi] = useState(false); 
   const [rehberArama, setRehberArama] = useState(''); 
 
-  // --- YEDEK PARÇA (ENVANTER) STATE'LERİ 🚨 YENİ EKLENDİ 🚨 ---
-  const [parcaArama, setParcaArama] = useState('');
-  const [parcaListesi, setParcaListesi] = useState<any[]>([]);
-  const [showParcaList, setShowParcaList] = useState(false);
-  const [secilenParcalar, setSecilenParcalar] = useState<any[]>([]);
+  
 
   // --- MODAL STATES ---
   const [showMusteriList, setShowMusteriList] = useState(false);
@@ -116,50 +112,22 @@ export default function YeniServisKaydi() {
     } catch (err) { alert("Cihaz eklenemedi!"); }
   };
 
-  // 🚨 YENİ: ENVANTER (PARÇA) ARAMA FONKSİYONU 🚨
-  useEffect(() => {
-    if (parcaArama.length >= 3) {
-      const parcaAra = async () => {
-        try {
-          // Senin stok.js içindeki Usta Motorunu tetikliyoruz
-          const res = await api.get(`/api/stok/search?malzeme_adi=${parcaArama}`);
-          if (res.data && res.data.success && Array.isArray(res.data.data)) {
-             setParcaListesi(res.data.data);
-             setShowParcaList(true);
-          } else {
-             setShowParcaList(false);
-          }
-        } catch (err) {
-          console.error("Parça arama hatası:", err);
-        }
-      };
-      // Ufak bir gecikme (debounce) koyalım, her harfte sunucuyu yormasın
-      const timeoutId = setTimeout(() => { parcaAra(); }, 300);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setShowParcaList(false);
-    }
-  }, [parcaArama]);
 
-  // 🚨 YENİ: PARÇAYI LİSTEYE EKLEME FONKSİYONU 🚨
-  const handleParcaEkle = (parca: any) => {
-    // Parça zaten eklenmiş mi kontrol et
-    const varMi = secilenParcalar.find(p => p.id === parca.id);
-    if (varMi) {
-      // Varsa miktarını artır
-      setSecilenParcalar(secilenParcalar.map(p => p.id === parca.id ? { ...p, quantity: p.quantity + 1 } : p));
-    } else {
-      // Yoksa 1 adet olarak ekle
-      setSecilenParcalar([...secilenParcalar, { ...parca, quantity: 1 }]);
-    }
-    setParcaArama(''); // Arama kutusunu temizle
-    setShowParcaList(false); // Listeyi kapat
-  };
 
-  // 🚨 YENİ: LİSTEDEN PARÇA ÇIKARMA FONKSİYONU 🚨
-  const handleParcaCikar = (id: number) => {
-    setSecilenParcalar(secilenParcalar.filter(p => p.id !== id));
-  };
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
 
 
 
@@ -183,23 +151,11 @@ export default function YeniServisKaydi() {
       const res = await api.post(`/services`, isEmriVerisi);
       
       // Backend'den dönen yeni servisin ID'sini yakalıyoruz (Hayati önem taşıyor)
-      const yeniServisId = res.data?.id || res.data?.data?.id; 
+     // const yeniServisId = res.data?.id || res.data?.data?.id; 
 
      
      
-      // 2. ADIM: EĞER SEPETTE PARÇA VARSA, YENİ SERVİS ID'Sİ İLE ONLARI DEPOCUYA GÖNDER!
-      if (secilenParcalar.length > 0 && yeniServisId) {
-        // Bütün seçili parçaları material_requests (Yedek Parça) tablosuna seri ateşliyoruz
-        await Promise.all(secilenParcalar.map(p => 
-           api.post('/api/material-requests/add', {   // 🚨 ADRES DÜZELTİLDİ (/add eklendi)
-              service_id: yeniServisId,
-              usta_email: 'Servis Girişi (Patron)', // 🚨 Fotoğraftaki formata uyduruldu
-              part_name: p.malzeme_adi,
-              quantity: p.quantity,
-              description: 'Cihaz kaydı açılırken sepete eklendi' // 🚨 Zorunluysa patlamasın diye not
-           })
-        ));
-      }
+      
 
 
 
@@ -212,8 +168,7 @@ export default function YeniServisKaydi() {
       setSelectedCihaz(null);
       setCihazlar([]);
       setArizaNotu('');
-      setSecilenParcalar([]); // Parça sepetini boşalt
-      setParcaArama('');
+      
 
     } catch (err: any) {
       console.error("Servis Kayıt Hatası:", err);
@@ -430,61 +385,15 @@ export default function YeniServisKaydi() {
                 </div>
 
               </div>
-
-              {/* 🚨 YENİ 3. SATIR: YEDEK PARÇA (ENVANTER) TALEBİ 🚨 */}
-              <div className="border-t border-white/5 pt-4 mt-2">
-                <label className="text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block text-[#8E052C]">🔧 Kullanılacak Parçalar (Envanterden)</label>
-                
-                {/* Arama Kutusu */}
-                <div className="relative mb-3">
-                  <input 
-                      type="text" 
-                      value={parcaArama}
-                      onChange={(e) => setParcaArama(e.target.value)}
-                      onBlur={() => setTimeout(() => setShowParcaList(false), 200)}
-                      placeholder="Envanterde parça ara (En az 3 harf)..." 
-                      className="w-full bg-[#0F0F12] border border-white/5 rounded-xl py-2.5 px-3 text-xs font-bold text-sky-400 outline-none focus:border-[#8E052C]/50 transition-all" 
-                  />
-                  {/* Dropdown Sonuçlar */}
-                  {showParcaList && parcaListesi.length > 0 && (
-                    <div className="absolute top-full left-0 w-full bg-[#1A1A1E] border border-sky-500/30 mt-1 rounded-xl z-50 shadow-2xl max-h-48 overflow-y-auto nuke-scrollbar">
-                      {parcaListesi.map((p, i) => (
-                        <button 
-                           key={i} 
-                           onMouseDown={(e) => { e.preventDefault(); handleParcaEkle(p); }} 
-                           className="w-full text-left p-3 hover:bg-sky-500/20 text-xs text-white border-b border-white/5 font-semibold flex justify-between items-center"
-                        >
-                           <div className="flex flex-col">
-                             <span>{p.malzeme_adi}</span>
-                             <span className="text-[9px] text-gray-500 mt-0.5">Barkod: {p.barkod} | Marka: {p.marka || '-'}</span>
-                           </div>
-                           <span className="text-sky-400 font-black bg-sky-500/10 px-2 py-1 rounded">Mevcut: {p.miktar}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Seçilen Parçalar Sepeti */}
-                {secilenParcalar.length > 0 && (
-                  <div className="bg-[#0F0F12] border border-white/5 rounded-xl p-3 space-y-2">
-                     {secilenParcalar.map((p, i) => (
-                        <div key={i} className="flex justify-between items-center bg-white/5 p-2 rounded-lg border border-white/5">
-                           <div className="flex flex-col">
-                              <span className="text-xs text-white font-bold">{p.malzeme_adi}</span>
-                              <span className="text-[9px] text-gray-400 font-mono">{p.barkod}</span>
-                           </div>
-                           <div className="flex items-center gap-3">
-                              <span className="text-xs text-sky-400 font-black">ADET: {p.quantity}</span>
-                              <button onClick={() => handleParcaCikar(p.id)} className="text-red-500 hover:text-red-400 font-black text-xs px-2 py-1 bg-red-500/10 rounded">X</button>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-                )}
-              </div>
+   
 
             </div>
+
+
+
+
+
+
 
             {/* KAYDET BUTONU */}
             <button 
@@ -504,10 +413,23 @@ export default function YeniServisKaydi() {
         {showCihazEkleModal && (
           <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
             <div className="bg-[#0F0F12] border border-[#8E052C]/30 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+             
+             
+
+
               <div className="p-4 border-b border-white/5 bg-[#8E052C]/10 flex justify-between items-center">
-                <h3 className="font-black text-white uppercase text-sm tracking-tighter">YENİ CİHAZ GİRİŞİ</h3>
-                <button onClick={() => setShowCihazEkleModal(false)} className="text-gray-400 hover:text-white text-xl">×</button>
-              </div>
+            <h3 className="font-black text-white uppercase text-sm tracking-tighter">YENİ CİHAZ GİRİŞİ</h3>
+            {/* 🚨 BÜYÜTÜLMÜŞ KIRMIZI ÇARPI 🚨 */}
+            <button 
+              onClick={() => setShowCihazEkleModal(false)} 
+              className="text-red-500 hover:text-red-400 text-3xl font-black hover:scale-110 transition-all flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-500/10">×</button>
+          </div>
+              
+
+
+
+
+
               <div className="p-5 space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-gray-500 font-black uppercase ml-1 tracking-widest">Cihaz Türü</label>
@@ -546,7 +468,6 @@ export default function YeniServisKaydi() {
                 ></textarea>
               </div>
               <div className="p-4 bg-black/40 flex justify-end gap-3 border-t border-white/5">
-                 <button onClick={() => setShowCihazEkleModal(false)} className="text-gray-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-all px-4">VAZGEÇ</button>
                  <button onClick={cihazKaydet} className="bg-[#8E052C] hover:bg-[#A00632] text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg transition-colors">TANIMLA</button>
               </div>
             </div>

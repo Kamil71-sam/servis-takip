@@ -85,19 +85,43 @@ export default function ServisKayitlari() {
   };
 
   return (
-    <div className="bg-[#0F0F12] border border-white/10 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative mt-4">
+           
+   <div className="bg-[#0F0F12] border border-white/10 rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-2xl relative mt-4">
       
-      <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
+
+
+
+
+<div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
         <h2 className="text-xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
           <span className="text-[#8E052C]">📋</span> Aktif Servis Kayıtları
         </h2>
-        <input 
-          type="text" 
-          placeholder="Kayıt No, Müşteri veya Seri No ara..." 
-          className="bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white w-80 outline-none font-semibold focus:border-[#8E052C] transition-all"
-          onChange={(e) => setArama(e.target.value)}
-        />
+        
+        {/* ARAMA VE YENİLE BUTONU YAN YANA */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => {
+              setLoading(true);
+              verileriGetir();
+            }}
+            disabled={loading}
+            className="bg-black/50 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
+            title="Listeyi Güncelle"
+          >
+            <span className={loading ? "animate-spin" : ""}>🔄</span> Yenile
+          </button>
+          
+          <input 
+            type="text" 
+            placeholder="Kayıt No, Müşteri veya Seri No ara..." 
+            className="bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white w-80 outline-none font-semibold focus:border-[#8E052C] transition-all"
+            onChange={(e) => setArama(e.target.value)}
+          />
+        </div>
       </div>
+
+
+
 
       <div className="flex-1 overflow-auto scrollbar-hide p-4">
         {loading ? (
@@ -253,7 +277,13 @@ export default function ServisKayitlari() {
                   #{seciliServis.plaka} - {seciliServis.musteri_adi}
                 </p>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-white text-2xl">×</button>
+               
+              {/* 🚨 BÜYÜTÜLMÜŞ KIRMIZI ÇARPI 🚨 */}
+              <button 
+                onClick={() => setShowEditModal(false)} 
+                className="text-red-500 hover:text-red-400 text-3xl font-black hover:scale-110 transition-all flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-500/10" >×</button>
+
+            
             </div>
             
             <div className="p-6 space-y-4 overflow-y-auto scrollbar-hide">
@@ -318,7 +348,6 @@ export default function ServisKayitlari() {
             </div>
 
             <div className="p-4 border-t border-white/5 bg-black/40 flex justify-end gap-4 mt-auto">
-               <button onClick={() => setShowEditModal(false)} className="text-gray-500 font-bold uppercase text-xs hover:text-white transition-all">VAZGEÇ</button>
                <button onClick={guncellemeIslemi} className="bg-[#8E052C] text-white px-6 py-2.5 rounded-lg font-black text-xs uppercase shadow-lg shadow-red-950/30 hover:scale-[1.02] transition-all">GÜNCELLE</button>
             </div>
           </div>

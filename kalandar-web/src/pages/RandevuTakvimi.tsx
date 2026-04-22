@@ -97,7 +97,22 @@ export default function RandevuTakvimi() {
           </div>
         </div>
 
-        <div className="flex gap-4 items-center">
+
+
+        <div className="flex gap-3 items-center">
+          {/* 🚨 ŞIKIR ŞIKIR YENİLE BUTONU 🚨 */}
+          <button 
+            onClick={() => {
+              setLoading(true);
+              verileriGetir();
+            }}
+            disabled={loading}
+            className="bg-black/50 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50 shrink-0"
+            title="Listeyi Güncelle"
+          >
+            <span className={loading ? "animate-spin inline-block" : ""}>🔄</span> Yenile
+          </button>
+          
           <input 
             type="text" 
             placeholder="Kayıt No veya Müşteri Ara..." 
@@ -106,6 +121,14 @@ export default function RandevuTakvimi() {
             className="bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white w-full outline-none font-semibold focus:border-[#8E052C] transition-all shadow-inner"
           />
         </div>
+
+
+        
+
+
+
+
+
       </div>
 
       <div className="flex-1 overflow-auto scrollbar-hide p-4">
@@ -188,7 +211,7 @@ export default function RandevuTakvimi() {
                     </div>
 
                     <div className="bg-white/5 p-3 rounded-xl border border-white/5 mt-1">
-                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1 flex items-center gap-1"><span className="text-gray-400">📝</span> Arıza & Randevu Notu</span>
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1"><span className="text-gray-400">📝</span> Arıza & Randevu Notu</span>
                       <p className="text-xs text-gray-400 font-medium leading-relaxed">{finalNot}</p>
                     </div>
                   </div>

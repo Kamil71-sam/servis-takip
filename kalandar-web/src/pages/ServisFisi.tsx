@@ -484,9 +484,28 @@ export default function ServisFisi() {
                 <option value="Randevu">SADECE RANDEVU (BEKLEMEDE)</option>
               </select>
               <div className="flex gap-2.5">
+
+
+                {/* 🚨 YENİLE BUTONU 🚨 */}
+                <button 
+                  onClick={() => {
+                    // ⚠️ DİKKAT: Bu dosyadaki veri çekme motorunun adı neyse onu yaz (Büyük ihtimalle bu da fetchData'dır)
+                    fetchData(); 
+                  }}
+                  className="bg-black/50 hover:bg-white/10 border border-white/10 text-white px-3 py-2 rounded-lg text-[12px] font-black flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0"
+                  title="Listeyi Güncelle"
+                >
+                  🔄
+                </button>
+
+
                 <input type="text" placeholder="İsim veya No..." value={aramaMetni} onChange={(e) => { setAramaMetni(e.target.value); setCurrentPage(1); }} className="flex-1 bg-[#0F0F12] border border-white/10 rounded-lg px-2.5 py-2 text-[11px] text-white outline-none focus:border-[#8E052C]" />
                 <input type="date" value={aramaTarih} onChange={(e) => { setAramaTarih(e.target.value); setCurrentPage(1); }} className="w-[115px] bg-[#0F0F12] border border-white/10 rounded-lg px-2 py-2 text-[11px] text-white outline-none focus:border-[#8E052C] cursor-pointer" />
               </div>
+
+
+
+
             </div>
 
             <div className="flex-1 overflow-y-auto nuke-scrollbar p-2.5 flex flex-col gap-2">
