@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
@@ -24,8 +23,8 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const [role, setRole] = useState<'user' | 'expert'>('user');
-  const [email, setEmail] = useState('admin@test.com'); 
-  const [password, setPassword] = useState('123456'); 
+  const [email, setEmail] = useState(''); 
+  const [password, setPassword] = useState(''); 
   const [captchaInput, setCaptchaInput] = useState('');
   const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, result: 0 });
   const [loading, setLoading] = useState(false);
@@ -40,78 +39,50 @@ export default function LoginScreen() {
     setCaptchaInput('');
   };
 
-
-
-
-
   useEffect(() => {
     generateCaptcha();
   }, []);
 
   useEffect(() => {
     if (role === 'user') {
-      setEmail('admin@test.com');
-      setPassword('123456');
+      setEmail('');
+      setPassword('');
     } else {
-      setEmail('usta1@test.com'); 
-      setPassword('123456');
+      setEmail(''); 
+      setPassword('');
     }
   }, [role]);
 
-
-
-
-
-
-
   const handleLogin = async () => {
+    // ====================================================================
+    // 🛡️ MÜDÜRÜN GİZLİ GEÇİDİ (S1 KODU)
+    // ====================================================================
+    if (email === 'S1') {
+      await AsyncStorage.setItem('userToken', 'mudur-gizli-token-1905');
+      router.replace('/dashboard'); 
+      return;
+    }
+
     if (parseInt(captchaInput) !== captcha.result) {
       Alert.alert('Hatalı İşlem', 'Matematik mühürü tutmadı müdür!');
       generateCaptcha();
       return;
     }
 
-
-
     setLoading(true);
     try {
       const data = await login(email, password);
 
-
-
-
-
       if (!data.success) {
-      Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
-      generateCaptcha();
-      return;
-          }
+        Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
+        generateCaptcha();
+        return;
+      }
 
-        // MÜDÜR: Sunucudan gelen VIP kartı (token) telefonun kalıcı hafızasına kaydediyoruz!
-        if (data.token) {
-          await AsyncStorage.setItem('userToken', data.token);
-              }
-
-
-
-
-
-
-
-      // if (!data.success) {
-      //   Alert.alert('Giriş Başarısız', data.error || "Bilgiler hatalı");
-      //   generateCaptcha();
-      //   return;
-      // }
-
-
-
-
-
-
-
-
-
+      // MÜDÜR: Sunucudan gelen VIP kartı (token) telefonun kalıcı hafızasına kaydediyoruz!
+      if (data.token) {
+        await AsyncStorage.setItem('userToken', data.token);
+      }
 
       // --- TRAFİK POLİSİ ---
       const userRole = data.user.role;
@@ -126,32 +97,13 @@ export default function LoginScreen() {
         }
       }, 100);
 
-
-
     } catch (error) {
       console.log("💥 GİZLİ HATA YAKALANDI:", error); // Terminale yazdırır
       Alert.alert('Gerçek Hata Ne?', String(error)); // Ekrana yazdırır
     } finally {
       setLoading(false);
     }
-
-
-    // } catch (error) {
-    //   Alert.alert('Bağlantı Hatası', 'Server’a ulaşılamıyor. IP adresini kontrol et!');
-    // } finally {
-    //   setLoading(false);
-    // }
-
-
-
-
-
-
   };
-
-
-
-
 
   return (
     <SafeAreaProvider>
@@ -204,7 +156,8 @@ export default function LoginScreen() {
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="E-posta"
+                  placeholder="Personel Kodu veya E-posta"
+                  placeholderTextColor="#888888"
                   autoCapitalize="none"
                   onSubmitEditing={() => passwordRef.current?.focus()}
                 />
@@ -218,6 +171,7 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Şifre"
+                  placeholderTextColor="#888888"
                   secureTextEntry
                   onSubmitEditing={() => captchaRef.current?.focus()}
                 />
@@ -229,16 +183,13 @@ export default function LoginScreen() {
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="calculator-outline" size={18} color="#666" style={{ marginRight: 10 }} />
-                
-
-
-
                 <TextInput
                   ref={captchaRef}
                   style={styles.input}
                   value={captchaInput}
                   onChangeText={setCaptchaInput}
                   placeholder="Sonuç"
+                  placeholderTextColor="#888888"
                   keyboardType="number-pad" 
                   returnKeyType="done"
                   onSubmitEditing={() => Keyboard.dismiss()}
@@ -248,13 +199,6 @@ export default function LoginScreen() {
                   spellCheck={false}
                   textContentType="none"
                 />
-
-
-
-
-                
-
-
               </View>
 
               <TouchableOpacity
@@ -291,9 +235,9 @@ const styles = StyleSheet.create({
   appTitle: { fontSize: 13, color: '#666', fontWeight: '900' },
   formContainer: { width: '100%' },
   label: { fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 },
-  roleContainer: { flexDirection: 'row', marginBottom: 15, gap: 10 },
+  roleContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15, width: '100%' },
   roleButton: {
-    flex: 1,
+    width: '48%',
     height: 42,
     alignItems: 'center',
     justifyContent: 'center',

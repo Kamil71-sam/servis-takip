@@ -32,14 +32,14 @@ export default function BarkodOlustur() {
       const resStok = await api.get('/api/stok/all').catch(() => null);
       const stokData = Array.isArray(resStok?.data?.data) ? resStok.data.data : [];
 
-      const barkodluUrunler = stokData.map(item => {
+      const barkodluUrunler = stokData.map((item: any) => {
          return { 
              ...item, 
              barkodNo: item.barkod, 
              isim: item.malzeme_adi || item.marka || 'İsimsiz Ürün', 
              gecerliFiyat: item.satis_fiyati || item.alis_fiyati || 0 
          };
-      }).filter(item => item.barkodNo && item.barkodNo.trim() !== '' && item.barkodNo !== '-');
+      }).filter((item:any) => item.barkodNo && item.barkodNo.trim() !== '' && item.barkodNo !== '-');
 
       const uniqueUrunler = Array.from(new Map(barkodluUrunler.map((item: any) => [item.barkodNo, item])).values());
       
@@ -92,7 +92,7 @@ export default function BarkodOlustur() {
       html2canvas:  { scale: 2, useCORS: true }, 
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(element!).save();
   };
 
   const handlePrint = () => {

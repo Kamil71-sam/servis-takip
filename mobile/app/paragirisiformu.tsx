@@ -38,7 +38,7 @@ interface SQLDeviceData {
 export default function ParaGirisiFormuV2() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.43:3000';
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://teknik-servis-backend-v3.onrender.com';
   const isDarkMode = params.isDarkMode === 'true';
   
   //const isDarkMode = false; 

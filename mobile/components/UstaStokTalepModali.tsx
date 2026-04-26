@@ -75,15 +75,6 @@ export default function UstaStokTalepModali({ visible, onClose, onSuccess, servi
 
 
 
-
-
-
-
-
-
-
-
-
   const theme = {
     bg: isDarkMode ? '#1E1E1E' : '#FFFFFF',
     text: isDarkMode ? '#FFF' : '#333',

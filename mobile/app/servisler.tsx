@@ -155,68 +155,7 @@ export default function ServisListesi() {
     }
   };
 
-  /*
-  const handleStatusChange = async (newStatus: string, serviceId?: number) => {
-    const id = serviceId || selectedForStatus?.id;
-    const item = selectedForStatus; 
-    if (!id) return;
-
-      
-    if (newStatus === 'Teslim Edildi') {
-      const ustaFiyati = Number(item?.offer_price || item?.price || 0);
-      
-      if (ustaFiyati <= 0) {
-        Alert.alert(
-          "DUR MÜDÜRÜM!", 
-          "Bu cihazın usta fiyatı (maliyet) girilmemiş. Fiyatı olmayan işi teslim edemezsin!",
-          [{ text: "ANLAŞILDI", style: "cancel" }]
-        );
-        return;
-      }
-
-      Alert.alert(
-        "ÖDEME EKRANINA AKTARIM",
-        "Cihaz teslim ediliyor. Ödeme ekranına yönlendirileceksiniz. Onaylıyor musunuz?",
-        [
-          { text: "Vazgeç", style: "cancel" },
-          { 
-            
-            text: "Onayla", 
-            onPress: async () => {
-              try {
-                await updateService(id, { status: newStatus });
-                setStatusModalVisible(false);
-                fetchServisler();
-
-                router.push({
-                  pathname: "/paragirisiformu",
-                  params: { 
-                    servis_id: id,
-                    servis_no: item?.plaka || item?.servis_no,
-                    usta_fiyati: ustaFiyati,
-                    islem_turu: 'Tamir Ücreti Tahsili',
-                    musteri: item?.musteri_adi || 'İsimsiz'
-                  }
-                });
-              } catch (error) {
-                Alert.alert("Hata", "Statü güncellenemedi.");
-              }
-            } 
-          }
-        ]
-      );
-    } else {
-      try {
-        await updateService(id, { status: newStatus });
-        setStatusModalVisible(false);
-        fetchServisler();
-      } catch (error) {
-        Alert.alert("Hata", "Güncelleme yapılamadı.");
-      }
-    }
-  };
-  */
-
+ 
   const filtered = (servisler || []).filter((s: any) => {
     const val = search.toLowerCase().trim();
     return (s.musteri_adi || "").toLowerCase().includes(val) || 
@@ -242,20 +181,59 @@ export default function ServisListesi() {
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.textColor }]}>Servis Kayıtları</Text>
         
-        {/* 🚨 MÜDÜR: YENİLEME VE KAPATMA TUŞU YAN YANA 🚨 */}
-        <View style={styles.headerRightButtons}>
-          <TouchableOpacity 
-            style={[styles.refreshIconBtn, { borderColor: theme.primary }]} 
-            onPress={() => fetchServisler()}
-          >
-            <Ionicons name="refresh" size={22} color={theme.primary} />
-          </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="close-circle-outline" size={35} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
+
+        {/* 🚨 MÜDÜR: GARANTİLİ İKİZ KARDEŞ KODU (STİLLERE GÜVENMİYORUZ) 🚨 */}
+    
+
+       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      
+      {/* 1. YENİLEME BUTONU (Boyutlar 40'tan 32'ye çekildi) */}
+      <TouchableOpacity
+        style={{ 
+          width: 32,           // Genişlik
+          height: 32,          // Yükseklik
+          borderRadius: 16,    // Yarıçap (Tam yuvarlak olması için 32'nin yarısı)
+          borderWidth: 1.5, 
+          borderColor: theme.primary, 
+          justifyContent: 'center', 
+          alignItems: 'center' 
+        }}
+        onPress={() => fetchServisler()}
+      >
+        <Ionicons name="refresh" size={18} color={theme.primary} />
+      </TouchableOpacity>
+
+      {/* 2. KAPATMA BUTONU */}
+      <TouchableOpacity
+        style={{ 
+          width: 32, 
+          height: 32, 
+          borderRadius: 16, 
+          borderWidth: 1.5, 
+          borderColor: theme.primary, 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          marginLeft: 10 
+        }}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="close" size={18} color={theme.primary} />
+      </TouchableOpacity>
+
+    </View>
+
+
+
+
+
       </View>
+
+
+
+
+
+
 
       <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.borderColor }]}>
         <Ionicons name="search-outline" size={20} color={theme.subText} />

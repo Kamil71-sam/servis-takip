@@ -101,14 +101,6 @@ export default function StokGirisiFormu({ visible, onClose, isDarkMode, initialB
 
 
 
-      /*const url = searchType === 'barkod' ? 
-        `${API_URL}/api/stok/search?barkod=${encodeURIComponent(value)}` : 
-        `${API_URL}/api/stok/search?barkod=XXXXX`; // Malzeme adı araması yapma!
-        */
-
-
-
-
 
 
 
@@ -209,20 +201,6 @@ const handleSaveAttempt = () => {
     setConfirmModalVisible(true); 
   };
 
-
-
-
-  /*
-  const handleSaveAttempt = () => {
-    if (!f.barkod || !f.malzeme_adi || !f.alis_fiyati) {
-      alert("Barkod, Malzeme Adı ve Alış Fiyatı zorunludur!");
-      return;
-    }
-    Keyboard.dismiss();
-    setConfirmModalVisible(true); 
-  };
-
-*/
 
 
 

@@ -144,75 +144,6 @@ const handleRejectAction = (id: number) => {
 
 
 
-/*
-const handleRejectAction = (id: number) => {
-    Alert.alert(
-      "İşlem Onayı",
-      "Bu randevu 'İşlem Yapılmayı Bekliyor' statüsüne alınacak. Onaylıyor musunuz?",
-      [
-        { text: "Vazgeç", style: "cancel" },
-        { 
-          text: "Onayla", 
-          onPress: async () => {
-            try {
-              const res = await fetch(`${API_URL}/api/operation/finance-approve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, action: 'no' })
-              });
-              const result = await res.json();
-              if(result.success) {
-                Alert.alert("Başarılı", "İşlem beklemeye alındı.");
-                loadData(); 
-              }
-            } catch (error) {
-              Alert.alert("Hata", "Sunucuya ulaşılamadı.");
-            }
-          } 
-        }
-      ]
-    );
-};
-
-
-
-  
-
-const handleFinanceAction = (item: any) => { // Buraya 'item' objesini alıyoruz
-    Alert.alert(
-      "Kasa İşlemi",
-      `${item.servis_no} nolu kayıt için Kasa V2 ekranı açılsın mı?`,
-      [
-        { text: "Vazgeç", style: "cancel" },
-        { 
-          text: "KASAYI AÇ", 
-          onPress: () => {
-            // MÜDÜR: İşte burası dünkü sihirli dokunuş!
-            // Eğer hesap makinesi çalıştıysa 'tahsil_edilen_tutar'ı al, 
-            // çalışmadıysa ustanın girdiği ilk rakamı (price) al.
-            const sonFiyat = item.tahsil_edilen_tutar || item.price || "0";
-
-            router.push({
-              pathname: "/paragirisiformu", 
-              params: { 
-                servis_id: item.id, 
-                servis_no: item.servis_no,
-                musteri: item.customer_name,
-                usta_fiyati: String(sonFiyat), // <--- KDV + Kâr burada uçuyor!
-                cihaz: item.issue_text || "",
-                islem_turu: 'Randevu Geliri Tahsili'
-              }
-            });
-          } 
-        }
-      ]
-    );
-};
-
-*/
-
-
-
 
 
 
@@ -343,74 +274,55 @@ const renderRandevu = ({ item }: any) => {
 
 
 
-
-
-            {/*
-      {isCompleted && (
-        <View style={styles.financeBox}>
-          <Text style={styles.financeText}>💰 Randevu ücreti mali işlemlere gelir olarak kayıt edilsin mi?</Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#34C759' }]}  onPress={() => handleFinanceAction(item)} >
-              <Text style={styles.btnText}>EVET (Gelir Ekle)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#FF3B30' }]}   onPress={() => handleRejectAction(item.id)} >
-              <Text style={styles.btnText}>HAYIR (Beklet)</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-      
-      {isPending && (
-        <View style={styles.pendingBox}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Ionicons name="time" size={20} color="#FF9500" />
-            <Text style={styles.pendingText}>İşlem Yapılmayı Bekliyor</Text>
-          </View>
-          <TouchableOpacity style={[styles.btn, { backgroundColor: '#34C759', height: 44 }]}   onPress={() => handleFinanceAction(item)}>
-            <Text style={styles.btnText}>Gelir Olarak Kaydet ve Kapat</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      
-
-      {(!isCompleted && !isPending) && (
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={[styles.btn, styles.callBtn]} 
-            onPress={() => item.customer_phone ? Linking.openURL(`tel:${item.customer_phone}`) : Alert.alert("Hata", "Telefon yok")}
-          >
-              <Ionicons name="call" size={18} color="#fff" />
-              <Text style={styles.btnText}>Ara</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.btn, styles.cancelBtn]} 
-            onPress={() => handleCancelAction(item.id, item.servis_no)}
-          >
-              <Ionicons name="close-circle" size={18} color="#fff" />
-              <Text style={styles.btnText}>İptal</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-    </View>
-    );
-};
-              */}
   return (
     <SafeAreaView style={[styles.container, isDarkMode && darkStyles.container]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
+
+
+
+
+
       <View style={[styles.header, isDarkMode && darkStyles.header]}>
         <View>
             <Text style={[styles.title, isDarkMode && darkStyles.textMain]}>RANDEVU</Text>
             <Text style={[styles.subTitle, { color: '#FF3B30' }]}>TAKİP VE TEYİT</Text>
         </View>
         
-        <TouchableOpacity style={styles.exitBtn} onPress={() => router.back()}>
-          <Ionicons name="close" size={26} color="#fff" />
-        </TouchableOpacity>
+        {/* 🚨 MÜDÜR: YENİLEME VE KAPATMA İKİZ KARDEŞLER (32x32 STANDART) 🚨 */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          
+          {/* 1. YENİLEME BUTONU */}
+          <TouchableOpacity
+            style={{ 
+              width: 32, height: 32, borderRadius: 16, 
+              borderWidth: 1.5, borderColor: '#FF3B30', 
+              justifyContent: 'center', alignItems: 'center' 
+            }}
+            onPress={() => loadData()}
+          >
+            <Ionicons name="refresh" size={18} color="#FF3B30" />
+          </TouchableOpacity>
+
+          {/* 2. KAPATMA BUTONU */}
+          <TouchableOpacity
+            style={{ 
+              width: 32, height: 32, borderRadius: 16, 
+              borderWidth: 1.5, borderColor: '#FF3B30', 
+              justifyContent: 'center', alignItems: 'center', 
+              marginLeft: 10 
+            }}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="close" size={18} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
       </View>
+      
+
+
+
+
 
       {loading ? (
         <ActivityIndicator size="large" color="#FF3B30" style={{marginTop: 50}} />

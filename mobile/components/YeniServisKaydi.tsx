@@ -441,7 +441,10 @@ const handleSaveAttempt = async () => {
                       },
                     ]}
                   >
-                    <TextInput
+
+
+
+                      <TextInput
                       ref={rMusteriInput}
                       style={{ flex: 1, color: theme.textColor }}
                       placeholder="En az 3 harf girin..."
@@ -452,7 +455,26 @@ const handleSaveAttempt = async () => {
                         setFocusField('musteri');
                         scrollToSection('customerSection', 10);
                       }}
+                      // EKLENEN KISIM: Klavyeye NEXT (İleri) tuşunu getirir
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => {
+                        // Bir sonraki alan metin kutusu değil, buton olduğu için klavyeyi indirip yolu açıyoruz
+                        Keyboard.dismiss();
+                      }}
                     />
+
+
+
+                    
+
+
+
+
+
+
+
+
 
                     {searchText.length > 0 && (
                       <TouchableOpacity
@@ -760,19 +782,27 @@ const handleSaveAttempt = async () => {
                 />
               </View>
 
+
+                {/* Yazıcı kaldırıldı, Kaydet butonu tam ekran yapıldı */}
               <View style={[styles.row, { marginTop: 30, marginBottom: 50 }]}>
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAttempt}>
+                <TouchableOpacity 
+                  style={[styles.saveBtn, { marginRight: 0 }]} 
+                  onPress={handleSaveAttempt}
+                >
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.saveBtnText}>KAYDET</Text>
                   )}
                 </TouchableOpacity>
-
-                <TouchableOpacity style={styles.printBtn}>
-                  <Ionicons name="print" size={24} color="#fff" />
-                </TouchableOpacity>
               </View>
+
+              
+
+
+
+
+
             </ScrollView>
 
             <CustomSelect
@@ -859,9 +889,17 @@ const handleSaveAttempt = async () => {
   );
 }
 
+
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, paddingHorizontal: 20 },
+  // paddingTop eklenerek yazının saatin altına girmesi engellendi
+  safeArea: { flex: 1, paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 20 },
+ 
+
+
+
+ 
   headerTitle: { fontSize: 18, fontWeight: '900' },
   label: { fontSize: 11, fontWeight: 'bold', marginBottom: 8, color: '#888' },
   row: { flexDirection: 'row', gap: 12, marginBottom: 15, alignItems: 'center' },

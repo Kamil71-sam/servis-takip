@@ -90,44 +90,6 @@ const handleSaveAttempt = async () => {
 
 
 
-
-
-  /*
-  // --- MÜDÜR: KAYDETME SİHİRBAZI ---
-  const handleSaveAttempt = async () => {
-    if (!firma.firma_adi) {
-      setStatus({ visible: true, type: 'error', msg: 'Lütfen zorunlu alan olan Firma Ünvanı bilgisini giriniz.' });
-      return;
-    }
-
-    try {
-      // MÜDÜR: Artık manuel fetch ile uğraşmıyoruz, api.ts'deki createFirm'i çağırıyoruz.
-      // Bu sayede .env'deki doğru IP neyse sistem onu kullanıyor.
-      const result = await createFirm({
-        name: firma.firma_adi, // Backend 'name' beklediği için eşleştirdik
-        phone: firma.telefon,
-        email: firma.eposta,
-        address: firma.adres
-      });
-
-      // Eğer buraya kadar geldiyse ve hata fırlatmadıysa kayıt başarılıdır.
-      Keyboard.dismiss();
-      setStatus({ visible: true, type: 'success', msg: 'Firma kayıt işlemi başarıyla tamamlanmıştır.' });
-      
-    } catch (error) {
-      console.error("Kayıt Hatası:", error);
-      setStatus({ 
-        visible: true, 
-        type: 'error', 
-        msg: 'Sunucu bağlantısı kurulamadı veya kayıt reddedildi. Lütfen ağ ayarlarını kontrol ediniz.' 
-      });
-    }
-  };
-
-*/
-
-
-
   const theme = {
     bg: isDarkMode ? '#121212' : '#fff',
     cardBg: isDarkMode ? '#1e1e1e' : '#f9f9f9',

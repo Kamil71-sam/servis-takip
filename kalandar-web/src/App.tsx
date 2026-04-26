@@ -4,14 +4,14 @@ import logo from './assets/logo.png';
 import Dashboard from './Dashboard';
 
 function App() {
-  const [email, setEmail] = useState('admin@kalandar.com');
-  const [password, setPassword] = useState('123456');
+  // Senin web ekranındaki (4. fotoğraf) orijinal başlangıç maili
+  const [email, setEmail] = useState(''); 
+  const [password, setPassword] = useState('');
   
-  // Ustanın Not Defteri: Adam sisteme daha önce girmiş mi?
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
-  // 🚨 SORGULAMA İÇİN USTANIN YENİ NOT DEFTERLERİ (STATES) 🚨
-  const [isSorgulamaMode, setIsSorgulamaMode] = useState(false); // Hangi ekrandayız?
+  // 🚨 SORGULAMA İÇİN STATELER 🚨
+  const [isSorgulamaMode, setIsSorgulamaMode] = useState(false);
   const [sorguServisNo, setSorguServisNo] = useState('');
   const [sorguTelefon, setSorguTelefon] = useState('');
   const [sorguSonucu, setSorguSonucu] = useState<any>(null);
@@ -19,27 +19,45 @@ function App() {
 
   const girisYap = async () => {
     try {
-      const response = await axios.post('http://localhost:3000/auth/login', {
+      // ====================================================================
+      // 🛡️ MÜDÜRÜN GİZLİ GEÇİDİ (S1 KODU) - Sadece sen kullanacaksın
+      // ====================================================================
+      if (email === 'S1') {
+        localStorage.setItem('token', 'mudur-gizli-token-1905');
+        localStorage.setItem('userRole', 'admin'); 
+        setIsLoggedIn(true);
+        return; 
+      }
+
+      // ====================================================================
+      // 🚪 GERÇEK SİSTEM GİRİŞİ (Senin veritabanındaki adamlar)
+      // (admin@test.com, usta1@test.com vb. buradan girecek)
+      // ====================================================================
+      const response = await axios.post('https://teknik-servis-backend-v3.onrender.com/auth/login', {
         email: email,
         password: password
       });
 
       if (response.data && response.data.token) {
         localStorage.setItem('token', response.data.token);
+        // Backend'den rol geliyorsa onu da kaydedelim
+        if(response.data.user && response.data.user.role) {
+           localStorage.setItem('userRole', response.data.user.role);
+        }
       }
       
       setIsLoggedIn(true);
 
     } catch (hata: any) {
       const hataMesaji = hata.response?.data?.error || hata.response?.data?.message || "Bağlantı kurulamadı!";
-      alert("❌ HATA: " + hataMesaji);
+      alert("❌ HATA: Kullanıcı adı veya şifre yanlış! \n" + hataMesaji);
     }
   };
 
   const cikisYap = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
     setIsLoggedIn(false); 
-    // 🚨 EKRAN TEMİZLİĞİ (Usta not defterini yırtıp atıyor)
     setEmail(''); 
     setPassword('');
     setIsSorgulamaMode(false);
@@ -48,26 +66,20 @@ function App() {
     setSorguSonucu(null);
   };
 
-  // 🚨 AKILLI SORGULAMA MOTORU (GERÇEK BAĞLANTI) 🚨
   const handleSorgula = async () => {
     if (!sorguServisNo.trim() || !sorguTelefon.trim()) {
       return alert("Lütfen Kayıt/Servis Numarasını ve Telefonunuzun son 4 hanesini giriniz.");
     }
     
     setIsSorgulaniyor(true);
-    setSorguSonucu(null); // Eski sonucu temizle
+    setSorguSonucu(null); 
 
     try {
-      // ⚠️ GERÇEK VANA AÇILDI! Doğrudan Backend'e gidiyoruz
-     
-     
-     const response = await axios.post('http://localhost:3000/auth/sorgula', {
-      //const response = await axios.post('http://localhost:3000/services/sorgula', {
+      const response = await axios.post('https://teknik-servis-backend-v3.onrender.com/auth/sorgula', {
         servisNo: sorguServisNo,
         telefonSon4: sorguTelefon
       });
       
-      // Backend'den gelen cevaba göre ekrana basıyoruz
       if (response.data && response.data.success) {
          setSorguSonucu(response.data.data);
       } else {
@@ -103,18 +115,16 @@ function App() {
 
       <div className="max-w-md w-full bg-black/40 backdrop-blur-xl border border-white/5 p-10 rounded-[2rem] shadow-2xl z-10 relative transition-all duration-500">
         
-        {/* ============================================================================================== */}
-        {/* ============================= 1. YETKİLİ GİRİŞ (LOGIN) EKRANI ================================ */}
-        {/* ============================================================================================== */}
         {!isSorgulamaMode && (
           <div className="space-y-8 animate-fade-in">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1 mb-3 block">E-Posta Adresi</label>
               <input 
-                type="email" 
+                type="text" 
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#8E052C]/50 focus:ring-1 focus:ring-[#8E052C]/50 transition-all duration-300"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="E-posta adresiniz..."
               />
             </div>
             <div>
@@ -137,9 +147,9 @@ function App() {
                   onClick={() => { 
                     setIsSorgulamaMode(true); 
                     setSorguSonucu(null);
-                    setSorguServisNo(''); // Kutuyu boşalt
-                    setSorguTelefon('');  // Kutuyu boşalt
-                    setPassword('');      // Arkada şifre kalmasın
+                    setSorguServisNo(''); 
+                    setSorguTelefon('');  
+                    setPassword('');      
                   }}
                   className="text-[11px] font-black text-gray-500 hover:text-white uppercase tracking-widest transition-colors flex items-center justify-center gap-2 w-full"
                >
@@ -149,17 +159,12 @@ function App() {
           </div>
         )}
 
-        {/* ============================================================================================== */}
-        {/* ============================= 2. MÜŞTERİ SORGULAMA EKRANI ==================================== */}
-        {/* ============================================================================================== */}
         {isSorgulamaMode && (
           <div className="space-y-6 animate-fade-in">
-             
              <div className="text-center mb-6">
                 <h2 className="text-white font-black text-lg uppercase tracking-widest">DURUM SORGULAMA</h2>
                 <p className="text-gray-500 text-[10px] font-bold mt-1">Saha veya Atölye işinizin durumunu öğrenin</p>
              </div>
-
              <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1 mb-2 block">Kayıt / Servis Numarası</label>
                 <input 
@@ -181,7 +186,6 @@ function App() {
                   onChange={(e) => setSorguTelefon(e.target.value.replace(/\D/g, ''))} 
                 />
              </div>
-
              <button 
                 onClick={handleSorgula}
                 disabled={isSorgulaniyor}
@@ -189,15 +193,12 @@ function App() {
                 {isSorgulaniyor ? "SORGULANIYOR..." : "SORGULA"}
              </button>
 
-             {/* 🚨 AKILLI SORGULAMA SONUCU KUTUSU 🚨 */}
              {sorguSonucu && (
                 <div className="mt-6 bg-[#0F0F12] border border-white/10 rounded-xl p-4 shadow-inner">
                    {sorguSonucu.error ? (
                       <p className="text-red-500 font-bold text-xs text-center">{sorguSonucu.error}</p>
                    ) : (
                       <div className="space-y-3">
-                         
-                         {/* ORTAK ALANLAR */}
                          <div className="flex justify-between items-center border-b border-white/5 pb-2">
                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
                                {sorguSonucu.tip === 'Randevu' ? 'Saha Hizmeti' : 'Cihaz'}
@@ -208,18 +209,16 @@ function App() {
                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Durum</span>
                             <span className="text-[11px] font-black text-[#8E052C] bg-[#8E052C]/10 px-2 py-1 rounded-md text-right">{sorguSonucu.durum}</span>
                          </div>
-
-                         {/* TİPE GÖRE DEĞİŞEN ALANLAR (RANDEVU VS SERVİS) */}
                          {sorguSonucu.tip === 'Randevu' ? (
                             <>
-                              <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                                 <span className="text-[10px] font-black text-sky-500 uppercase tracking-widest">Randevu Tarihi</span>
-                                 <span className="text-xs font-bold text-sky-400">{sorguSonucu.tarih}</span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                 <span className="text-[10px] font-black text-sky-500 uppercase tracking-widest">Tahmini Saat</span>
-                                 <span className="text-xs font-bold text-sky-400">{sorguSonucu.saat}</span>
-                              </div>
+                               <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                  <span className="text-[10px] font-black text-sky-500 uppercase tracking-widest">Randevu Tarihi</span>
+                                  <span className="text-xs font-bold text-sky-400">{sorguSonucu.tarih}</span>
+                               </div>
+                               <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-black text-sky-500 uppercase tracking-widest">Tahmini Saat</span>
+                                  <span className="text-xs font-bold text-sky-400">{sorguSonucu.saat}</span>
+                               </div>
                             </>
                          ) : (
                             <div className="flex justify-between items-center">
@@ -227,19 +226,17 @@ function App() {
                                <span className="text-xs font-bold text-gray-300">{sorguSonucu.tarih}</span>
                             </div>
                          )}
-
                       </div>
                    )}
                 </div>
              )}
-
              <div className="pt-2 text-center">
                <button 
                   onClick={() => { 
                     setIsSorgulamaMode(false); 
                     setSorguSonucu(null);
-                    setSorguServisNo(''); // Temizle
-                    setSorguTelefon('');  // Temizle
+                    setSorguServisNo(''); 
+                    setSorguTelefon('');  
                   }}
                   className="text-[10px] font-black text-gray-600 hover:text-gray-400 uppercase tracking-widest transition-colors"
                >
@@ -248,7 +245,6 @@ function App() {
              </div>
           </div>
         )}
-
       </div>
     </div>
   );

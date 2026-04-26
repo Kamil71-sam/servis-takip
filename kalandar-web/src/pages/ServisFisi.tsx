@@ -87,7 +87,7 @@ export default function ServisFisi() {
   }, [activeTab]);
 
   useEffect(() => {
-    setSeciliKayit((prevSecili) => {
+    setSeciliKayit((prevSecili: any) => {
       if (!prevSecili) return null;
       
       const tipUygun = filtreTip === 'Tümü' || prevSecili.tip === filtreTip;
@@ -244,7 +244,7 @@ export default function ServisFisi() {
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } // 🚨 TAM PİKSEL KİLİDİ 1 SAYFAYI GARANTİLER!
     };
 
-    html2pdf().set(opt).from(element).save().then(() => {
+    html2pdf().set(opt).from(element!).save().then(() => {
         if (!yazdirilanlar.includes(seciliKayit.id) && activeTab !== 'tamamlanan') {
             const onay = window.confirm("PDF başarıyla indirildi!\n\nEvet derseniz bu evrak 'Geçmiş Çıktılar' arşivine taşınacaktır.");
             if (onay) {

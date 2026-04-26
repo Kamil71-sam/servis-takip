@@ -19,7 +19,6 @@ import { fetchWithAuth } from '../services/api';
 const API_BASE = `${process.env.EXPO_PUBLIC_API_URL}/api`;
 
 
-//const API_BASE = 'http://192.168.1.41:3000/api';
 
 export default function YeniRandevu() {
   const router = useRouter();
@@ -94,29 +93,6 @@ const fetchAllCustomers = async () => {
     console.log("🚨 Rehber verisi çekilemedi (Güvenlik veya Bağlantı):", err);
   }
 };
-
-
-
-
-
-
-
-
-
-
-/*
-  const fetchAllCustomers = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/customers/all`); 
-      if (res.data.success) {
-        setAllCustomers(res.data.data);
-      }
-    } catch (err) {
-      console.log("Rehber verisi çekilemedi.");
-    }
-  };
-*/
-
 
 
 
@@ -199,66 +175,6 @@ const handleSearchCustomer = async (val: string) => {
     setUnregistered(false);
   }
 };
-
-
-
-
-
-
-/*
-
-const handleSearchCustomer = async (val: string) => {
-  setPhone(val);
-  if (val.length >= 10) {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE}/appointments/search-customer?phone=${val}`);
-      
-      if (res.data.success && res.data.data) {
-        setCustomerInfo({ 
-          id: res.data.data.id, 
-          name: res.data.data.name, 
-          exists: true 
-        });
-        setCustomerType(res.data.data.tip || 'bireysel'); 
-        
-        // 🚨 MÜDÜR: Numaradan ararken adresi yakalıyoruz
-        const gelenAdres = res.data.data.adres || res.data.data.address || '';
-        if (gelenAdres) {
-           setAddress(gelenAdres);
-           // Adres doluysa imleci cihaz kutusuna atlat
-           setTimeout(() => deviceTypeRef.current?.focus(), 100);
-        } else {
-           setAddress('');
-           addressRef.current?.focus(); 
-        }
-
-        setUnregistered(false); 
-      } else {
-        setCustomerInfo({ id: null, name: '', exists: false });
-        setAddress(''); // Müşteri yoksa adresi de temizle
-        setUnregistered(true); 
-      }
-    } catch (err) {
-      console.log("Müşteri bulunamadı.");
-      setCustomerInfo({ id: null, name: '', exists: false });
-      setAddress('');
-      setUnregistered(true);
-    } finally {
-      setLoading(false);
-    }
-  } else {
-    setCustomerInfo({ id: null, name: '', exists: false });
-    setAddress(''); // Numara 10 haneden kısaysa kutuları sıfırla
-    setUnregistered(false);
-  }
-};
-
-
-*/
-
-
-
 
 
 
@@ -369,92 +285,6 @@ const handleSave = async () => {
       setLoading(false);
     }
   };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /*
-
-const handleSave = async () => {
-    if (!phone || !date || !time) {
-      Alert.alert("Hata", "Lütfen zorunlu alanları doldur!");
-      return;
-    }
-
-    if (unregistered) {
-      Alert.alert("Dur!", "Bu numara kayıtlı değil. Lütfen önce müşteri kaydı yapın.");
-      return;
-    }
-
-    setLoading(true);
-    setSaveStatus(null);
-    Keyboard.dismiss();
-
-    let dbDate = date;
-    if (date.length === 10 && date.includes('-')) {
-      const parts = date.split('-');
-      if (parts.length === 3) {
-        dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`; 
-      }
-    }
-
-    const girilenAdres = address ? address.trim() : "Adres Girilmedi";
-    const girilenNot = issue ? issue.trim() : "Arıza Notu Yok";
-    
-    const paketlenmisVeri = `📍 ADRES: ${girilenAdres}\n🔧 CİHAZ: ${deviceType} ${brand} ${model}\n📝 NOT: ${girilenNot}`;
-
-    try {
-      // MÜDÜR: ÖNCE ÇAKIŞMA KONTROLÜ YAPIYORUZ
-      const conflictRes = await axios.get(`${API_BASE}/appointments/check-conflict?date=${dbDate}&time=${time}`);
-      
-      if (conflictRes.data.isOccupied) {
-        setLoading(false);
-        Alert.alert("Randevu Çakışması", "Bu tarih ve saatte zaten bir randevu mevcut. Lütfen başka bir zaman seçin.");
-        return;
-      }
-
-      // EĞER SAAT BOŞSA KAYDA DEVAM ET
-      const res = await axios.post(`${API_BASE}/appointments/ekle`, {
-        customer_id: customerInfo.id,
-        type: customerType, 
-        device_brand: brand, 
-        device_model: model,
-        date: dbDate, 
-        time,
-        usta: usta, 
-        issue: paketlenmisVeri 
-      });
-      
-      if (res.data.success) {
-        setAssignedServiceNo(res.data.servis_no || 'Atandı');
-        setSaveStatus('success'); 
-        setSuccessModalVisible(true); // ŞIK EKRANI AÇ
-      }
-    } catch (err: any) {
-      setSaveStatus('error'); 
-      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message;
-      Alert.alert("Kayıt Başarısız", `Hata Detayı: ${errMsg}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-*/
-
-
-
-
-
 
 
 

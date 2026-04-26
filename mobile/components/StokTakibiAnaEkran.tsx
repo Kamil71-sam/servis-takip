@@ -165,31 +165,6 @@ const handleSmartScan = async ({ data }: any) => {
 
 
 
-/*
-  const handleSmartScan = async ({ data }: any) => {
-    setCameraVisible(false);
-    setScannedBarcode(data); 
-    try {
-      const response = await fetch(`${API_URL}/api/stok/search?barkod=${data}`);
-      const res = await response.json();
-      
-      if (res.success && res.found) {
-        setScannedItem(res.data);
-        setScanModalVisible(true);
-      } else {
-        Alert.alert("🚨 KAYITSIZ", "Kayıt açılsın mı?", [
-          { text: "HAYIR", style: "cancel" },
-          { text: "EVET", onPress: () => setStokGirisVisible(true) }
-        ]);
-      }
-    } catch (e) { 
-        setAlertConfig({ visible: true, title: "Hata", message: "Radar taraması başarısız.", type: 'error' }); 
-    }
-  };
-*/
-
-
-
 
 
 // --- 🚨 1. MÜDÜRÜN KAPI GÜVENLİĞİ (ONAY ALMADAN KASAYA DOKUNMAZ) ---
@@ -241,84 +216,6 @@ const handleSmartScan = async ({ data }: any) => {
     finally { setLoading(false); }
   };
 
-  /*
-
-        const quickAction = async (id: number, barkod: string, type: 'add' | 'sell') => {
-            setLoading(true);
-            try {
-              const endpoint = type === 'add' ? '/api/stok/add' : '/api/stok/sell';
-              const body = type === 'add' ? 
-                { barkod, miktar: 1, malzeme_adi: '', alis_fiyati: 0 } : 
-                { id, barkod, cikan_adet: 1, is_relative: discountRate > 0, manual_discount: discountRate };
-
-              const res = await fetch(`${API_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-              });
-              const resData = await res.json();
-              
-              if (resData.success) {
-                fetchEnvanter();
-
-                // --- 🚨 İŞTE ATEŞLEME MEKANİZMASI: KASAYA HABER VERİYORUZ ---
-                DeviceEventEmitter.emit('kasaYenile');
-
-                // --- 🚨 MÜDÜRÜN FİYAT UYARI KİLİDİ ---
-                let uyariMesaji = resData.message || "Stok güncellendi.";
-                
-                // Sadece 'add' (+1 EKLE) işleminde bu uyarıyı ver
-                if (type === 'add' && resData.data) {
-                    const guncelFiyat = resData.data.alis_fiyati || 0;
-                    uyariMesaji = `İşlem Başarılı: +1 Eklendi.\n\n💰 Kayıtlı Alış Fiyatı: ${guncelFiyat} ₺\n(Kasadan bu tutar düşüldü)\n\nFarklı bir fiyattan aldıysanız, Envanter Yönetimi'nden güncelleyin!`;
-                }
-
-                // Güncellenmiş mesajı ekrana bas
-                setAlertConfig({ visible: true, title: "Başarılı", message: uyariMesaji, type: 'success' });
-              }
-            } catch (e) { 
-                setAlertConfig({ visible: true, title: "Hata", message: "İşlem yapılamadı.", type: 'error' }); 
-            }
-            finally { setLoading(false); }
-          };
-
-
-
-
-   
-  const quickAction = async (id: number, barkod: string, type: 'add' | 'sell') => {
-    setLoading(true);
-    try {
-      const endpoint = type === 'add' ? '/api/stok/add' : '/api/stok/sell';
-      const body = type === 'add' ? 
-        { barkod, miktar: 1, malzeme_adi: '', alis_fiyati: 0 } : 
-        { id, barkod, cikan_adet: 1, is_relative: discountRate > 0, manual_discount: discountRate };
-
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const resData = await res.json();
-      if (resData.success) {
-        fetchEnvanter();
-
-       
-
-        // --- 🚨 İŞTE ATEŞLEME MEKANİZMASI: KASAYA HABER VERİYORUZ ---
-        DeviceEventEmitter.emit('kasaYenile');
-
-
-
-        setAlertConfig({ visible: true, title: "Başarılı", message: resData.message || "Stok güncellendi.", type: 'success' });
-      }
-    } catch (e) { 
-        setAlertConfig({ visible: true, title: "Hata", message: "İşlem yapılamadı.", type: 'error' }); 
-    }
-    finally { setLoading(false); }
-  };
-
-*/
 
 
 
@@ -495,12 +392,6 @@ const handleSmartScan = async ({ data }: any) => {
           </Modal>
 
 
-
-
-
-
-          
-  
 
 
 

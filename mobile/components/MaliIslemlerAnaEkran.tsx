@@ -325,19 +325,6 @@ const renderIslem = ({ item: islem }: any) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: any) {
   
   const router = useRouter(); 
@@ -500,14 +487,7 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             </View>
 
 
-
-
-
-
-
-
-
-            
+        
 
             {/* 🚨 YENİ DEV BUTON (ÜSTTE) */}
             <TouchableOpacity 
@@ -560,23 +540,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
           </ScrollView>
 
 
-
-
-
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
           {/* MODALLAR */}
           <IslemDetayModal visible={detayModalVisible} islem={seciliIslem} onClose={() => setDetayModalVisible(false)} isDarkMode={isDarkMode} />
          
@@ -597,10 +560,6 @@ export default function MaliIslemlerAnaEkran({ visible, onClose, isDarkMode }: a
             }}
           />
 
-              
-
-
-          
           
           <GelismisFiltreModal visible={filterModalVisible} onClose={() => setFilterModalVisible(false)} onApply={handleFiltreUygula} isDarkMode={isDarkMode} />
 

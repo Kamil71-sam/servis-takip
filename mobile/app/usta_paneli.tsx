@@ -90,48 +90,6 @@ export default function UstaPaneli() {
 
 
 
-/*
-  const handleCompleteJob = async () => {
-    if (!price) return Alert.alert("Hata", "Lütfen bir ücret girin.");
-    try {
-      const res = await fetch(`${API_URL}/api/operation/complete-job/${selectedJob.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price: parseFloat(price), usta_notu: note }),
-      });
-      const result = await res.json();
-      
-      if (result.success) {
-        setModalVisible(false);
-        setPrice('');
-        setNote('');
-        fetchJobs();
-
-        // 🚨 MÜDÜR: KURYEYE GECE MODU ŞİFRESİ (THEME) VERİLDİ!
-        router.push({
-          pathname: "/RandevuTahsilatUsta",
-          params: { 
-            id: selectedJob.id, 
-            servis_no: selectedJob.servis_no,
-            musteri: selectedJob.musteri_adi,
-            cihaz: selectedJob.detay,
-            maliyet: price,
-            theme: isDarkMode ? 'dark' : 'light' // <--- EKSİK OLAN ANAHTAR BUYDU!
-          }
-        });
-      }
-    } catch (e) {
-      Alert.alert("Hata", "Sunucuya ulaşılamıyor.");
-    }
-  };
-
-
-*/
-
-
-
-
-
   const renderItem = ({ item }: any) => {
     let dAdres = "";
     let dCihaz = "";

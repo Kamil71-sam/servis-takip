@@ -315,12 +315,6 @@ export default function ParaCikisiEkrani() {
 
 
 
-      
-
-
-
-
-
 
     </SafeAreaView>
   );
